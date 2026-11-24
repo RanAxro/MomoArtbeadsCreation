@@ -1,0 +1,114 @@
+{
+  "app": {
+    "name": "大喵艺点点拼绘",
+    "englishName": "Momo Artbeads Creation",
+    "localOnly": "本地工作区"
+  },
+  "nav": {
+    "file": "文件",
+    "settings": "设置",
+    "schemes": "方案",
+    "newScheme": "新建方案",
+    "noSchemes": "暂无方案",
+    "closeScheme": "关闭方案",
+    "openScheme": "打开方案 {name}"
+  },
+  "file": {
+    "new": "新建空白方案",
+    "import": "导入图片方案",
+    "close": "关闭当前方案"
+  },
+  "home": {
+    "eyebrow": "Fuse Bead Workspace",
+    "description": "新建空白拼绘方案，或将图片转换成可在 Pegboard 上逐格编辑的艺点点图纸。",
+    "new": "新建空白方案",
+    "import": "导入图片方案"
+  },
+  "tray": {
+    "title": "艺点点",
+    "english": "Artbeads",
+    "count": "{count} 种艺点点",
+    "empty": "打开方案后即可选择艺点点",
+    "selected": "当前艺点点"
+  },
+  "board": {
+    "title": "Pegboard",
+    "size": "{width} × {height}",
+    "artbeads": "{count} 个艺点点",
+    "hint": "左键绘制 · B 画笔 · E 橡皮 · G 填充",
+    "saved": "已保存",
+    "saving": "保存中…",
+    "dirty": "等待保存",
+    "error": "保存失败",
+    "save": "保存",
+    "undo": "撤销",
+    "redo": "重做",
+    "pencil": "画笔",
+    "eraser": "橡皮",
+    "fill": "填充"
+  },
+  "settings": {
+    "title": "设置",
+    "close": "关闭设置",
+    "appearance": "外观",
+    "theme": "主题模式",
+    "light": "亮色",
+    "dark": "暗色",
+    "language": "界面语言",
+    "storage": "本地存储",
+    "storageCopy": "方案、色板和画布数据只保存在当前浏览器。清除站点数据前请先导出备份。",
+    "zh": "简体中文",
+    "en": "English"
+  },
+  "new": {
+    "title": "新建空白方案",
+    "description": "设置 Pegboard 尺寸后开始你的拼绘。颜色由全局配置统一提供。",
+    "name": "方案名称",
+    "defaultName": "未命名拼绘方案",
+    "width": "宽度",
+    "height": "高度",
+    "sizePreset": "格板大小",
+    "colors": "可用艺点点",
+    "create": "创建并打开",
+    "creating": "创建中…",
+    "back": "返回工作区",
+    "invalidName": "请填写方案名称。",
+    "invalidSize": "宽度和高度需要在 1 到 {max} 之间。",
+    "preset": {
+      "default": "默认"
+    }
+  },
+  "import": {
+    "title": "导入图片方案",
+    "description": "图片只在当前设备处理，并按最接近的可用艺点点颜色生成拼绘。",
+    "choose": "选择图片",
+    "replace": "更换图片",
+    "noFile": "选择一张参考图片",
+    "localHint": "图片不会上传",
+    "name": "方案名称",
+    "defaultName": "图片拼绘方案",
+    "width": "宽度",
+    "height": "高度",
+    "lockRatio": "锁定图片比例",
+    "unlockRatio": "取消锁定图片比例",
+    "preview": "转换预览",
+    "previewHint": "生成预览后，可在 Pegboard 中继续逐格修正。",
+    "generate": "生成预览",
+    "regenerate": "重新生成",
+    "save": "保存并打开",
+    "processing": "处理中…",
+    "emptyPreview": "选择图片后生成预览",
+    "dimensions": "将生成 {width} × {height} = {count} 格",
+    "usedColors": "使用 {count} 种艺点点",
+    "noImage": "请先选择一张图片。",
+    "readError": "无法读取这张图片，请尝试 PNG、JPEG 或 WebP 格式。",
+    "convertError": "图片转换失败，请尝试其他图片。",
+    "back": "返回工作区"
+  },
+  "common": {
+    "loading": "正在读取本地数据…",
+    "backWorkspace": "返回工作区",
+    "notFound": "找不到这个方案",
+    "backHome": "返回工作区"
+  }
+}

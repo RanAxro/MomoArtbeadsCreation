@@ -1,0 +1,114 @@
+{
+  "app": {
+    "name": "Momo Artbeads Creation",
+    "englishName": "Artbead Fuse Bead Studio",
+    "localOnly": "Local workspace"
+  },
+  "nav": {
+    "file": "File",
+    "settings": "Settings",
+    "schemes": "Schemes",
+    "newScheme": "New scheme",
+    "noSchemes": "No schemes",
+    "closeScheme": "Close scheme",
+    "openScheme": "Open scheme {name}"
+  },
+  "file": {
+    "new": "New blank scheme",
+    "import": "Import image scheme",
+    "close": "Close current scheme"
+  },
+  "home": {
+    "eyebrow": "Fuse Bead Workspace",
+    "description": "Create a blank Fuse Bead scheme or turn an image into an editable Artbead pattern.",
+    "new": "New blank scheme",
+    "import": "Import image scheme"
+  },
+  "tray": {
+    "title": "Artbeads",
+    "english": "Tray",
+    "count": "{count} Artbeads",
+    "empty": "Open a scheme to select Artbeads",
+    "selected": "Selected Artbead"
+  },
+  "board": {
+    "title": "Pegboard",
+    "size": "{width} × {height}",
+    "artbeads": "{count} Artbeads",
+    "hint": "Left click to draw · B pencil · E eraser · G fill",
+    "saved": "Saved",
+    "saving": "Saving…",
+    "dirty": "Waiting to save",
+    "error": "Save failed",
+    "save": "Save",
+    "undo": "Undo",
+    "redo": "Redo",
+    "pencil": "Pencil",
+    "eraser": "Eraser",
+    "fill": "Fill"
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close settings",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "language": "Language",
+    "storage": "Local storage",
+    "storageCopy": "Schemes, palettes, and canvas data stay in this browser. Export a backup before clearing site data.",
+    "zh": "简体中文",
+    "en": "English"
+  },
+  "new": {
+    "title": "New blank scheme",
+    "description": "Choose a Pegboard size and start your Fuse Bead artwork. Available colors come from the global configuration.",
+    "name": "Scheme name",
+    "defaultName": "Untitled Fuse Bead scheme",
+    "width": "Width",
+    "height": "Height",
+    "sizePreset": "Pegboard size",
+    "colors": "Available Artbeads",
+    "create": "Create and open",
+    "creating": "Creating…",
+    "back": "Back to workspace",
+    "invalidName": "Enter a scheme name.",
+    "invalidSize": "Width and height must be between 1 and {max}.",
+    "preset": {
+      "default": "Default"
+    }
+  },
+  "import": {
+    "title": "Import image scheme",
+    "description": "Images stay on this device and are converted to the nearest available Artbead colors.",
+    "choose": "Choose image",
+    "replace": "Replace image",
+    "noFile": "Choose a reference image",
+    "localHint": "The image is never uploaded",
+    "name": "Scheme name",
+    "defaultName": "Image Fuse Bead scheme",
+    "width": "Width",
+    "height": "Height",
+    "lockRatio": "Lock image ratio",
+    "unlockRatio": "Unlock image ratio",
+    "preview": "Conversion preview",
+    "previewHint": "Open the Pegboard editor after generating a preview to refine individual cells.",
+    "generate": "Generate preview",
+    "regenerate": "Regenerate",
+    "save": "Save and open",
+    "processing": "Processing…",
+    "emptyPreview": "Choose an image to generate a preview",
+    "dimensions": "{width} × {height} = {count} cells",
+    "usedColors": "{count} Artbead colors",
+    "noImage": "Choose an image first.",
+    "readError": "This image cannot be read. Try PNG, JPEG, or WebP.",
+    "convertError": "Image conversion failed. Try another image.",
+    "back": "Back to workspace"
+  },
+  "common": {
+    "loading": "Loading local data…",
+    "backWorkspace": "Back to workspace",
+    "notFound": "Scheme not found",
+    "backHome": "Back to workspace"
+  }
+}

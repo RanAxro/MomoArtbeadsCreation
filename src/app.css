@@ -1,0 +1,232 @@
+:root {
+  font-family:
+    "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", Inter, system-ui, sans-serif;
+  color: #111111;
+  background: #f3f3f1;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --page: #f3f3f1;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --stage: #e7e7e4;
+  --text: #111111;
+  --muted: #707070;
+  --faint: #9a9a9a;
+  --border: #d7d7d3;
+  --border-strong: #b8b8b3;
+  --hover: #eeeeeb;
+  --selected: #111111;
+  --selected-text: #ffffff;
+  --board: #ffffff;
+  --board-line: rgba(0, 0, 0, 0.12);
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color: #ededeb;
+  background: #0e0e0e;
+  --page: #0e0e0e;
+  --surface: #141414;
+  --surface-raised: #191919;
+  --stage: #090909;
+  --text: #ededeb;
+  --muted: #969693;
+  --faint: #686866;
+  --border: #2d2d2b;
+  --border-strong: #4a4a47;
+  --hover: #20201f;
+  --selected: #f4f4f1;
+  --selected-text: #111111;
+  --board: #1c1c1b;
+  --board-line: rgba(255, 255, 255, 0.13);
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.36);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  background: var(--page);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  background: var(--page);
+  color: var(--text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+a {
+  color: inherit;
+}
+
+.eyebrow {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--text);
+  background: var(--hover);
+}
+
+.button.primary {
+  border-color: var(--selected);
+  background: var(--selected);
+  color: var(--selected-text);
+}
+
+.button.primary:hover:not(:disabled) {
+  border-color: var(--selected);
+  background: var(--selected);
+  opacity: 0.82;
+}
+
+.button.secondary {
+  background: var(--surface);
+}
+
+.button.ghost {
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.button.compact {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.8rem;
+}
+
+.button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.field {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.field:focus {
+  border-color: var(--text);
+}
+
+.field-label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  padding: 40px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
