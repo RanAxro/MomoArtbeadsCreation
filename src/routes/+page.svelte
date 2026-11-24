@@ -35,16 +35,14 @@
       return editor.project.palette.colors.map((color) => ({
         id: color.id,
         hex: color.hex,
-        code: color.code,
-        symbol: color.symbol
+        code: color.code
       }));
     }
 
     return ARTBEAD_COLORS.map((hex, index) => ({
       id: `${hex}-${index}`,
       hex,
-      code: String(index + 1).padStart(2, '0'),
-      symbol: ''
+      code: String(index + 1).padStart(2, '0')
     }));
   });
 
@@ -177,9 +175,7 @@
           title={`${color.code} · ${color.hex}`}
           onclick={() => editor.setSelectedColor(index + 1)}
         >
-          <span class="swatch" style:--color={color.hex}>
-            {#if color.symbol}<small>{color.symbol}</small>{/if}
-          </span>
+          <span class="swatch" style:--color={color.hex}></span>
         </button>
       {/each}
     </div>
@@ -384,26 +380,12 @@
   }
 
   .swatch {
-    display: grid;
-    place-items: center;
+    display: block;
     width: 100%;
     height: 100%;
     min-height: 48px;
     border: 1px solid rgba(0, 0, 0, 0.13);
     background: var(--color);
-    color: #111;
-    font-size: 0.62rem;
-    font-weight: 700;
-  }
-
-  .swatch small {
-    display: grid;
-    place-items: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.74);
-    font-size: 0.58rem;
   }
 
   .selected-color {

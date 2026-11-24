@@ -9,7 +9,6 @@ const beadColorSchema = z.object({
   name: z.string().min(1),
   hex: z.string().regex(/^#[0-9a-f]{6}$/i),
   code: z.string(),
-  symbol: z.string(),
   stock: z.number().int().nonnegative().optional()
 });
 

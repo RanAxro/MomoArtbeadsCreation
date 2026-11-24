@@ -6,7 +6,6 @@ export interface BeadColor {
   name: string;
   hex: string;
   code: string;
-  symbol: string;
   stock?: number;
 }
 
@@ -15,31 +14,6 @@ export interface BeadPalette {
   name: string;
   colors: BeadColor[];
 }
-
-const artbeadSymbols = [
-  '●',
-  '○',
-  '■',
-  '□',
-  '▲',
-  '△',
-  '◆',
-  '◇',
-  '✦',
-  '✧',
-  '+',
-  '×',
-  '*',
-  '#',
-  '@',
-  '&',
-  '%',
-  '§',
-  '⊙',
-  '⊕',
-  '▽',
-  '≡'
-];
 
 export function createStarterPalette(id = crypto.randomUUID()): BeadPalette {
   return {
@@ -51,8 +25,7 @@ export function createStarterPalette(id = crypto.randomUUID()): BeadPalette {
         id: `${id}-${index + 1}`,
         name: `A${code}`,
         hex,
-        code,
-        symbol: artbeadSymbols[index] ?? String(index + 1)
+        code
       };
     })
   };
@@ -63,8 +36,7 @@ export function createEmptyBeadColor(paletteId: string, index: number): BeadColo
     id: `${paletteId}-custom-${crypto.randomUUID()}`,
     name: `自定义色 ${index}`,
     hex: '#FFFFFF',
-    code: String(index).padStart(2, '0'),
-    symbol: String(index % 10)
+    code: String(index).padStart(2, '0')
   };
 }
 

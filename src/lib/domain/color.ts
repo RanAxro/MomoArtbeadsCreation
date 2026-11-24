@@ -72,9 +72,3 @@ export function oklabDistance(first: LabColor, second: LabColor): number {
 
   return lightness * lightness + redGreen * redGreen + blueYellow * blueYellow;
 }
-
-export function readableTextColor(hex: string): '#18131e' | '#ffffff' {
-  const { r, g, b } = hexToRgb(hex);
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return luminance > 150 ? '#18131e' : '#ffffff';
-}

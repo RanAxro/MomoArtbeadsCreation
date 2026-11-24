@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { EditorStore } from '$modules/editor/editor-store.svelte';
-  import { readableTextColor } from '$domain/color';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { _ } from 'svelte-i18n';
 
@@ -93,18 +92,6 @@
         const cellY = originY + y * cellSize;
         context.fillStyle = bead.hex;
         context.fillRect(cellX, cellY, Math.ceil(cellSize + 0.2), Math.ceil(cellSize + 0.2));
-
-        if (cellSize >= 17 && bead.symbol) {
-          context.fillStyle = readableTextColor(bead.hex);
-          context.font = `600 ${Math.min(12, cellSize * 0.5)}px "Noto Sans SC", sans-serif`;
-          context.textAlign = 'center';
-          context.textBaseline = 'middle';
-          context.fillText(
-            bead.symbol,
-            cellX + cellSize / 2,
-            cellY + cellSize / 2 + 0.5
-          );
-        }
       }
     }
 

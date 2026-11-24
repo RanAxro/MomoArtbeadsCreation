@@ -111,7 +111,7 @@
           <div class="palette-grid">
             {#each palette.colors as color (color.id)}
               <div class="palette-item" title={`${color.code} · ${color.hex}`}>
-                <span style:--color={color.hex}>{color.symbol}</span>
+                <span style:--color={color.hex}></span>
                 <small>{color.code}</small>
               </div>
             {/each}
@@ -276,14 +276,10 @@
   }
 
   .palette-item > span {
-    display: grid;
-    place-items: center;
+    display: block;
     aspect-ratio: 1;
     border: 1px solid var(--border-strong);
     background: var(--color);
-    color: #111;
-    font-size: 0.72rem;
-    font-weight: 700;
   }
 
   .palette-item small {
