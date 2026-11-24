@@ -74,6 +74,31 @@ class WorkspaceStore {
     this.editor.markSaved(revision);
   }
 
+  async deleteScheme(id: string): Promise<void> {
+    const deletingActiveScheme = this.activeId === id;
+    if (deletingActiveScheme) {
+      this.activeId = null;
+      this.editor.close();
+      window.localStorage.removeItem(ACTIVE_SCHEME_KEY);
+    }
+
+    try {
+      await projectRepository.remove(id);
+    } catch (error) {
+      if (deletingActiveScheme) {
+        const project = await projectRepository.get(id);
+        if (project) {
+          this.activeId = id;
+          this.editor.load(project);
+          window.localStorage.setItem(ACTIVE_SCHEME_KEY, id);
+        }
+      }
+      throw error;
+    }
+
+    this.projects = await projectRepository.list();
+  }
+
   close(remember = true): void {
     void this.saveActiveScheme();
     this.activeId = null;

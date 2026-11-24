@@ -12,10 +12,26 @@
     children: Snippet;
   }
 
+  interface SchemeTarget {
+    id: string;
+    name: string;
+  }
+
+  interface SchemeMenu {
+    target: SchemeTarget;
+    x: number;
+    y: number;
+  }
+
   let { children }: Props = $props();
   let fileOpen = $state(false);
   let settingsOpen = $state(false);
   let fileArea: HTMLDivElement | undefined = $state();
+  let schemeMenuElement: HTMLDivElement | undefined = $state();
+  let schemeMenu = $state<SchemeMenu | null>(null);
+  let deleteTarget = $state<SchemeTarget | null>(null);
+  let deleting = $state(false);
+  let deleteError = $state('');
 
   async function openScheme(id: string): Promise<void> {
     fileOpen = false;
@@ -30,6 +46,64 @@
     workspace.close();
   }
 
+  function showSchemeMenu(event: MouseEvent, target: SchemeTarget): void {
+    event.preventDefault();
+    event.stopPropagation();
+    fileOpen = false;
+    settingsOpen = false;
+
+    const menuWidth = 176;
+    const menuHeight = 92;
+    schemeMenu = {
+      target,
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8))
+    };
+  }
+
+  function openSchemeFromMenu(): void {
+    const target = schemeMenu?.target;
+    schemeMenu = null;
+    if (target) {
+      void openScheme(target.id);
+    }
+  }
+
+  function requestSchemeDeletion(): void {
+    const target = schemeMenu?.target;
+    schemeMenu = null;
+    if (target) {
+      deleteError = '';
+      deleteTarget = target;
+    }
+  }
+
+  function cancelSchemeDeletion(): void {
+    if (deleting) {
+      return;
+    }
+    deleteTarget = null;
+    deleteError = '';
+  }
+
+  async function confirmSchemeDeletion(): Promise<void> {
+    const target = deleteTarget;
+    if (!target || deleting) {
+      return;
+    }
+
+    deleting = true;
+    deleteError = '';
+    try {
+      await workspace.deleteScheme(target.id);
+      deleteTarget = null;
+    } catch {
+      deleteError = $_('nav.deleteError');
+    } finally {
+      deleting = false;
+    }
+  }
+
   function changeLocale(nextLocale: AppLocale): void {
     setAppLocale(nextLocale);
   }
@@ -42,11 +116,19 @@
       if (fileArea && !fileArea.contains(event.target as Node)) {
         fileOpen = false;
       }
+      if (schemeMenuElement && !schemeMenuElement.contains(event.target as Node)) {
+        schemeMenu = null;
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         fileOpen = false;
         settingsOpen = false;
+        schemeMenu = null;
+        if (!deleting) {
+          deleteTarget = null;
+          deleteError = '';
+        }
       }
     };
 
@@ -110,7 +192,14 @@
         {/if}
       </div>
 
-      <button class="nav-button" type="button" onclick={() => { settingsOpen = true; }}>
+      <button
+        class="nav-button"
+        type="button"
+        onclick={() => {
+          schemeMenu = null;
+          settingsOpen = true;
+        }}
+      >
         {$_('nav.settings')}
       </button>
     </div>
@@ -123,7 +212,13 @@
         <span class="no-schemes">{$_('nav.noSchemes')}</span>
       {/if}
       {#each workspace.projects as scheme (scheme.id)}
-        <div class="scheme-tab" class:active={workspace.activeId === scheme.id}>
+        <div
+          class="scheme-tab"
+          class:active={workspace.activeId === scheme.id}
+          role="group"
+          aria-label={scheme.name}
+          oncontextmenu={(event) => showSchemeMenu(event, scheme)}
+        >
           <button
             class="scheme-name"
             type="button"
@@ -151,6 +246,24 @@
     </a>
   </div>
 </header>
+
+{#if schemeMenu}
+  <div
+    class="scheme-context-menu"
+    bind:this={schemeMenuElement}
+    role="menu"
+    aria-label={$_('nav.schemeActions')}
+    style:left={`${schemeMenu.x}px`}
+    style:top={`${schemeMenu.y}px`}
+  >
+    <button type="button" role="menuitem" onclick={openSchemeFromMenu}>
+      {$_('nav.open')}
+    </button>
+    <button type="button" role="menuitem" onclick={requestSchemeDeletion}>
+      {$_('nav.delete')}
+    </button>
+  </div>
+{/if}
 
 <div class="shell-body">
   {@render children()}
@@ -223,6 +336,57 @@
     <div class="storage-note">
       <h3>{$_('settings.storage')}</h3>
       <p>{$_('settings.storageCopy')}</p>
+    </div>
+  </div>
+{/if}
+
+{#if deleteTarget}
+  <button
+    class="dialog-backdrop"
+    type="button"
+    aria-label={$_('nav.cancel')}
+    disabled={deleting}
+    onclick={cancelSchemeDeletion}
+  ></button>
+  <div
+    class="confirm-dialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="delete-scheme-title"
+    aria-describedby="delete-scheme-description"
+  >
+    <div class="dialog-heading">
+      <div>
+        <span class="dialog-index">02</span>
+        <h2 id="delete-scheme-title">{$_('nav.deleteTitle')}</h2>
+      </div>
+    </div>
+
+    <p id="delete-scheme-description" class="confirm-copy">
+      {$_('nav.deletePrompt', { values: { name: deleteTarget.name } })}
+    </p>
+
+    {#if deleteError}
+      <p class="delete-error" role="alert">{deleteError}</p>
+    {/if}
+
+    <div class="confirm-actions">
+      <button
+        class="button secondary"
+        type="button"
+        disabled={deleting}
+        onclick={cancelSchemeDeletion}
+      >
+        {$_('nav.cancel')}
+      </button>
+      <button
+        class="button primary"
+        type="button"
+        disabled={deleting}
+        onclick={() => void confirmSchemeDeletion()}
+      >
+        {deleting ? $_('nav.deleting') : $_('nav.confirmDelete')}
+      </button>
     </div>
   </div>
 {/if}
@@ -406,6 +570,35 @@
     color: var(--surface);
   }
 
+  .scheme-context-menu {
+    position: fixed;
+    z-index: 35;
+    display: grid;
+    width: 176px;
+    padding: 6px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .scheme-context-menu button {
+    width: 100%;
+    min-height: 38px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text);
+    font-size: 0.82rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .scheme-context-menu button:hover,
+  .scheme-context-menu button:focus-visible {
+    background: var(--hover);
+  }
+
   .scheme-close {
     width: 26px;
     height: 100%;
@@ -476,6 +669,41 @@
     background: var(--surface);
     box-shadow: var(--shadow);
     transform: translate(-50%, -50%);
+  }
+
+  .confirm-dialog {
+    position: fixed;
+    z-index: 41;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    gap: 22px;
+    width: min(420px, calc(100vw - 32px));
+    padding: 28px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    transform: translate(-50%, -50%);
+  }
+
+  .confirm-copy {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .delete-error {
+    margin: 0;
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
   }
 
   .dialog-heading {

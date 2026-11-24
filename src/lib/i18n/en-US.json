@@ -11,7 +11,16 @@
     "newScheme": "New scheme",
     "noSchemes": "No schemes",
     "closeScheme": "Close scheme",
-    "openScheme": "Open scheme {name}"
+    "openScheme": "Open scheme {name}",
+    "schemeActions": "Scheme actions",
+    "open": "Open scheme",
+    "delete": "Delete scheme",
+    "deleteTitle": "Delete scheme",
+    "deletePrompt": "Delete “{name}”? This cannot be undone.",
+    "cancel": "Cancel",
+    "confirmDelete": "Delete",
+    "deleting": "Deleting…",
+    "deleteError": "Deletion failed. Try again."
   },
   "file": {
     "new": "New blank scheme",

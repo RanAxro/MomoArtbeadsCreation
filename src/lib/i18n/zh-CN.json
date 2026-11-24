@@ -11,7 +11,16 @@
     "newScheme": "新建方案",
     "noSchemes": "暂无方案",
     "closeScheme": "关闭方案",
-    "openScheme": "打开方案 {name}"
+    "openScheme": "打开方案 {name}",
+    "schemeActions": "方案操作",
+    "open": "打开方案",
+    "delete": "删除方案",
+    "deleteTitle": "删除方案",
+    "deletePrompt": "确定要删除“{name}”吗？此操作无法撤销。",
+    "cancel": "取消",
+    "confirmDelete": "删除",
+    "deleting": "正在删除…",
+    "deleteError": "删除失败，请重试。"
   },
   "file": {
     "new": "新建空白方案",
