@@ -199,10 +199,7 @@
     {#if editor.project}
       <header class="board-header">
         <div class="board-title">
-          <div>
-            <span>{$_('board.title')}</span>
-            <h1>{editor.project.name}</h1>
-          </div>
+          <h1>{editor.project.name}</h1>
           <div class="board-meta">
             <span>
               {$_('board.size', {
@@ -448,8 +445,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    min-height: 76px;
-    padding: 12px 20px;
+    min-height: 54px;
+    padding: 8px 20px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
   }
@@ -461,20 +458,9 @@
     min-width: 0;
   }
 
-  .board-title > div:first-child {
-    min-width: 0;
-  }
-
-  .board-title > div:first-child > span {
-    color: var(--muted);
-    font-size: 0.62rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
   .board-title h1 {
     max-width: 420px;
-    margin: 4px 0 0;
+    margin: 0;
     overflow: hidden;
     font-size: 1.2rem;
     font-weight: 600;
@@ -679,8 +665,8 @@
     .board-header {
       align-items: start;
       flex-direction: column;
-      gap: 10px;
-      padding: 10px 12px;
+      gap: 8px;
+      padding: 8px 12px;
     }
 
     .board-actions {
