@@ -70,6 +70,7 @@
     try {
       await projectRepository.save(snapshot);
       editor.markSaved(revision);
+      workspace.updateProjectSummary(snapshot);
     } catch {
       saveFailed = true;
     } finally {

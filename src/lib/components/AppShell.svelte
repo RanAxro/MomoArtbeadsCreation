@@ -28,8 +28,14 @@
   let fileOpen = $state(false);
   let settingsOpen = $state(false);
   let fileArea: HTMLDivElement | undefined = $state();
+  let schemeAreaElement: HTMLDivElement | undefined = $state();
+  let schemeTabsElement: HTMLDivElement | undefined = $state();
+  let schemeMeasureElement: HTMLDivElement | undefined = $state();
+  let schemePopoverArea: HTMLDivElement | undefined = $state();
   let schemeMenuElement: HTMLDivElement | undefined = $state();
   let schemeMenu = $state<SchemeMenu | null>(null);
+  let schemePopoverOpen = $state(false);
+  let visibleSchemeCount = $state(0);
   let renameTarget = $state<SchemeTarget | null>(null);
   let renameValue = $state('');
   let renaming = $state(false);
@@ -39,8 +45,73 @@
   let deleting = $state(false);
   let deleteError = $state('');
 
+  let orderedSchemes = $derived.by(() =>
+    [...workspace.projects].sort((first, second) =>
+      second.updatedAt.localeCompare(first.updatedAt)
+    )
+  );
+  let visibleSchemes = $derived(orderedSchemes.slice(0, visibleSchemeCount));
+  let schemeDateFormatter = $derived(
+    new Intl.DateTimeFormat($locale ?? 'zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  );
+
+  async function updateVisibleSchemeCount(): Promise<void> {
+    await tick();
+    if (!schemeAreaElement || !schemeTabsElement || !schemeMeasureElement) {
+      return;
+    }
+
+    const areaStyles = getComputedStyle(schemeAreaElement);
+    const gap = Number.parseFloat(areaStyles.columnGap) || 0;
+    const fixedChildren = Array.from(schemeAreaElement.children).filter(
+      (child) =>
+        child !== schemeTabsElement &&
+        child !== schemeMeasureElement &&
+        getComputedStyle(child).display !== 'none'
+    );
+    const fixedWidth = fixedChildren.reduce(
+      (width, child) =>
+        width +
+        (child.classList.contains('scheme-spacer') ? 0 : child.getBoundingClientRect().width),
+      0
+    );
+    const visibleChildCount = fixedChildren.length + 1;
+    const availableWidth = Math.max(
+      0,
+      schemeAreaElement.clientWidth -
+        fixedWidth -
+        gap * Math.max(0, visibleChildCount - 1) -
+        1
+    );
+    const measuredTabs = Array.from(schemeMeasureElement.children) as HTMLElement[];
+    let usedWidth = 0;
+    let nextVisibleCount = 0;
+
+    for (const tab of measuredTabs) {
+      const tabWidth = tab.getBoundingClientRect().width;
+      const nextWidth = usedWidth + (nextVisibleCount > 0 ? 2 : 0) + tabWidth;
+      if (nextWidth > availableWidth) {
+        break;
+      }
+      usedWidth = nextWidth;
+      nextVisibleCount += 1;
+    }
+
+    visibleSchemeCount = nextVisibleCount;
+  }
+
+  function formatModifiedAt(updatedAt: string): string {
+    return schemeDateFormatter.format(new Date(updatedAt));
+  }
+
   async function openScheme(id: string): Promise<void> {
     fileOpen = false;
+    schemePopoverOpen = false;
     const opened = await workspace.select(id);
     if (opened && page.url.pathname !== '/') {
       await goto('/');
@@ -57,6 +128,7 @@
     event.stopPropagation();
     fileOpen = false;
     settingsOpen = false;
+    schemePopoverOpen = false;
 
     const menuWidth = 176;
     const menuHeight = 130;
@@ -182,12 +254,16 @@
       if (schemeMenuElement && !schemeMenuElement.contains(event.target as Node)) {
         schemeMenu = null;
       }
+      if (schemePopoverArea && !schemePopoverArea.contains(event.target as Node)) {
+        schemePopoverOpen = false;
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         fileOpen = false;
         settingsOpen = false;
         schemeMenu = null;
+        schemePopoverOpen = false;
         if (!deleting) {
           deleteTarget = null;
           deleteError = '';
@@ -202,10 +278,25 @@
 
     window.addEventListener('click', closeFloatingMenus);
     window.addEventListener('keydown', closeOnEscape);
+    const resizeObserver = new ResizeObserver(() => {
+      void updateVisibleSchemeCount();
+    });
+    if (schemeAreaElement) {
+      resizeObserver.observe(schemeAreaElement);
+    }
+    void updateVisibleSchemeCount();
     return () => {
       window.removeEventListener('click', closeFloatingMenus);
       window.removeEventListener('keydown', closeOnEscape);
+      resizeObserver.disconnect();
     };
+  });
+
+  $effect(() => {
+    orderedSchemes;
+    workspace.activeId;
+    $locale;
+    void updateVisibleSchemeCount();
   });
 </script>
 
@@ -273,13 +364,14 @@
     </div>
   </div>
 
-  <div class="scheme-area">
+  <div class="scheme-area" bind:this={schemeAreaElement}>
+    <span class="scheme-spacer" aria-hidden="true"></span>
     <span class="scheme-label">{$_('nav.schemes')}</span>
-    <div class="scheme-tabs">
-      {#if workspace.projects.length === 0}
+    <div class="scheme-tabs" bind:this={schemeTabsElement}>
+      {#if orderedSchemes.length === 0}
         <span class="no-schemes">{$_('nav.noSchemes')}</span>
       {/if}
-      {#each workspace.projects as scheme (scheme.id)}
+      {#each visibleSchemes as scheme (scheme.id)}
         <div
           class="scheme-tab"
           class:active={workspace.activeId === scheme.id}
@@ -309,9 +401,70 @@
         </div>
       {/each}
     </div>
-    <a class="new-tab" href="/new" aria-label={$_('nav.newScheme')} title={$_('nav.newScheme')}>
-      ＋
-    </a>
+
+    <div class="scheme-measure" bind:this={schemeMeasureElement} aria-hidden="true">
+      {#each orderedSchemes as scheme (scheme.id)}
+        <div class="scheme-tab" class:active={workspace.activeId === scheme.id}>
+          <span class="scheme-name">{scheme.name}</span>
+          {#if workspace.activeId === scheme.id}
+            <span class="scheme-close">×</span>
+          {/if}
+        </div>
+      {/each}
+    </div>
+
+    <div class="scheme-popover-area" bind:this={schemePopoverArea}>
+      <button
+        class="scheme-expand"
+        type="button"
+        aria-label={$_('nav.expandSchemes')}
+        aria-haspopup="dialog"
+        aria-controls="scheme-popover"
+        aria-expanded={schemePopoverOpen}
+        title={$_('nav.expandSchemes')}
+        onclick={(event) => {
+          event.stopPropagation();
+          schemeMenu = null;
+          schemePopoverOpen = !schemePopoverOpen;
+        }}
+      >
+        ⌄
+      </button>
+
+      {#if schemePopoverOpen}
+        <div
+          id="scheme-popover"
+          class="scheme-popover"
+          role="dialog"
+          aria-label={$_('nav.allSchemes')}
+        >
+          <div class="scheme-popover-heading">
+            <strong>{$_('nav.allSchemes')}</strong>
+            <span>{orderedSchemes.length}</span>
+          </div>
+          <div class="scheme-list">
+            {#if orderedSchemes.length === 0}
+              <p class="scheme-list-empty">{$_('nav.noSchemes')}</p>
+            {/if}
+            {#each orderedSchemes as scheme (scheme.id)}
+              <button
+                class="scheme-list-item"
+                class:active={workspace.activeId === scheme.id}
+                type="button"
+                aria-current={workspace.activeId === scheme.id ? 'true' : undefined}
+                onclick={() => openScheme(scheme.id)}
+                oncontextmenu={(event) => showSchemeMenu(event, scheme)}
+              >
+                <span class="scheme-list-name">{scheme.name}</span>
+                <span class="scheme-list-time">
+                  {$_('nav.modifiedAt', { values: { date: formatModifiedAt(scheme.updatedAt) } })}
+                </span>
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
+    </div>
   </div>
 </header>
 
@@ -640,12 +793,19 @@
 
   .scheme-area {
     justify-content: flex-end;
+    margin-left: auto;
     gap: 8px;
     min-width: 0;
     flex: 1;
   }
 
+  .scheme-spacer {
+    min-width: 0;
+    flex: 1;
+  }
+
   .scheme-label {
+    flex: 0 0 auto;
     color: var(--muted);
     font-size: 0.66rem;
     letter-spacing: 0.12em;
@@ -655,14 +815,11 @@
   .scheme-tabs {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
     gap: 2px;
     min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .scheme-tabs::-webkit-scrollbar {
-    display: none;
+    overflow: hidden;
   }
 
   .no-schemes {
@@ -690,6 +847,8 @@
   }
 
   .scheme-name {
+    display: flex;
+    align-items: center;
     max-width: 190px;
     height: 100%;
     padding: 0 11px;
@@ -737,6 +896,8 @@
   }
 
   .scheme-close {
+    display: grid;
+    place-items: center;
     width: 26px;
     height: 100%;
     padding: 0;
@@ -752,20 +913,126 @@
     opacity: 1;
   }
 
-  .new-tab {
+  .scheme-measure {
+    position: fixed;
+    top: -1000px;
+    left: -1000px;
+    display: flex;
+    gap: 2px;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .scheme-popover-area {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .scheme-expand {
     display: grid;
     place-items: center;
     width: 28px;
     height: 28px;
     flex: 0 0 auto;
+    padding: 0 0 4px;
     border: 1px solid var(--border-strong);
     border-radius: 3px;
+    background: transparent;
     color: var(--text);
-    text-decoration: none;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
   }
 
-  .new-tab:hover {
+  .scheme-expand:hover,
+  .scheme-expand[aria-expanded="true"] {
     background: var(--hover);
+  }
+
+  .scheme-popover {
+    position: absolute;
+    z-index: 36;
+    top: calc(100% + 8px);
+    right: 0;
+    display: grid;
+    width: min(320px, calc(100vw - 20px));
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .scheme-popover-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .scheme-popover-heading strong {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .scheme-popover-heading span {
+    color: var(--muted);
+    font-size: 0.7rem;
+  }
+
+  .scheme-list {
+    display: grid;
+    max-height: min(60vh, 420px);
+    padding: 6px;
+    overflow-y: auto;
+  }
+
+  .scheme-list-item {
+    display: grid;
+    gap: 3px;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .scheme-list-item:hover {
+    background: var(--hover);
+  }
+
+  .scheme-list-item.active {
+    background: var(--text);
+    color: var(--surface);
+  }
+
+  .scheme-list-name {
+    overflow: hidden;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .scheme-list-time {
+    color: var(--muted);
+    font-size: 0.66rem;
+  }
+
+  .scheme-list-item.active .scheme-list-time {
+    color: var(--surface);
+    opacity: 0.68;
+  }
+
+  .scheme-list-empty {
+    margin: 0;
+    padding: 12px 10px;
+    color: var(--muted);
+    font-size: 0.78rem;
   }
 
   .shell-body {

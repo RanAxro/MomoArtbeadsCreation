@@ -72,6 +72,29 @@ class WorkspaceStore {
     const revision = this.editor.revision;
     await projectRepository.save(snapshot);
     this.editor.markSaved(revision);
+    this.updateProjectSummary(snapshot);
+  }
+
+  updateProjectSummary(project: BeadProject): void {
+    const knownScheme = this.projects.some((candidate) => candidate.id === project.id);
+    if (!knownScheme && this.activeId !== project.id) {
+      return;
+    }
+
+    const summary: ProjectSummary = {
+      id: project.id,
+      name: project.name,
+      gameVersion: project.gameVersion,
+      width: project.width,
+      height: project.height,
+      updatedAt: project.updatedAt,
+      pixels: project.cells,
+      palette: project.palette
+    };
+    this.projects = [
+      summary,
+      ...this.projects.filter((candidate) => candidate.id !== project.id)
+    ].sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
   }
 
   async renameScheme(id: string, name: string): Promise<void> {
