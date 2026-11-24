@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type { Snippet } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
+  import { MAX_PROJECT_NAME_LENGTH } from '$domain/project';
   import { _, locale } from 'svelte-i18n';
   import { setAppLocale, type AppLocale } from '$lib/i18n';
   import { themeStore } from '$modules/settings/theme.svelte';
@@ -29,6 +30,11 @@
   let fileArea: HTMLDivElement | undefined = $state();
   let schemeMenuElement: HTMLDivElement | undefined = $state();
   let schemeMenu = $state<SchemeMenu | null>(null);
+  let renameTarget = $state<SchemeTarget | null>(null);
+  let renameValue = $state('');
+  let renaming = $state(false);
+  let renameError = $state('');
+  let renameInput: HTMLInputElement | undefined = $state();
   let deleteTarget = $state<SchemeTarget | null>(null);
   let deleting = $state(false);
   let deleteError = $state('');
@@ -53,7 +59,7 @@
     settingsOpen = false;
 
     const menuWidth = 176;
-    const menuHeight = 92;
+    const menuHeight = 130;
     schemeMenu = {
       target,
       x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
@@ -69,10 +75,67 @@
     }
   }
 
+  async function requestSchemeRename(): Promise<void> {
+    const target = schemeMenu?.target;
+    schemeMenu = null;
+    if (!target) {
+      return;
+    }
+
+    deleteTarget = null;
+    deleteError = '';
+    renameTarget = target;
+    renameValue = target.name;
+    renameError = '';
+    await tick();
+    renameInput?.focus();
+    renameInput?.select();
+  }
+
+  function cancelSchemeRename(): void {
+    if (renaming) {
+      return;
+    }
+    renameTarget = null;
+    renameValue = '';
+    renameError = '';
+  }
+
+  async function confirmSchemeRename(): Promise<void> {
+    const target = renameTarget;
+    const nextName = renameValue.trim();
+    if (!target || renaming) {
+      return;
+    }
+    if (!nextName) {
+      renameError = $_('nav.renameRequired');
+      return;
+    }
+    if (nextName === target.name) {
+      cancelSchemeRename();
+      return;
+    }
+
+    renaming = true;
+    renameError = '';
+    try {
+      await workspace.renameScheme(target.id, nextName);
+      renameTarget = null;
+      renameValue = '';
+    } catch {
+      renameError = $_('nav.renameError');
+    } finally {
+      renaming = false;
+    }
+  }
+
   function requestSchemeDeletion(): void {
     const target = schemeMenu?.target;
     schemeMenu = null;
     if (target) {
+      renameTarget = null;
+      renameValue = '';
+      renameError = '';
       deleteError = '';
       deleteTarget = target;
     }
@@ -128,6 +191,11 @@
         if (!deleting) {
           deleteTarget = null;
           deleteError = '';
+        }
+        if (!renaming) {
+          renameTarget = null;
+          renameValue = '';
+          renameError = '';
         }
       }
     };
@@ -259,6 +327,13 @@
     <button type="button" role="menuitem" onclick={openSchemeFromMenu}>
       {$_('nav.open')}
     </button>
+    <button
+      type="button"
+      role="menuitem"
+      onclick={() => void requestSchemeRename()}
+    >
+      {$_('nav.rename')}
+    </button>
     <button type="button" role="menuitem" onclick={requestSchemeDeletion}>
       {$_('nav.delete')}
     </button>
@@ -388,6 +463,68 @@
         {deleting ? $_('nav.deleting') : $_('nav.confirmDelete')}
       </button>
     </div>
+  </div>
+{/if}
+
+{#if renameTarget}
+  <button
+    class="dialog-backdrop"
+    type="button"
+    aria-label={$_('nav.cancel')}
+    disabled={renaming}
+    onclick={cancelSchemeRename}
+  ></button>
+  <div
+    class="confirm-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="rename-scheme-title"
+  >
+    <div class="dialog-heading">
+      <div>
+        <span class="dialog-index">02</span>
+        <h2 id="rename-scheme-title">{$_('nav.renameTitle')}</h2>
+      </div>
+    </div>
+
+    <form
+      class="rename-form"
+      onsubmit={(event) => {
+        event.preventDefault();
+        void confirmSchemeRename();
+      }}
+    >
+      <label for="rename-scheme-name">{$_('nav.renameLabel')}</label>
+      <input
+        id="rename-scheme-name"
+        class="field"
+        bind:this={renameInput}
+        bind:value={renameValue}
+        type="text"
+        maxlength={MAX_PROJECT_NAME_LENGTH}
+        autocomplete="off"
+        disabled={renaming}
+        oninput={() => { renameError = ''; }}
+      />
+
+      {#if renameError}
+        <p class="dialog-error" role="alert">{renameError}</p>
+      {/if}
+
+      <div class="confirm-actions">
+        <button
+          class="button secondary"
+          type="button"
+          disabled={renaming}
+          onclick={cancelSchemeRename}
+        >
+          {$_('nav.cancel')}
+        </button>
+        <button class="button primary" type="submit" disabled={renaming}>
+          {renaming ? $_('nav.renaming') : $_('nav.confirmRename')}
+        </button>
+      </div>
+    </form>
   </div>
 {/if}
 
@@ -693,11 +830,29 @@
     line-height: 1.7;
   }
 
-  .delete-error {
+  .delete-error,
+  .dialog-error {
     margin: 0;
     color: var(--text);
     font-size: 0.8rem;
     font-weight: 700;
+  }
+
+  .rename-form {
+    display: grid;
+    gap: 10px;
+  }
+
+  .rename-form label {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .rename-form .confirm-actions {
+    padding-top: 12px;
   }
 
   .confirm-actions {

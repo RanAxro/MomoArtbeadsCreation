@@ -1,5 +1,5 @@
 import { projectRepository, type ProjectSummary } from '$data/project-repository';
-import type { BeadProject } from '$domain/project';
+import { normalizeProjectName, type BeadProject } from '$domain/project';
 import { EditorStore } from '$modules/editor/editor-store.svelte';
 
 const ACTIVE_SCHEME_KEY = 'momo-artbeads.active-scheme';
@@ -72,6 +72,19 @@ class WorkspaceStore {
     const revision = this.editor.revision;
     await projectRepository.save(snapshot);
     this.editor.markSaved(revision);
+  }
+
+  async renameScheme(id: string, name: string): Promise<void> {
+    const nextName = normalizeProjectName(name);
+    if (!nextName) {
+      throw new Error('Scheme name cannot be empty');
+    }
+
+    await projectRepository.rename(id, nextName);
+    if (this.activeId === id && this.editor.project) {
+      this.editor.project.name = nextName;
+    }
+    this.projects = await projectRepository.list();
   }
 
   async deleteScheme(id: string): Promise<void> {

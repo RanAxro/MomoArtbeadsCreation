@@ -55,6 +55,13 @@ export const projectRepository = {
     await getDatabase().projects.put(project);
   },
 
+  async rename(id: string, name: string): Promise<void> {
+    await getDatabase().projects.update(id, {
+      name,
+      updatedAt: new Date().toISOString()
+    });
+  },
+
   async remove(id: string): Promise<void> {
     await getDatabase().projects.delete(id);
   },

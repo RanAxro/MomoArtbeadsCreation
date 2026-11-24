@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { countBeads, createProject, floodFill, resizeProject } from './project';
+import {
+  countBeads,
+  createProject,
+  floodFill,
+  MAX_PROJECT_NAME_LENGTH,
+  normalizeProjectName,
+  resizeProject
+} from './project';
 
 describe('project domain', () => {
   it('creates an empty project with the requested dimensions', () => {
@@ -8,6 +15,13 @@ describe('project domain', () => {
     expect(project.cells).toHaveLength(96);
     expect(project.cells.every((cell) => cell === 0)).toBe(true);
     expect(project.gameVersion).toBe('3.0');
+  });
+
+  it('normalizes project names and enforces the maximum length', () => {
+    expect(normalizeProjectName('  拼绘方案  ')).toBe('拼绘方案');
+    expect(normalizeProjectName('名'.repeat(MAX_PROJECT_NAME_LENGTH + 5))).toHaveLength(
+      MAX_PROJECT_NAME_LENGTH
+    );
   });
 
   it('flood fills connected cells without crossing grid edges', () => {

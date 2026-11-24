@@ -3,6 +3,7 @@ import { createStarterPalette, type BeadPalette } from './palette';
 
 export const PROJECT_SCHEMA_VERSION = 1;
 export const MAX_PROJECT_DIMENSION = 300;
+export const MAX_PROJECT_NAME_LENGTH = 80;
 
 const beadColorSchema = z.object({
   id: z.string().min(1),
@@ -20,7 +21,7 @@ const paletteSchema = z.object({
 
 export const beadProjectSchema = z.object({
   id: z.string().min(1),
-  name: z.string().min(1).max(80),
+  name: z.string().min(1).max(MAX_PROJECT_NAME_LENGTH),
   gameVersion: z.string().min(1).max(30),
   width: z.number().int().min(1).max(MAX_PROJECT_DIMENSION),
   height: z.number().int().min(1).max(MAX_PROJECT_DIMENSION),
@@ -42,6 +43,10 @@ export interface NewProjectOptions {
   gameVersion?: string;
 }
 
+export function normalizeProjectName(name: string): string {
+  return name.trim().slice(0, MAX_PROJECT_NAME_LENGTH);
+}
+
 export function createProject(options: NewProjectOptions): BeadProject {
   const now = new Date().toISOString();
   const width = Math.max(1, Math.min(MAX_PROJECT_DIMENSION, Math.round(options.width)));
@@ -49,7 +54,7 @@ export function createProject(options: NewProjectOptions): BeadProject {
 
   return {
     id: crypto.randomUUID(),
-    name: options.name.trim() || '未命名拼绘方案',
+    name: normalizeProjectName(options.name) || '未命名拼绘方案',
     gameVersion: options.gameVersion?.trim() || '3.0',
     width,
     height,
