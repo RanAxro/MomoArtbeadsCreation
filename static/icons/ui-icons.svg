@@ -123,6 +123,31 @@
     </symbol>
 
     <symbol
+      id="save"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M5 4h11l3 3v13H5V4Z" />
+      <path d="M8 4v6h8V4M8 20v-6h8v6" />
+    </symbol>
+
+    <symbol
+      id="check"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M5 12.5l4.2 4.2L19 7" />
+    </symbol>
+
+    <symbol
       id="reset"
       viewBox="0 0 24 24"
       fill="none"

@@ -21,9 +21,14 @@
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   const editor = workspace.editor;
+  const MIN_SAVE_PROGRESS_MS = 500;
+  const SAVE_SUCCESS_VISIBLE_MS = 2000;
 
-  let saving = $state(false);
-  let saveFailed = $state(false);
+  type SaveFeedback = 'idle' | 'saving' | 'saved' | 'failed';
+
+  let saveFeedback = $state<SaveFeedback>('idle');
+  let saveFeedbackRequest = 0;
+  let saveFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
   let hasSelection = $derived(editor.selectedCells.size > 0);
@@ -67,28 +72,69 @@
       editor.activePasteLayer !== null
   );
 
+  function beginSaveFeedback(): number {
+    const request = ++saveFeedbackRequest;
+    if (saveFeedbackTimer) {
+      clearTimeout(saveFeedbackTimer);
+      saveFeedbackTimer = undefined;
+    }
+    saveFeedback = 'saving';
+    return request;
+  }
+
+  function finishSaveFeedback(
+    request: number,
+    succeeded: boolean
+  ): void {
+    if (request !== saveFeedbackRequest) {
+      return;
+    }
+
+    if (!succeeded) {
+      saveFeedback = 'failed';
+      return;
+    }
+
+    saveFeedback = 'saved';
+    saveFeedbackTimer = setTimeout(() => {
+      if (request === saveFeedbackRequest) {
+        saveFeedback = 'idle';
+        saveFeedbackTimer = undefined;
+      }
+    }, SAVE_SUCCESS_VISIBLE_MS);
+  }
+
   async function persist(): Promise<void> {
-    if (!editor.project || !isDirty) {
+    if (!editor.project) {
       return;
     }
 
-    const snapshot = editor.toSnapshot();
-    if (!snapshot) {
-      return;
-    }
-    const revision = editor.revision;
+    const request = beginSaveFeedback();
+    const startedAt = Date.now();
+    let succeeded = true;
 
-    saving = true;
-    saveFailed = false;
     try {
-      await projectRepository.save(snapshot);
-      editor.markSaved(revision);
-      workspace.updateProjectSummary(snapshot);
+      if (isDirty) {
+        const snapshot = editor.toSnapshot();
+        const revision = editor.revision;
+        if (!snapshot) {
+          succeeded = false;
+        } else {
+          await projectRepository.save(snapshot);
+          editor.markSaved(revision);
+          workspace.updateProjectSummary(snapshot);
+        }
+      }
     } catch {
-      saveFailed = true;
-    } finally {
-      saving = false;
+      succeeded = false;
     }
+
+    const remainingProgress =
+      MIN_SAVE_PROGRESS_MS - (Date.now() - startedAt);
+    if (remainingProgress > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remainingProgress));
+    }
+    finishSaveFeedback(request, succeeded);
   }
 
   function scheduleSave(): void {
@@ -203,6 +249,9 @@
       window.removeEventListener('focus', refreshClipboardOnFocus);
       if (saveTimer) {
         clearTimeout(saveTimer);
+      }
+      if (saveFeedbackTimer) {
+        clearTimeout(saveFeedbackTimer);
       }
     };
   });
@@ -334,19 +383,42 @@
           </div>
 
           <div class="save-state">
-            <span class:error={saveFailed}>
-              {#if saving}
+            <span class="visually-hidden" aria-live="polite">
+              {#if saveFeedback === 'saving'}
                 {$_('board.saving')}
-              {:else if saveFailed}
-                {$_('board.error')}
-              {:else if isDirty}
-                {$_('board.dirty')}
-              {:else}
+              {:else if saveFeedback === 'saved'}
                 {$_('board.saved')}
+              {:else if saveFeedback === 'failed'}
+                {$_('board.error')}
               {/if}
             </span>
-            <button class="button compact secondary" type="button" onclick={saveNow}>
-              {$_('board.save')}
+            <button
+              class="button compact secondary save-button"
+              class:error={saveFeedback === 'failed'}
+              type="button"
+              title={saveFeedback === 'saving'
+                ? $_('board.saving')
+                : saveFeedback === 'saved'
+                  ? $_('board.saved')
+                  : saveFeedback === 'failed'
+                    ? $_('board.error')
+                    : $_('board.save')}
+              aria-label={$_('board.save')}
+              aria-busy={saveFeedback === 'saving'}
+              onclick={saveNow}
+            >
+              <span>{$_('board.save')}</span>
+              <span class="save-icon" aria-hidden="true">
+                {#if saveFeedback === 'saving'}
+                  <span class="save-progress"></span>
+                {:else if saveFeedback === 'saved'}
+                  <Icon name={IconName.Check} size={16} />
+                {:else if saveFeedback === 'failed'}
+                  <Icon name={IconName.Close} size={16} />
+                {:else}
+                  <Icon name={IconName.Save} size={16} />
+                {/if}
+              </span>
             </button>
           </div>
         </div>
@@ -649,18 +721,49 @@
   }
 
   .save-state {
-    gap: 10px;
+    flex: 0 0 auto;
   }
 
-  .save-state > span {
-    color: var(--muted);
-    font-size: 0.68rem;
+  .save-button {
+    padding: 8px;
+  }
+
+  .save-button.error {
+    border-color: var(--text);
+  }
+
+  .save-icon {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+  }
+
+  .save-progress {
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: save-progress-spin 700ms linear infinite;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip: rect(0 0 0 0);
     white-space: nowrap;
   }
 
-  .save-state > span.error {
-    color: var(--text);
-    font-weight: 700;
+  @keyframes save-progress-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .board-surface {
@@ -805,9 +908,6 @@
       display: none;
     }
 
-    .save-state > span {
-      display: none;
-    }
   }
 
   @media (max-width: 680px) {

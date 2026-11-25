@@ -8,6 +8,8 @@ export enum IconName {
   Paste = 'paste',
   Undo = 'undo',
   Redo = 'redo',
+  Save = 'save',
+  Check = 'check',
   Reset = 'reset',
   Plus = 'plus',
   Image = 'image',
