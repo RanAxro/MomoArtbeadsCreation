@@ -3,6 +3,8 @@ export enum IconName {
   Pencil = 'pencil',
   Eraser = 'eraser',
   Fill = 'fill',
+  Copy = 'copy',
+  Paste = 'paste',
   Undo = 'undo',
   Redo = 'redo',
   Reset = 'reset',

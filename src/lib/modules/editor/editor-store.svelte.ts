@@ -1,4 +1,4 @@
-import type { BeadColor } from '$model/palette.model';
+import type { BeadColor, BeadPalette } from '$model/palette.model';
 import {
   DEFAULT_SELECTED_PALETTE_INDEX
 } from '$model/palette.model';
@@ -6,15 +6,33 @@ import {
   DEFAULT_EDITOR_TOOL,
   DEFAULT_EDITOR_ZOOM,
   EDITOR_HISTORY_LIMIT,
+  type BoardViewCenter,
   EditorTool
 } from '$model/editor.model';
 import {
   EMPTY_CELL_COLOR_INDEX,
   type BeadProject
 } from '$model/project.model';
-import { createEmptyBeadColor } from '$domain/palette';
+import type { SelectionClipboard } from '$model/selection-clipboard.model';
+import { clonePalette, createEmptyBeadColor } from '$domain/palette';
 import { floodFill, touchProject } from '$domain/project';
 import { clampBoardZoom } from './board-layout';
+import {
+  createSelectionClipboard as createClipboardFromSelection,
+  pasteSelectionClipboard as buildSelectionPaste
+} from './selection-clipboard';
+
+interface EditorSnapshot {
+  cells: number[];
+  palette: BeadPalette;
+}
+
+function createEditorSnapshot(project: BeadProject): EditorSnapshot {
+  return {
+    cells: [...project.cells],
+    palette: clonePalette(project.palette)
+  };
+}
 
 export class EditorStore {
   project = $state<BeadProject | null>(null);
@@ -26,10 +44,11 @@ export class EditorStore {
   canUndo = $state(false);
   canRedo = $state(false);
   zoom = $state(DEFAULT_EDITOR_ZOOM);
+  visibleBoardCenter = $state<BoardViewCenter>({ x: 0, y: 0 });
 
-  private undoStack: number[][] = [];
-  private redoStack: number[][] = [];
-  private strokeSnapshot: number[] | null = null;
+  private undoStack: EditorSnapshot[] = [];
+  private redoStack: EditorSnapshot[] = [];
+  private strokeSnapshot: EditorSnapshot | null = null;
 
   load(project: BeadProject): void {
     this.project = project;
@@ -42,6 +61,7 @@ export class EditorStore {
     this.strokeSnapshot = null;
     this.selectedCells = new Set();
     this.zoom = DEFAULT_EDITOR_ZOOM;
+    this.visibleBoardCenter = { x: 0, y: 0 };
     this.refreshHistoryState();
     this.revision += 1;
     this.savedRevision = this.revision;
@@ -54,6 +74,7 @@ export class EditorStore {
     this.strokeSnapshot = null;
     this.selectedCells = new Set();
     this.zoom = DEFAULT_EDITOR_ZOOM;
+    this.visibleBoardCenter = { x: 0, y: 0 };
     this.canUndo = false;
     this.canRedo = false;
   }
@@ -69,7 +90,7 @@ export class EditorStore {
       return;
     }
 
-    this.strokeSnapshot = [...this.project.cells];
+    this.strokeSnapshot = createEditorSnapshot(this.project);
   }
 
   endStroke(): void {
@@ -77,7 +98,7 @@ export class EditorStore {
       return;
     }
 
-    const changed = this.strokeSnapshot.some(
+    const changed = this.strokeSnapshot.cells.some(
       (cell, index) => cell !== this.project?.cells[index]
     );
 
@@ -102,6 +123,16 @@ export class EditorStore {
     this.zoom = clampBoardZoom(zoom);
   }
 
+  setVisibleBoardCenter(center: BoardViewCenter): void {
+    if (
+      Math.abs(this.visibleBoardCenter.x - center.x) < 0.001 &&
+      Math.abs(this.visibleBoardCenter.y - center.y) < 0.001
+    ) {
+      return;
+    }
+    this.visibleBoardCenter = center;
+  }
+
   setSelection(cells: ReadonlySet<number>): void {
     this.selectedCells = new Set(cells);
   }
@@ -110,6 +141,44 @@ export class EditorStore {
     if (this.selectedCells.size > 0) {
       this.selectedCells = new Set();
     }
+  }
+
+  createSelectionClipboard(): SelectionClipboard | null {
+    if (!this.project || this.selectedCells.size === 0) {
+      return null;
+    }
+
+    return createClipboardFromSelection(
+      $state.snapshot(this.project) as BeadProject,
+      this.selectedCells
+    );
+  }
+
+  pasteSelectionClipboard(clipboard: SelectionClipboard): boolean {
+    if (!this.project) {
+      return false;
+    }
+
+    const result = buildSelectionPaste(
+      this.project,
+      clipboard,
+      this.visibleBoardCenter
+    );
+    if (!result) {
+      return false;
+    }
+
+    if (result.changed) {
+      this.pushUndoSnapshot(createEditorSnapshot(this.project));
+      this.project.cells = result.cells;
+      this.project.palette = result.palette;
+      this.redoStack = [];
+      this.refreshHistoryState();
+      this.markChanged();
+    }
+
+    this.setSelection(result.selection);
+    return true;
   }
 
   paint(index: number): void {
@@ -140,7 +209,7 @@ export class EditorStore {
       return;
     }
 
-    const snapshot = [...this.project.cells];
+    const snapshot = createEditorSnapshot(this.project);
     const filled = floodFill(this.project, index, this.selectedColorIndex);
     if (filled === this.project) {
       return;
@@ -163,8 +232,9 @@ export class EditorStore {
       return;
     }
 
-    this.redoStack.push([...this.project.cells]);
-    this.project.cells = [...previous];
+    this.redoStack.push(createEditorSnapshot(this.project));
+    this.project.cells = [...previous.cells];
+    this.project.palette = clonePalette(previous.palette);
     this.refreshHistoryState();
     this.markChanged();
   }
@@ -179,8 +249,9 @@ export class EditorStore {
       return;
     }
 
-    this.undoStack.push([...this.project.cells]);
-    this.project.cells = [...next];
+    this.undoStack.push(createEditorSnapshot(this.project));
+    this.project.cells = [...next.cells];
+    this.project.palette = clonePalette(next.palette);
     this.refreshHistoryState();
     this.markChanged();
   }
@@ -220,7 +291,7 @@ export class EditorStore {
       return;
     }
 
-    const snapshot = [...this.project.cells];
+    const snapshot = createEditorSnapshot(this.project);
     this.project.cells = this.project.cells.map((cell) =>
       cell === fromIndex ? toIndex : cell
     );
@@ -234,7 +305,7 @@ export class EditorStore {
     return this.project ? touchProject($state.snapshot(this.project)) : null;
   }
 
-  private pushUndoSnapshot(snapshot: number[]): void {
+  private pushUndoSnapshot(snapshot: EditorSnapshot): void {
     this.undoStack.push(snapshot);
     if (this.undoStack.length > EDITOR_HISTORY_LIMIT) {
       this.undoStack.shift();

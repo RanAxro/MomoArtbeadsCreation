@@ -1,16 +1,58 @@
 import type { BoardCell } from '$model/editor.model';
 import {
   SelectionOperation,
+  type SelectionBounds,
   type SelectionRectangle
 } from '$model/selection.model';
 
 export type {
   SelectionOperation,
+  SelectionBounds,
   SelectionRectangle
 } from '$model/selection.model';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+export function getSelectionBounds(
+  cells: ReadonlySet<number>,
+  columns: number,
+  rows: number
+): SelectionBounds | null {
+  if (columns <= 0 || rows <= 0 || cells.size === 0) {
+    return null;
+  }
+
+  let minX = columns;
+  let minY = rows;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (const index of cells) {
+    if (index < 0 || index >= columns * rows) {
+      continue;
+    }
+    const x = index % columns;
+    const y = Math.floor(index / columns);
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+
+  if (maxX < minX || maxY < minY) {
+    return null;
+  }
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1
+  };
 }
 
 export function createSelectionRectangle(

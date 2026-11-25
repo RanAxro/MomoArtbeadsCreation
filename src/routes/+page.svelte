@@ -13,6 +13,8 @@
   import { IconName } from '$model/icon.model';
   import { countBeads, countColorUsage } from '$domain/project';
   import { projectRepository } from '$data/project-repository';
+  import { selectionClipboardRepository } from '$data/selection-clipboard-repository';
+  import type { SelectionClipboard } from '$model/selection-clipboard.model';
   import {
     MAX_BOARD_ZOOM,
     MIN_BOARD_ZOOM
@@ -24,6 +26,10 @@
   let saving = $state(false);
   let saveFailed = $state(false);
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  let copiedSelection = $state<SelectionClipboard | null>(null);
+  let clipboardAvailable = $state(false);
+
+  let hasSelection = $derived(editor.selectedCells.size > 0);
 
   let beadCount = $derived.by(() => {
     editor.revision;
@@ -100,6 +106,50 @@
     void persist();
   }
 
+  async function refreshClipboardState(): Promise<void> {
+    try {
+      const clipboard = await selectionClipboardRepository.get();
+      copiedSelection = clipboard ?? null;
+      clipboardAvailable = Boolean(clipboard);
+    } catch {
+      copiedSelection = null;
+      clipboardAvailable = false;
+    }
+  }
+
+  async function copySelection(): Promise<void> {
+    const clipboard = editor.createSelectionClipboard();
+    if (!clipboard) {
+      return;
+    }
+
+    try {
+      await selectionClipboardRepository.save(clipboard);
+      copiedSelection = clipboard;
+      clipboardAvailable = true;
+    } catch {
+      clipboardAvailable = false;
+    }
+  }
+
+  async function pasteSelection(): Promise<void> {
+    let clipboard = copiedSelection;
+    if (!clipboard) {
+      try {
+        clipboard = (await selectionClipboardRepository.get()) ?? null;
+      } catch {
+        clipboard = null;
+      }
+    }
+
+    if (!clipboard || !editor.pasteSelectionClipboard(clipboard)) {
+      return;
+    }
+
+    copiedSelection = clipboard;
+    clipboardAvailable = true;
+  }
+
   function onKeydown(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null;
     if (target?.matches('input, textarea, select') || target?.isContentEditable) {
@@ -107,6 +157,20 @@
     }
 
     const command = event.ctrlKey || event.metaKey;
+    if (command && event.key.toLowerCase() === EditorCommandKey.Copy) {
+      if (editor.project && editor.selectedCells.size > 0) {
+        event.preventDefault();
+        void copySelection();
+      }
+      return;
+    }
+    if (command && event.key.toLowerCase() === EditorCommandKey.Paste) {
+      if (editor.project) {
+        event.preventDefault();
+        void pasteSelection();
+      }
+      return;
+    }
     if (command && event.key.toLowerCase() === EditorCommandKey.Undo) {
       event.preventDefault();
       event.shiftKey ? editor.redo() : editor.undo();
@@ -141,9 +205,15 @@
 
   onMount(() => {
     void workspace.initialize();
+    void refreshClipboardState();
+    const refreshClipboardOnFocus = (): void => {
+      void refreshClipboardState();
+    };
     window.addEventListener('keydown', onKeydown);
+    window.addEventListener('focus', refreshClipboardOnFocus);
     return () => {
       window.removeEventListener('keydown', onKeydown);
+      window.removeEventListener('focus', refreshClipboardOnFocus);
       if (saveTimer) {
         clearTimeout(saveTimer);
       }
@@ -232,6 +302,27 @@
                 <Icon name={tool.icon} size={18} />
               </button>
             {/each}
+            <span class="tool-divider"></span>
+            <button
+              class="tool"
+              type="button"
+              title={`${$_('board.copySelection')} (Ctrl+C)`}
+              aria-label={$_('board.copySelection')}
+              disabled={!hasSelection}
+              onclick={() => void copySelection()}
+            >
+              <Icon name={IconName.Copy} size={18} />
+            </button>
+            <button
+              class="tool"
+              type="button"
+              title={`${$_('board.pasteSelection')} (Ctrl+V)`}
+              aria-label={$_('board.pasteSelection')}
+              disabled={!clipboardAvailable}
+              onclick={() => void pasteSelection()}
+            >
+              <Icon name={IconName.Paste} size={18} />
+            </button>
             <span class="tool-divider"></span>
             <button
               class="tool"
@@ -600,6 +691,13 @@
     background: var(--surface);
     color: var(--muted);
     font-size: 0.64rem;
+  }
+
+  .board-footer > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .zoom-control {

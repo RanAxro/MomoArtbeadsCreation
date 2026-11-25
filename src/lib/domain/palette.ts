@@ -32,6 +32,13 @@ export function createStarterPalette(id = crypto.randomUUID()): BeadPalette {
   };
 }
 
+export function clonePalette(palette: BeadPalette): BeadPalette {
+  return {
+    ...palette,
+    colors: palette.colors.map((color) => ({ ...color }))
+  };
+}
+
 export function createEmptyBeadColor(paletteId: string, index: number): BeadColor {
   return {
     id: `${paletteId}-custom-${crypto.randomUUID()}`,

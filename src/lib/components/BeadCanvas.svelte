@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { EditorStore } from '$modules/editor/editor-store.svelte';
   import type {
     BoardCell,
@@ -180,6 +180,13 @@
       contentWidth,
       contentHeight
     } = layout;
+
+    untrack(() => {
+      editor.setVisibleBoardCenter({
+        x: (contentX + contentWidth / 2 - originX) / cellSize,
+        y: (contentY + contentHeight / 2 - originY) / cellSize
+      });
+    });
 
     context.save();
     context.beginPath();

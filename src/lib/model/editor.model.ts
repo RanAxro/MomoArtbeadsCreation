@@ -22,6 +22,8 @@ export enum EditorToolLabelKey {
 }
 
 export enum EditorCommandKey {
+  Copy = 'c',
+  Paste = 'v',
   Undo = 'z',
   Redo = 'y',
   Save = 's'

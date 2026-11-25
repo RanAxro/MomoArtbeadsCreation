@@ -18,6 +18,15 @@ export interface SelectionRectangle {
   cells: ReadonlySet<number>;
 }
 
+export interface SelectionBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  width: number;
+  height: number;
+}
+
 export const DEFAULT_SELECTION_COLOR = '#2f6fed';
 export const DEFAULT_SELECTION_FILL = 'rgba(47, 111, 237, 0.32)';
 export const SELECTION_OUTLINE_STYLE = {

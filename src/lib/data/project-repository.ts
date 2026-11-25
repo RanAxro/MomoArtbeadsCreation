@@ -1,39 +1,16 @@
-import Dexie, { type Table } from 'dexie';
 import type { BeadProject } from '$model/project.model';
-import {
-  PROJECT_DATABASE_NAME,
-  PROJECT_DATABASE_VERSION,
-  PROJECT_TABLE_INDEXES,
-  PROJECT_TABLE_NAME
-} from '$model/data.model';
 import { DEFAULT_DUPLICATE_SUFFIX } from '$model/project.model';
 import type { ProjectSummary } from '$model/workspace.model';
+import { getArtbeadsDatabase } from './database';
 
 export type { ProjectSummary } from '$model/workspace.model';
 
-class MomoArtbeadsDatabase extends Dexie {
-  projects!: Table<BeadProject, string>;
-
-  constructor() {
-    super(PROJECT_DATABASE_NAME);
-    this.version(PROJECT_DATABASE_VERSION).stores({
-      [PROJECT_TABLE_NAME]: PROJECT_TABLE_INDEXES
-    });
-  }
-}
-
-let database: MomoArtbeadsDatabase | null = null;
-
-function getDatabase(): MomoArtbeadsDatabase {
-  if (!database) {
-    database = new MomoArtbeadsDatabase();
-  }
-  return database;
-}
-
 export const projectRepository = {
   async list(): Promise<ProjectSummary[]> {
-    const projects = await getDatabase().projects.orderBy('updatedAt').reverse().toArray();
+    const projects = await getArtbeadsDatabase()
+      .projects.orderBy('updatedAt')
+      .reverse()
+      .toArray();
     return projects.map((project) => ({
       id: project.id,
       name: project.name,
@@ -47,22 +24,22 @@ export const projectRepository = {
   },
 
   async get(id: string): Promise<BeadProject | undefined> {
-    return getDatabase().projects.get(id);
+    return getArtbeadsDatabase().projects.get(id);
   },
 
   async save(project: BeadProject): Promise<void> {
-    await getDatabase().projects.put(project);
+    await getArtbeadsDatabase().projects.put(project);
   },
 
   async rename(id: string, name: string): Promise<void> {
-    await getDatabase().projects.update(id, {
+    await getArtbeadsDatabase().projects.update(id, {
       name,
       updatedAt: new Date().toISOString()
     });
   },
 
   async remove(id: string): Promise<void> {
-    await getDatabase().projects.delete(id);
+    await getArtbeadsDatabase().projects.delete(id);
   },
 
   async duplicate(id: string): Promise<BeadProject | undefined> {
@@ -84,6 +61,6 @@ export const projectRepository = {
   },
 
   async clear(): Promise<void> {
-    await getDatabase().projects.clear();
+    await getArtbeadsDatabase().projects.clear();
   }
 };
