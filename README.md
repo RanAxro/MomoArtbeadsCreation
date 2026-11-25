@@ -22,11 +22,13 @@
 可用颜色、默认 Pegboard 和尺寸预设统一位于：
 
 ```text
-src/lib/config/pegboard.ts
+src/lib/model/pegboard.model.ts
 ```
 
 颜色使用十六进制字符串保存。修改 `ARTBEAD_COLORS` 后，新建方案会使用新的
 艺点点配色。已有方案保留创建时的色板，以避免作品颜色被配置更新破坏。
+所有有限取值字符串均使用 `enum`，默认值、类型和配置统一定义在
+`src/lib/model/*.model.ts`，业务逻辑通过 `$model/*` 别名引用。
 
 ## 本地运行
 
@@ -46,8 +48,8 @@ npm run build
 ## 模块结构
 
 ```text
-src/lib/config/                  Pegboard、尺寸与艺点点颜色配置
-src/lib/domain/                  方案、色板、颜色计算等领域模型
+src/lib/model/                   业务模型、枚举、默认值与全局常量
+src/lib/domain/                  方案、色板、颜色计算等业务算法
 src/lib/data/                    IndexedDB 仓库
 src/lib/modules/workspace/       方案切换、恢复和统一保存
 src/lib/modules/editor/          Canvas 编辑状态与历史记录

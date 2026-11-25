@@ -1,47 +1,29 @@
-import { z } from 'zod';
-import { createStarterPalette, type BeadPalette } from './palette';
+import { createStarterPalette } from './palette';
+import {
+  DEFAULT_GAME_VERSION,
+  DEFAULT_PROJECT_NAME,
+  EMPTY_CELL_COLOR_INDEX,
+  MAX_PROJECT_DIMENSION,
+  MAX_PROJECT_NAME_LENGTH,
+  MIN_PROJECT_DIMENSION,
+  PROJECT_SCHEMA_VERSION,
+  type BeadProject,
+  type NewProjectOptions
+} from '$model/project.model';
 
-export const PROJECT_SCHEMA_VERSION = 1;
-export const MAX_PROJECT_DIMENSION = 300;
-export const MAX_PROJECT_NAME_LENGTH = 80;
-
-const beadColorSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  hex: z.string().regex(/^#[0-9a-f]{6}$/i),
-  code: z.string(),
-  stock: z.number().int().nonnegative().optional()
-});
-
-const paletteSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  colors: z.array(beadColorSchema).min(1).max(128)
-});
-
-export const beadProjectSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1).max(MAX_PROJECT_NAME_LENGTH),
-  gameVersion: z.string().min(1).max(30),
-  width: z.number().int().min(1).max(MAX_PROJECT_DIMENSION),
-  height: z.number().int().min(1).max(MAX_PROJECT_DIMENSION),
-  cells: z.array(z.number().int().nonnegative()),
-  palette: paletteSchema,
-  schemaVersion: z.number().int().positive(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime()
-});
-
-export type BeadProject = z.infer<typeof beadProjectSchema>;
-export type BeadColor = BeadPalette['colors'][number];
-
-export interface NewProjectOptions {
-  name: string;
-  width: number;
-  height: number;
-  palette?: BeadPalette;
-  gameVersion?: string;
-}
+export {
+  beadProjectSchema,
+  DEFAULT_GAME_VERSION,
+  DEFAULT_PROJECT_NAME,
+  MAX_PROJECT_DIMENSION,
+  MAX_PROJECT_NAME_LENGTH,
+  MIN_PROJECT_DIMENSION,
+  PROJECT_SCHEMA_VERSION
+} from '$model/project.model';
+export type {
+  BeadProject,
+  NewProjectOptions
+} from '$model/project.model';
 
 export function normalizeProjectName(name: string): string {
   return name.trim().slice(0, MAX_PROJECT_NAME_LENGTH);
@@ -49,16 +31,22 @@ export function normalizeProjectName(name: string): string {
 
 export function createProject(options: NewProjectOptions): BeadProject {
   const now = new Date().toISOString();
-  const width = Math.max(1, Math.min(MAX_PROJECT_DIMENSION, Math.round(options.width)));
-  const height = Math.max(1, Math.min(MAX_PROJECT_DIMENSION, Math.round(options.height)));
+  const width = Math.max(
+    MIN_PROJECT_DIMENSION,
+    Math.min(MAX_PROJECT_DIMENSION, Math.round(options.width))
+  );
+  const height = Math.max(
+    MIN_PROJECT_DIMENSION,
+    Math.min(MAX_PROJECT_DIMENSION, Math.round(options.height))
+  );
 
   return {
     id: crypto.randomUUID(),
-    name: normalizeProjectName(options.name) || '未命名拼绘方案',
-    gameVersion: options.gameVersion?.trim() || '3.0',
+    name: normalizeProjectName(options.name) || DEFAULT_PROJECT_NAME,
+    gameVersion: options.gameVersion?.trim() || DEFAULT_GAME_VERSION,
     width,
     height,
-    cells: Array.from({ length: width * height }, () => 0),
+    cells: Array.from({ length: width * height }, () => EMPTY_CELL_COLOR_INDEX),
     palette: options.palette ?? createStarterPalette(),
     schemaVersion: PROJECT_SCHEMA_VERSION,
     createdAt: now,
@@ -74,14 +62,17 @@ export function touchProject(project: BeadProject): BeadProject {
 }
 
 export function countBeads(project: BeadProject): number {
-  return project.cells.reduce((count, cell) => count + (cell > 0 ? 1 : 0), 0);
+  return project.cells.reduce(
+    (count, cell) => count + (cell !== EMPTY_CELL_COLOR_INDEX ? 1 : 0),
+    0
+  );
 }
 
 export function countColorUsage(project: BeadProject): number[] {
   const usage = Array.from({ length: project.palette.colors.length + 1 }, () => 0);
 
   for (const cell of project.cells) {
-    if (cell > 0 && cell < usage.length) {
+    if (cell !== EMPTY_CELL_COLOR_INDEX && cell < usage.length) {
       usage[cell] += 1;
     }
   }
@@ -94,13 +85,23 @@ export function resizeProject(
   width: number,
   height: number
 ): BeadProject {
-  const nextWidth = Math.max(1, Math.min(MAX_PROJECT_DIMENSION, Math.round(width)));
-  const nextHeight = Math.max(1, Math.min(MAX_PROJECT_DIMENSION, Math.round(height)));
-  const cells = Array.from({ length: nextWidth * nextHeight }, () => 0);
+  const nextWidth = Math.max(
+    MIN_PROJECT_DIMENSION,
+    Math.min(MAX_PROJECT_DIMENSION, Math.round(width))
+  );
+  const nextHeight = Math.max(
+    MIN_PROJECT_DIMENSION,
+    Math.min(MAX_PROJECT_DIMENSION, Math.round(height))
+  );
+  const cells = Array.from(
+    { length: nextWidth * nextHeight },
+    () => EMPTY_CELL_COLOR_INDEX
+  );
 
   for (let y = 0; y < Math.min(project.height, nextHeight); y += 1) {
     for (let x = 0; x < Math.min(project.width, nextWidth); x += 1) {
-      cells[y * nextWidth + x] = project.cells[y * project.width + x] ?? 0;
+      cells[y * nextWidth + x] =
+        project.cells[y * project.width + x] ?? EMPTY_CELL_COLOR_INDEX;
     }
   }
 

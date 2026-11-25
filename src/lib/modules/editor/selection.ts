@@ -1,21 +1,13 @@
-import type { BoardCell } from './board-layout';
+import type { BoardCell } from '$model/editor.model';
+import {
+  SelectionOperation,
+  type SelectionRectangle
+} from '$model/selection.model';
 
-export type SelectionOperation =
-  | 'replace'
-  | 'union'
-  | 'subtract'
-  | 'xor'
-  | 'intersect';
-
-export interface SelectionRectangle {
-  start: BoardCell;
-  end: BoardCell;
-  minX: number;
-  minY: number;
-  width: number;
-  height: number;
-  cells: ReadonlySet<number>;
-}
+export type {
+  SelectionOperation,
+  SelectionRectangle
+} from '$model/selection.model';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -88,13 +80,13 @@ export function combineSelections(
   rectangle: ReadonlySet<number>,
   operation: SelectionOperation
 ): ReadonlySet<number> {
-  if (operation === 'replace') {
+  if (operation === SelectionOperation.Replace) {
     return new Set(rectangle);
   }
 
   const next = new Set<number>();
 
-  if (operation === 'union') {
+  if (operation === SelectionOperation.Union) {
     for (const index of previous) {
       next.add(index);
     }
@@ -104,7 +96,7 @@ export function combineSelections(
     return next;
   }
 
-  if (operation === 'subtract') {
+  if (operation === SelectionOperation.Subtract) {
     for (const index of previous) {
       if (!rectangle.has(index)) {
         next.add(index);
@@ -113,7 +105,7 @@ export function combineSelections(
     return next;
   }
 
-  if (operation === 'intersect') {
+  if (operation === SelectionOperation.Intersect) {
     for (const index of rectangle) {
       if (previous.has(index)) {
         next.add(index);

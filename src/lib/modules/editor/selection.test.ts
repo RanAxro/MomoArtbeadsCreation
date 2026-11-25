@@ -3,6 +3,7 @@ import {
   combineSelections,
   createSelectionRectangle
 } from './selection';
+import { SelectionOperation } from '$model/selection.model';
 
 describe('rectangular selection', () => {
   it('creates an inclusive normalized rectangle', () => {
@@ -52,10 +53,20 @@ describe('rectangular selection', () => {
     const previous = new Set([1, 2, 3]);
     const rectangle = new Set([3, 4]);
 
-    expect([...combineSelections(previous, rectangle, 'replace')]).toEqual([3, 4]);
-    expect([...combineSelections(previous, rectangle, 'union')]).toEqual([1, 2, 3, 4]);
-    expect([...combineSelections(previous, rectangle, 'subtract')]).toEqual([1, 2]);
-    expect([...combineSelections(previous, rectangle, 'xor')]).toEqual([1, 2, 4]);
-    expect([...combineSelections(previous, rectangle, 'intersect')]).toEqual([3]);
+    expect([
+      ...combineSelections(previous, rectangle, SelectionOperation.Replace)
+    ]).toEqual([3, 4]);
+    expect([
+      ...combineSelections(previous, rectangle, SelectionOperation.Union)
+    ]).toEqual([1, 2, 3, 4]);
+    expect([
+      ...combineSelections(previous, rectangle, SelectionOperation.Subtract)
+    ]).toEqual([1, 2]);
+    expect([
+      ...combineSelections(previous, rectangle, SelectionOperation.Xor)
+    ]).toEqual([1, 2, 4]);
+    expect([
+      ...combineSelections(previous, rectangle, SelectionOperation.Intersect)
+    ]).toEqual([3]);
   });
 });

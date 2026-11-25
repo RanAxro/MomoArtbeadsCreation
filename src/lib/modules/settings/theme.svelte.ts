@@ -1,13 +1,20 @@
-export type ThemeMode = 'light' | 'dark';
+import {
+  DEFAULT_THEME_MODE,
+  THEME_COLORS,
+  THEME_STORAGE_KEY,
+  ThemeMode
+} from '$model/settings.model';
 
-const THEME_KEY = 'momo-artbeads.theme';
+export { ThemeMode } from '$model/settings.model';
 
 function readTheme(): ThemeMode {
   if (typeof window === 'undefined') {
-    return 'light';
+    return DEFAULT_THEME_MODE;
   }
 
-  return window.localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+  return window.localStorage.getItem(THEME_STORAGE_KEY) === ThemeMode.Dark
+    ? ThemeMode.Dark
+    : DEFAULT_THEME_MODE;
 }
 
 class ThemeStore {
@@ -16,17 +23,17 @@ class ThemeStore {
   set(nextTheme: ThemeMode): void {
     this.mode = nextTheme;
     document.documentElement.dataset.theme = nextTheme;
-    window.localStorage.setItem(THEME_KEY, nextTheme);
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', nextTheme === 'dark' ? '#0e0e0e' : '#f3f3f1');
+      ?.setAttribute('content', THEME_COLORS[nextTheme]);
   }
 
   initialize(): void {
     document.documentElement.dataset.theme = this.mode;
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', this.mode === 'dark' ? '#0e0e0e' : '#f3f3f1');
+      ?.setAttribute('content', THEME_COLORS[this.mode]);
   }
 }
 

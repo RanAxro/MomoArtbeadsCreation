@@ -1,31 +1,21 @@
-export interface BoardLayout {
-  edgeInset: number;
-  contentX: number;
-  contentY: number;
-  contentWidth: number;
-  contentHeight: number;
-  originX: number;
-  originY: number;
-  boardWidth: number;
-  boardHeight: number;
-  cellSize: number;
-  rulerThickness: number;
-  rulerGap: number;
-}
+import { hexToRgb, isHexColor } from '$domain/color';
+import {
+  BLACK_HEX,
+  LUMINANCE_THRESHOLD,
+  RGB_LUMINANCE_WEIGHTS,
+  WHITE_HEX
+} from '$model/color.model';
+import {
+  BOARD_LAYOUT,
+  MAX_BOARD_ZOOM,
+  MIN_BOARD_ZOOM,
+  type BoardCell,
+  type BoardLayout,
+  type BoardViewCenter
+} from '$model/editor.model';
 
-export interface BoardCell {
-  x: number;
-  y: number;
-  index: number;
-}
-
-export interface BoardViewCenter {
-  x: number;
-  y: number;
-}
-
-export const MIN_BOARD_ZOOM = 0.5;
-export const MAX_BOARD_ZOOM = 4;
+export type { BoardCell, BoardLayout, BoardViewCenter } from '$model/editor.model';
+export { MAX_BOARD_ZOOM, MIN_BOARD_ZOOM } from '$model/editor.model';
 
 export function clampBoardZoom(value: number): number {
   return Math.max(MIN_BOARD_ZOOM, Math.min(MAX_BOARD_ZOOM, value));
@@ -41,13 +31,26 @@ export function calculateBoardLayout(
   columns: number,
   rows: number
 ): BoardLayout {
-  const safeWidth = Math.max(1, frameWidth);
-  const safeHeight = Math.max(1, frameHeight);
-  const safeColumns = Math.max(1, columns);
-  const safeRows = Math.max(1, rows);
-  const rulerThickness = Math.max(18, Math.min(24, Math.min(safeWidth, safeHeight) * 0.045));
-  const rulerGap = 4;
-  const edgeInset = Math.max(8, Math.min(16, Math.min(safeWidth, safeHeight) * 0.025));
+  const safeWidth = Math.max(BOARD_LAYOUT.minCanvasSize, frameWidth);
+  const safeHeight = Math.max(BOARD_LAYOUT.minCanvasSize, frameHeight);
+  const safeColumns = Math.max(BOARD_LAYOUT.minCanvasSize, columns);
+  const safeRows = Math.max(BOARD_LAYOUT.minCanvasSize, rows);
+  const frameSize = Math.min(safeWidth, safeHeight);
+  const rulerThickness = Math.max(
+    BOARD_LAYOUT.minRulerThickness,
+    Math.min(
+      BOARD_LAYOUT.maxRulerThickness,
+      frameSize * BOARD_LAYOUT.rulerThicknessRatio
+    )
+  );
+  const rulerGap = BOARD_LAYOUT.rulerGap;
+  const edgeInset = Math.max(
+    BOARD_LAYOUT.minEdgeInset,
+    Math.min(
+      BOARD_LAYOUT.maxEdgeInset,
+      frameSize * BOARD_LAYOUT.edgeInsetRatio
+    )
+  );
   const contentX = edgeInset + rulerThickness + rulerGap;
   const contentY = contentX;
   const contentWidth = Math.max(1, safeWidth - contentX * 2);
@@ -154,24 +157,16 @@ export function cellFromCanvasPoint(
   };
 }
 
-export function contrastingOutline(fill: string): '#000000' | '#FFFFFF' {
-  const normalized = fill.replace('#', '');
-  const expanded =
-    normalized.length === 3
-      ? normalized
-          .split('')
-          .map((digit) => `${digit}${digit}`)
-          .join('')
-      : normalized;
-
-  if (!/^[\dA-Fa-f]{6}$/.test(expanded)) {
-    return '#000000';
+export function contrastingOutline(fill: string): typeof BLACK_HEX | typeof WHITE_HEX {
+  if (!isHexColor(fill)) {
+    return BLACK_HEX;
   }
 
-  const red = Number.parseInt(expanded.slice(0, 2), 16);
-  const green = Number.parseInt(expanded.slice(2, 4), 16);
-  const blue = Number.parseInt(expanded.slice(4, 6), 16);
-  const luminance = red * 0.299 + green * 0.587 + blue * 0.114;
+  const { r, g, b } = hexToRgb(fill);
+  const luminance =
+    r * RGB_LUMINANCE_WEIGHTS.red +
+    g * RGB_LUMINANCE_WEIGHTS.green +
+    b * RGB_LUMINANCE_WEIGHTS.blue;
 
-  return luminance >= 150 ? '#000000' : '#FFFFFF';
+  return luminance >= LUMINANCE_THRESHOLD ? BLACK_HEX : WHITE_HEX;
 }

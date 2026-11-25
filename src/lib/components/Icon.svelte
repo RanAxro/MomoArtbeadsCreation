@@ -1,22 +1,6 @@
-<script module lang="ts">
-  export type IconName =
-    | 'select'
-    | 'pencil'
-    | 'eraser'
-    | 'fill'
-    | 'undo'
-    | 'redo'
-    | 'reset'
-    | 'plus'
-    | 'image'
-    | 'close'
-    | 'chevron-down'
-    | 'sun'
-    | 'moon'
-    | 'arrow-left';
-</script>
-
 <script lang="ts">
+  import type { IconName } from '$model/icon.model';
+
   interface Props {
     name: IconName;
     size?: number;

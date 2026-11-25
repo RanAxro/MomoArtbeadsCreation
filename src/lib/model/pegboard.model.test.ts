@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ARTBEAD_COLORS, DEFAULT_PEGBOARD, PEGBOARD_PRESETS } from './pegboard';
+import {
+  ARTBEAD_COLORS,
+  DEFAULT_PEGBOARD,
+  PEGBOARD_PRESETS
+} from './pegboard.model';
 
-describe('Pegboard configuration', () => {
+describe('Pegboard model', () => {
   it('uses a 24 by 18 Pegboard by default', () => {
     expect(DEFAULT_PEGBOARD.width).toBe(24);
     expect(DEFAULT_PEGBOARD.height).toBe(18);

@@ -1,8 +1,12 @@
-import { projectRepository, type ProjectSummary } from '$data/project-repository';
-import { normalizeProjectName, type BeadProject } from '$domain/project';
+import { projectRepository } from '$data/project-repository';
+import { normalizeProjectName } from '$domain/project';
+import type { BeadProject } from '$model/project.model';
+import {
+  ACTIVE_SCHEME_STORAGE_KEY,
+  WORKSPACE_ERRORS,
+  type ProjectSummary
+} from '$model/workspace.model';
 import { EditorStore } from '$modules/editor/editor-store.svelte';
-
-const ACTIVE_SCHEME_KEY = 'momo-artbeads.active-scheme';
 
 class WorkspaceStore {
   projects = $state<ProjectSummary[]>([]);
@@ -19,7 +23,9 @@ class WorkspaceStore {
     if (!this.initialization) {
       this.initialization = (async () => {
         await this.refresh();
-        const remembered = window.localStorage.getItem(ACTIVE_SCHEME_KEY);
+        const remembered = window.localStorage.getItem(
+          ACTIVE_SCHEME_STORAGE_KEY
+        );
         if (remembered && this.projects.some((project) => project.id === remembered)) {
           await this.select(remembered);
         }
@@ -49,7 +55,7 @@ class WorkspaceStore {
 
     this.activeId = id;
     this.editor.load(project);
-    window.localStorage.setItem(ACTIVE_SCHEME_KEY, id);
+    window.localStorage.setItem(ACTIVE_SCHEME_STORAGE_KEY, id);
     return true;
   }
 
@@ -100,7 +106,7 @@ class WorkspaceStore {
   async renameScheme(id: string, name: string): Promise<void> {
     const nextName = normalizeProjectName(name);
     if (!nextName) {
-      throw new Error('Scheme name cannot be empty');
+      throw new Error(WORKSPACE_ERRORS.emptySchemeName);
     }
 
     await projectRepository.rename(id, nextName);
@@ -115,7 +121,7 @@ class WorkspaceStore {
     if (deletingActiveScheme) {
       this.activeId = null;
       this.editor.close();
-      window.localStorage.removeItem(ACTIVE_SCHEME_KEY);
+      window.localStorage.removeItem(ACTIVE_SCHEME_STORAGE_KEY);
     }
 
     try {
@@ -126,7 +132,7 @@ class WorkspaceStore {
         if (project) {
           this.activeId = id;
           this.editor.load(project);
-          window.localStorage.setItem(ACTIVE_SCHEME_KEY, id);
+          window.localStorage.setItem(ACTIVE_SCHEME_STORAGE_KEY, id);
         }
       }
       throw error;
@@ -140,7 +146,7 @@ class WorkspaceStore {
     this.activeId = null;
     this.editor.close();
     if (remember) {
-      window.localStorage.removeItem(ACTIVE_SCHEME_KEY);
+      window.localStorage.removeItem(ACTIVE_SCHEME_STORAGE_KEY);
     }
   }
 }

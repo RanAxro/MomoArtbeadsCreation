@@ -3,26 +3,25 @@
   import type { Snippet } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { MAX_PROJECT_NAME_LENGTH } from '$domain/project';
+  import { MAX_PROJECT_NAME_LENGTH } from '$model/project.model';
+  import { IconName } from '$model/icon.model';
+  import { AppLocale, ThemeMode } from '$model/settings.model';
+  import { KeyboardKey } from '$model/ui.model';
+  import {
+    SCHEME_DATE_FORMAT,
+    SCHEME_MENU_SIZE,
+    SCHEME_TAB_GAP,
+    type SchemeMenu,
+    type SchemeTarget
+  } from '$model/workspace.model';
   import { _, locale } from 'svelte-i18n';
   import Icon from '$lib/components/Icon.svelte';
-  import { setAppLocale, type AppLocale } from '$lib/i18n';
+  import { setAppLocale } from '$lib/i18n';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   interface Props {
     children: Snippet;
-  }
-
-  interface SchemeTarget {
-    id: string;
-    name: string;
-  }
-
-  interface SchemeMenu {
-    target: SchemeTarget;
-    x: number;
-    y: number;
   }
 
   let { children }: Props = $props();
@@ -53,12 +52,7 @@
   );
   let visibleSchemes = $derived(orderedSchemes.slice(0, visibleSchemeCount));
   let schemeDateFormatter = $derived(
-    new Intl.DateTimeFormat($locale ?? 'zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    new Intl.DateTimeFormat($locale ?? AppLocale.ZhCN, SCHEME_DATE_FORMAT)
   );
 
   async function updateVisibleSchemeCount(): Promise<void> {
@@ -95,7 +89,10 @@
 
     for (const tab of measuredTabs) {
       const tabWidth = tab.getBoundingClientRect().width;
-      const nextWidth = usedWidth + (nextVisibleCount > 0 ? 2 : 0) + tabWidth;
+      const nextWidth =
+        usedWidth +
+        (nextVisibleCount > 0 ? SCHEME_TAB_GAP : 0) +
+        tabWidth;
       if (nextWidth > availableWidth) {
         break;
       }
@@ -137,12 +134,26 @@
       schemePopoverOpen = false;
     }
 
-    const menuWidth = 176;
-    const menuHeight = 130;
     schemeMenu = {
       target,
-      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
-      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8))
+      x: Math.max(
+        SCHEME_MENU_SIZE.viewportMargin,
+        Math.min(
+          event.clientX,
+          window.innerWidth -
+            SCHEME_MENU_SIZE.width -
+            SCHEME_MENU_SIZE.viewportMargin
+        )
+      ),
+      y: Math.max(
+        SCHEME_MENU_SIZE.viewportMargin,
+        Math.min(
+          event.clientY,
+          window.innerHeight -
+            SCHEME_MENU_SIZE.height -
+            SCHEME_MENU_SIZE.viewportMargin
+        )
+      )
     };
   }
 
@@ -275,7 +286,7 @@
       }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === KeyboardKey.Escape) {
         fileOpen = false;
         settingsOpen = false;
         schemeMenu = null;
@@ -343,11 +354,11 @@
         {#if fileOpen}
           <div class="file-menu" role="menu">
             <a href="/new" role="menuitem" onclick={() => { fileOpen = false; }}>
-              <span><Icon name="plus" size={16} /></span>
+              <span><Icon name={IconName.Plus} size={16} /></span>
               {$_('file.new')}
             </a>
             <a href="/import" role="menuitem" onclick={() => { fileOpen = false; }}>
-              <span><Icon name="image" size={16} /></span>
+              <span><Icon name={IconName.Image} size={16} /></span>
               {$_('file.import')}
             </a>
             {#if workspace.activeId}
@@ -359,7 +370,7 @@
                   fileOpen = false;
                 }}
               >
-                <span><Icon name="close" size={16} /></span>
+                <span><Icon name={IconName.Close} size={16} /></span>
                 {$_('file.close')}
               </button>
             {/if}
@@ -411,7 +422,7 @@
               aria-label={$_('nav.closeScheme')}
               onclick={closeScheme}
             >
-              <Icon name="close" size={14} />
+              <Icon name={IconName.Close} size={14} />
             </button>
           {/if}
         </div>
@@ -423,7 +434,7 @@
         <div class="scheme-tab" class:active={workspace.activeId === scheme.id}>
           <span class="scheme-name">{scheme.name}</span>
           {#if workspace.activeId === scheme.id}
-            <span class="scheme-close"><Icon name="close" size={14} /></span>
+            <span class="scheme-close"><Icon name={IconName.Close} size={14} /></span>
           {/if}
         </div>
       {/each}
@@ -444,7 +455,7 @@
           schemePopoverOpen = !schemePopoverOpen;
         }}
       >
-        <Icon name="chevron-down" size={16} />
+        <Icon name={IconName.ChevronDown} size={16} />
       </button>
 
       {#if schemePopoverOpen}
@@ -532,7 +543,7 @@
         aria-label={$_('settings.close')}
         onclick={() => { settingsOpen = false; }}
       >
-        <Icon name="close" size={18} />
+        <Icon name={IconName.Close} size={18} />
       </button>
     </div>
 
@@ -541,19 +552,19 @@
       <p>{$_('settings.theme')}</p>
       <div class="segmented">
         <button
-          class:active={themeStore.mode === 'light'}
+          class:active={themeStore.mode === ThemeMode.Light}
           type="button"
-          onclick={() => themeStore.set('light')}
+          onclick={() => themeStore.set(ThemeMode.Light)}
         >
-          <Icon name="sun" size={16} />
+          <Icon name={IconName.Sun} size={16} />
           {$_('settings.light')}
         </button>
         <button
-          class:active={themeStore.mode === 'dark'}
+          class:active={themeStore.mode === ThemeMode.Dark}
           type="button"
-          onclick={() => themeStore.set('dark')}
+          onclick={() => themeStore.set(ThemeMode.Dark)}
         >
-          <Icon name="moon" size={16} />
+          <Icon name={IconName.Moon} size={16} />
           {$_('settings.dark')}
         </button>
       </div>
@@ -563,16 +574,16 @@
       <h3>{$_('settings.language')}</h3>
       <div class="segmented">
         <button
-          class:active={$locale === 'zh-CN'}
+          class:active={$locale === AppLocale.ZhCN}
           type="button"
-          onclick={() => changeLocale('zh-CN')}
+          onclick={() => changeLocale(AppLocale.ZhCN)}
         >
           {$_('settings.zh')}
         </button>
         <button
-          class:active={$locale === 'en-US'}
+          class:active={$locale === AppLocale.EnUS}
           type="button"
-          onclick={() => changeLocale('en-US')}
+          onclick={() => changeLocale(AppLocale.EnUS)}
         >
           {$_('settings.en')}
         </button>

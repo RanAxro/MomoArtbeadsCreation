@@ -1,13 +1,23 @@
 import Dexie, { type Table } from 'dexie';
-import type { BeadProject } from '$domain/project';
+import type { BeadProject } from '$model/project.model';
+import {
+  PROJECT_DATABASE_NAME,
+  PROJECT_DATABASE_VERSION,
+  PROJECT_TABLE_INDEXES,
+  PROJECT_TABLE_NAME
+} from '$model/data.model';
+import { DEFAULT_DUPLICATE_SUFFIX } from '$model/project.model';
+import type { ProjectSummary } from '$model/workspace.model';
+
+export type { ProjectSummary } from '$model/workspace.model';
 
 class MomoArtbeadsDatabase extends Dexie {
   projects!: Table<BeadProject, string>;
 
   constructor() {
-    super('momo-artbeads');
-    this.version(1).stores({
-      projects: 'id, name, gameVersion, updatedAt, createdAt'
+    super(PROJECT_DATABASE_NAME);
+    this.version(PROJECT_DATABASE_VERSION).stores({
+      [PROJECT_TABLE_NAME]: PROJECT_TABLE_INDEXES
     });
   }
 }
@@ -19,17 +29,6 @@ function getDatabase(): MomoArtbeadsDatabase {
     database = new MomoArtbeadsDatabase();
   }
   return database;
-}
-
-export interface ProjectSummary {
-  id: string;
-  name: string;
-  gameVersion: string;
-  width: number;
-  height: number;
-  updatedAt: string;
-  pixels: number[];
-  palette: BeadProject['palette'];
 }
 
 export const projectRepository = {
@@ -76,7 +75,7 @@ export const projectRepository = {
     const duplicate: BeadProject = {
       ...structuredClone(project),
       id: crypto.randomUUID(),
-      name: `${project.name} 副本`,
+      name: `${project.name}${DEFAULT_DUPLICATE_SUFFIX}`,
       createdAt: now,
       updatedAt: now
     };

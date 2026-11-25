@@ -3,9 +3,19 @@
   import {
     calculateAspectCrop,
     cropCenter,
-    fitImageWithinViewport,
-    type CropTransform
+    fitImageWithinViewport
   } from '$modules/image-import/crop';
+  import {
+    CropArrowKey,
+    CropCorner,
+    KEYBOARD_CROP_SHIFT_STEP,
+    KEYBOARD_CROP_STEP,
+    MIN_CROP_HANDLE_SCALE,
+    MIN_CROP_HANDLE_WIDTH,
+    type CropTransform,
+    type ImageCropDragState,
+    type ImageCropResizeState
+  } from '$model/image-import.model';
 
   interface Props {
     sourceUrl: string;
@@ -18,27 +28,6 @@
     onCropChange: (transform: CropTransform) => void;
     onRemove: () => void;
     onImageDrop: (file: File) => void;
-  }
-
-  type CropCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
-
-  interface DragState {
-    pointerId: number;
-    startClientX: number;
-    startClientY: number;
-    startCenterX: number;
-    startCenterY: number;
-  }
-
-  interface ResizeState {
-    pointerId: number;
-    corner: CropCorner;
-    anchorX: number;
-    anchorY: number;
-    directionX: 1 | -1;
-    directionY: 1 | -1;
-    minWidth: number;
-    maxWidth: number;
   }
 
   let {
@@ -57,8 +46,8 @@
   let stage: HTMLDivElement | undefined = $state();
   let stageWidth = $state(0);
   let stageHeight = $state(0);
-  let drag = $state<DragState | null>(null);
-  let resize = $state<ResizeState | null>(null);
+  let drag = $state<ImageCropDragState | null>(null);
+  let resize = $state<ImageCropResizeState | null>(null);
   let fileDragActive = $state(false);
 
   let crop = $derived(
@@ -154,8 +143,14 @@
 
     event.preventDefault();
     event.stopPropagation();
-    const directionX = corner.endsWith('right') ? 1 : -1;
-    const directionY = corner.startsWith('bottom') ? 1 : -1;
+    const directionX =
+      corner === CropCorner.TopRight || corner === CropCorner.BottomRight
+        ? 1
+        : -1;
+    const directionY =
+      corner === CropCorner.BottomLeft || corner === CropCorner.BottomRight
+        ? 1
+        : -1;
     const anchorX =
       directionX === 1 ? frameBounds.left : frameBounds.left + frameBounds.width;
     const anchorY =
@@ -181,7 +176,13 @@
       anchorY,
       directionX,
       directionY,
-      minWidth: Math.min(maxWidth, Math.max(28, maxCropWidth * 0.12)),
+      minWidth: Math.min(
+        maxWidth,
+        Math.max(
+          MIN_CROP_HANDLE_WIDTH,
+          maxCropWidth * MIN_CROP_HANDLE_SCALE
+        )
+      ),
       maxWidth
     };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
@@ -235,12 +236,14 @@
   }
 
   function onKeyDown(event: KeyboardEvent): void {
-    const distance = event.shiftKey ? 0.05 : 0.01;
+    const distance = event.shiftKey
+      ? KEYBOARD_CROP_SHIFT_STEP
+      : KEYBOARD_CROP_STEP;
     const movement = {
-      ArrowLeft: [-distance, 0],
-      ArrowRight: [distance, 0],
-      ArrowUp: [0, -distance],
-      ArrowDown: [0, distance]
+      [CropArrowKey.Left]: [-distance, 0],
+      [CropArrowKey.Right]: [distance, 0],
+      [CropArrowKey.Up]: [0, -distance],
+      [CropArrowKey.Down]: [0, distance]
     } as const;
     const delta = movement[event.key as keyof typeof movement];
 
@@ -343,7 +346,7 @@
         class="crop-handle top-left"
         type="button"
         aria-label={$_('import.resizeTopLeft')}
-        onpointerdown={(event) => startResize(event, 'top-left')}
+        onpointerdown={(event) => startResize(event, CropCorner.TopLeft)}
         onpointermove={onResizeMove}
         onpointerup={finishResize}
         onpointercancel={finishResize}
@@ -352,7 +355,7 @@
         class="crop-handle top-right"
         type="button"
         aria-label={$_('import.resizeTopRight')}
-        onpointerdown={(event) => startResize(event, 'top-right')}
+        onpointerdown={(event) => startResize(event, CropCorner.TopRight)}
         onpointermove={onResizeMove}
         onpointerup={finishResize}
         onpointercancel={finishResize}
@@ -361,7 +364,7 @@
         class="crop-handle bottom-left"
         type="button"
         aria-label={$_('import.resizeBottomLeft')}
-        onpointerdown={(event) => startResize(event, 'bottom-left')}
+        onpointerdown={(event) => startResize(event, CropCorner.BottomLeft)}
         onpointermove={onResizeMove}
         onpointerup={finishResize}
         onpointercancel={finishResize}
@@ -370,7 +373,7 @@
         class="crop-handle bottom-right"
         type="button"
         aria-label={$_('import.resizeBottomRight')}
-        onpointerdown={(event) => startResize(event, 'bottom-right')}
+        onpointerdown={(event) => startResize(event, CropCorner.BottomRight)}
         onpointermove={onResizeMove}
         onpointerup={finishResize}
         onpointercancel={finishResize}

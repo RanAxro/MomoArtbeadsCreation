@@ -3,18 +3,26 @@ import {
   countBeads,
   createProject,
   floodFill,
-  MAX_PROJECT_NAME_LENGTH,
   normalizeProjectName,
   resizeProject
 } from './project';
+import {
+  GameVersion,
+  MAX_PROJECT_NAME_LENGTH
+} from '$model/project.model';
 
 describe('project domain', () => {
   it('creates an empty project with the requested dimensions', () => {
-    const project = createProject({ name: '测试图纸', width: 12, height: 8, gameVersion: '3.0' });
+    const project = createProject({
+      name: '测试图纸',
+      width: 12,
+      height: 8,
+      gameVersion: GameVersion.V3
+    });
 
     expect(project.cells).toHaveLength(96);
     expect(project.cells.every((cell) => cell === 0)).toBe(true);
-    expect(project.gameVersion).toBe('3.0');
+    expect(project.gameVersion).toBe(GameVersion.V3);
   });
 
   it('normalizes project names and enforces the maximum length', () => {
@@ -29,7 +37,7 @@ describe('project domain', () => {
       name: '填充测试',
       width: 4,
       height: 3,
-      gameVersion: '3.0'
+      gameVersion: GameVersion.V3
     });
     project.cells[1] = 1;
     project.cells[4] = 1;
@@ -42,7 +50,12 @@ describe('project domain', () => {
   });
 
   it('preserves existing cells when resizing a project', () => {
-    const project = createProject({ name: '缩放测试', width: 3, height: 2, gameVersion: '3.0' });
+    const project = createProject({
+      name: '缩放测试',
+      width: 3,
+      height: 2,
+      gameVersion: GameVersion.V3
+    });
     project.cells[4] = 2;
 
     const resized = resizeProject(project, 5, 3);

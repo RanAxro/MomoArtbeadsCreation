@@ -14,7 +14,8 @@ const config = {
     alias: {
       $domain: 'src/lib/domain',
       $data: 'src/lib/data',
-      $modules: 'src/lib/modules'
+      $modules: 'src/lib/modules',
+      $model: 'src/lib/model'
     }
   }
 };

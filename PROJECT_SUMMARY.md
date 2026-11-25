@@ -124,18 +124,30 @@ src/
 │  │  ├─ Icon.svelte               统一 SVG 图标组件
 │  │  ├─ ImageCropFrame.svelte     格板比例裁剪框、拖动与暗色遮罩
 │  │  └─ ProjectPreview.svelte     图片转换预览
-│  ├─ config/
-│  │  └─ pegboard.ts               格板尺寸与艺点点颜色配置
 │  ├─ data/
 │  │  └─ project-repository.ts     IndexedDB 方案仓库
 │  ├─ domain/
 │  │  ├─ color.ts                  十六进制、RGB、OKLab 色彩计算
 │  │  ├─ palette.ts                色板与最近颜色匹配
-│  │  └─ project.ts                方案模型、格子操作和填充算法
+│  │  └─ project.ts                方案创建、格子和填充算法
 │  ├─ i18n/
 │  │  ├─ index.ts                  国际化初始化与语言持久化
 │  │  ├─ zh-CN.json                简体中文
 │  │  └─ en-US.json                English
+│  ├─ model/                       业务模型、枚举、默认值与全局常量
+│  │  ├─ color.model.ts            色彩类型与 OKLab 计算常量
+│  │  ├─ data.model.ts             IndexedDB 与表结构常量
+│  │  ├─ editor.model.ts           编辑工具、画布布局与默认值
+│  │  ├─ icon.model.ts             图标名称枚举
+│  │  ├─ image-import.model.ts     图片裁剪、转换类型与常量
+│  │  ├─ palette.model.ts          色板类型、校验与默认值
+│  │  ├─ pegboard.model.ts         格板预设、Artbead 颜色与尺寸常量
+│  │  ├─ project.model.ts          方案类型、校验、版本与名称常量
+│  │  ├─ project-preview.model.ts  预览绘制参数
+│  │  ├─ selection.model.ts        框选运算枚举、类型与样式常量
+│  │  ├─ settings.model.ts         主题、语言枚举与持久化键
+│  │  ├─ ui.model.ts               通用界面键盘与交互常量
+│  │  └─ workspace.model.ts        方案摘要、菜单与工作区常量
 │  └─ modules/
 │     ├─ editor/                   Canvas 布局、缩放平移、格定位、框选与编辑历史
 │     │  └─ selection.ts           矩形框选、1:1 锁定与集合运算
@@ -154,12 +166,21 @@ src/
    └─ sw.js                        离线缓存
 ```
 
+### 模型与常量约定
+
+- 所有业务类型、有限字符串枚举、默认值和跨模块配置统一保存在
+  `src/lib/model/*.model.ts`
+- 文件名按业务模块命名，通过 `$model/*` 别名引用
+- 编辑器工具、框选运算、主题、语言、图标、图片类型和格板预设等有限字符串
+  使用 `enum`，避免在业务逻辑和界面中重复硬编码
+- `domain` 与 `modules` 只保留算法、状态管理和副作用，不重新定义模型数据
+
 ## 7. 格板与颜色配置
 
-统一配置文件：
+统一模型配置：
 
 ```text
-src/lib/config/pegboard.ts
+src/lib/model/pegboard.model.ts
 ```
 
 当前规则：

@@ -1,20 +1,31 @@
-import type { BeadColor, BeadProject } from '$domain/project';
+import type { BeadColor } from '$model/palette.model';
+import {
+  DEFAULT_SELECTED_PALETTE_INDEX
+} from '$model/palette.model';
+import {
+  DEFAULT_EDITOR_TOOL,
+  DEFAULT_EDITOR_ZOOM,
+  EDITOR_HISTORY_LIMIT,
+  EditorTool
+} from '$model/editor.model';
+import {
+  EMPTY_CELL_COLOR_INDEX,
+  type BeadProject
+} from '$model/project.model';
 import { createEmptyBeadColor } from '$domain/palette';
 import { floodFill, touchProject } from '$domain/project';
 import { clampBoardZoom } from './board-layout';
 
-export type EditorTool = 'select' | 'pencil' | 'eraser' | 'fill';
-
 export class EditorStore {
   project = $state<BeadProject | null>(null);
-  selectedColorIndex = $state(1);
-  tool = $state<EditorTool>('pencil');
+  selectedColorIndex = $state(DEFAULT_SELECTED_PALETTE_INDEX);
+  tool = $state<EditorTool>(DEFAULT_EDITOR_TOOL);
   selectedCells = $state<ReadonlySet<number>>(new Set());
   revision = $state(0);
   savedRevision = $state(0);
   canUndo = $state(false);
   canRedo = $state(false);
-  zoom = $state(1);
+  zoom = $state(DEFAULT_EDITOR_ZOOM);
 
   private undoStack: number[][] = [];
   private redoStack: number[][] = [];
@@ -22,12 +33,15 @@ export class EditorStore {
 
   load(project: BeadProject): void {
     this.project = project;
-    this.selectedColorIndex = project.palette.colors.length > 0 ? 1 : 0;
+    this.selectedColorIndex =
+      project.palette.colors.length > 0
+        ? DEFAULT_SELECTED_PALETTE_INDEX
+        : EMPTY_CELL_COLOR_INDEX;
     this.undoStack = [];
     this.redoStack = [];
     this.strokeSnapshot = null;
     this.selectedCells = new Set();
-    this.zoom = 1;
+    this.zoom = DEFAULT_EDITOR_ZOOM;
     this.refreshHistoryState();
     this.revision += 1;
     this.savedRevision = this.revision;
@@ -39,7 +53,7 @@ export class EditorStore {
     this.redoStack = [];
     this.strokeSnapshot = null;
     this.selectedCells = new Set();
-    this.zoom = 1;
+    this.zoom = DEFAULT_EDITOR_ZOOM;
     this.canUndo = false;
     this.canRedo = false;
   }
@@ -101,14 +115,17 @@ export class EditorStore {
   paint(index: number): void {
     if (
       !this.project ||
-      this.tool === 'select' ||
+      this.tool === EditorTool.Select ||
       index < 0 ||
       index >= this.project.cells.length
     ) {
       return;
     }
 
-    const nextColor = this.tool === 'eraser' ? 0 : this.selectedColorIndex;
+    const nextColor =
+      this.tool === EditorTool.Eraser
+        ? EMPTY_CELL_COLOR_INDEX
+        : this.selectedColorIndex;
     if (this.project.cells[index] === nextColor) {
       return;
     }
@@ -219,7 +236,7 @@ export class EditorStore {
 
   private pushUndoSnapshot(snapshot: number[]): void {
     this.undoStack.push(snapshot);
-    if (this.undoStack.length > 80) {
+    if (this.undoStack.length > EDITOR_HISTORY_LIMIT) {
       this.undoStack.shift();
     }
   }

@@ -1,29 +1,30 @@
-import { rgbToOklab, hexToRgb, oklabDistance, type LabColor } from './color';
-import { ARTBEAD_COLORS } from '$lib/config/pegboard';
+import { rgbToOklab, hexToRgb, oklabDistance } from './color';
+import { ARTBEAD_COLORS } from '$model/pegboard.model';
+import {
+  DEFAULT_CUSTOM_COLOR_HEX,
+  DEFAULT_CUSTOM_COLOR_NAME_PREFIX,
+  DEFAULT_PALETTE_COLOR_PREFIX,
+  DEFAULT_PALETTE_NAME,
+  PALETTE_CODE_PAD_LENGTH,
+  type BeadColor,
+  type BeadPalette,
+  type IndexedColor
+} from '$model/palette.model';
 
-export interface BeadColor {
-  id: string;
-  name: string;
-  hex: string;
-  code: string;
-  stock?: number;
-}
-
-export interface BeadPalette {
-  id: string;
-  name: string;
-  colors: BeadColor[];
-}
+export type { BeadColor, BeadPalette, IndexedColor } from '$model/palette.model';
 
 export function createStarterPalette(id = crypto.randomUUID()): BeadPalette {
   return {
     id,
-    name: 'Artbead Palette',
+    name: DEFAULT_PALETTE_NAME,
     colors: ARTBEAD_COLORS.map((hex, index) => {
-      const code = String(index + 1).padStart(2, '0');
+      const code = String(index + 1).padStart(
+        PALETTE_CODE_PAD_LENGTH,
+        '0'
+      );
       return {
         id: `${id}-${index + 1}`,
-        name: `A${code}`,
+        name: `${DEFAULT_PALETTE_COLOR_PREFIX}${code}`,
         hex,
         code
       };
@@ -34,15 +35,10 @@ export function createStarterPalette(id = crypto.randomUUID()): BeadPalette {
 export function createEmptyBeadColor(paletteId: string, index: number): BeadColor {
   return {
     id: `${paletteId}-custom-${crypto.randomUUID()}`,
-    name: `自定义色 ${index}`,
-    hex: '#FFFFFF',
-    code: String(index).padStart(2, '0')
+    name: `${DEFAULT_CUSTOM_COLOR_NAME_PREFIX}${index}`,
+    hex: DEFAULT_CUSTOM_COLOR_HEX,
+    code: String(index).padStart(PALETTE_CODE_PAD_LENGTH, '0')
   };
-}
-
-export interface IndexedColor {
-  hex: string;
-  lab: LabColor;
 }
 
 export function createColorIndex(palette: BeadPalette): IndexedColor[] {

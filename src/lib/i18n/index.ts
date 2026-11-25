@@ -1,25 +1,30 @@
 import { addMessages, init, locale } from 'svelte-i18n';
+import {
+  AppLocale,
+  DEFAULT_APP_LOCALE,
+  LOCALE_STORAGE_KEY
+} from '$model/settings.model';
 import enUS from './en-US.json';
 import zhCN from './zh-CN.json';
 
-export type AppLocale = 'zh-CN' | 'en-US';
-
-const LOCALE_KEY = 'momo-artbeads.locale';
+export { AppLocale } from '$model/settings.model';
 
 function storedLocale(): AppLocale {
   if (typeof window === 'undefined') {
-    return 'zh-CN';
+    return DEFAULT_APP_LOCALE;
   }
 
-  return window.localStorage.getItem(LOCALE_KEY) === 'en-US' ? 'en-US' : 'zh-CN';
+  return window.localStorage.getItem(LOCALE_STORAGE_KEY) === AppLocale.EnUS
+    ? AppLocale.EnUS
+    : DEFAULT_APP_LOCALE;
 }
 
-addMessages('zh-CN', zhCN);
-addMessages('en-US', enUS);
+addMessages(AppLocale.ZhCN, zhCN);
+addMessages(AppLocale.EnUS, enUS);
 
 const initialLocale = storedLocale();
 init({
-  fallbackLocale: 'zh-CN',
+  fallbackLocale: DEFAULT_APP_LOCALE,
   initialLocale
 });
 
@@ -29,6 +34,6 @@ if (typeof document !== 'undefined') {
 
 export function setAppLocale(nextLocale: AppLocale): void {
   locale.set(nextLocale);
-  window.localStorage.setItem(LOCALE_KEY, nextLocale);
+  window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
   document.documentElement.lang = nextLocale;
 }

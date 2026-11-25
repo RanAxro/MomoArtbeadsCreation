@@ -1,24 +1,21 @@
 import {
   createColorIndex,
-  nearestPaletteIndex,
-  type BeadPalette
+  nearestPaletteIndex
 } from '$domain/palette';
-import type { ImageCrop } from './crop';
+import {
+  DEFAULT_TRANSPARENT_ALPHA_THRESHOLD,
+  IMAGE_IMPORT_ERRORS,
+  RGBA_ALPHA_OFFSET,
+  RGBA_CHANNEL_COUNT,
+  type ImageConversionOptions,
+  type ImageConversionResult
+} from '$model/image-import.model';
+import { EMPTY_CELL_COLOR_INDEX } from '$model/project.model';
 
-export interface ImageConversionOptions {
-  width: number;
-  height: number;
-  palette: BeadPalette;
-  crop?: ImageCrop;
-  transparentBelow?: number;
-}
-
-export interface ImageConversionResult {
-  cells: number[];
-  usedColors: number;
-  sourceWidth: number;
-  sourceHeight: number;
-}
+export type {
+  ImageConversionOptions,
+  ImageConversionResult
+} from '$model/image-import.model';
 
 export async function convertImageToPattern(
   file: File,
@@ -32,7 +29,7 @@ export async function convertImageToPattern(
   const context = canvas.getContext('2d', { willReadFrequently: true });
   if (!context) {
     bitmap.close();
-    throw new Error('当前浏览器无法创建图片处理画布。');
+    throw new Error(IMAGE_IMPORT_ERRORS.canvasUnavailable);
   }
 
   context.clearRect(0, 0, options.width, options.height);
@@ -64,14 +61,15 @@ export async function convertImageToPattern(
   const colorIndex = createColorIndex(options.palette);
   const cells = new Array<number>(options.width * options.height);
   const used = new Set<number>();
-  const transparentBelow = options.transparentBelow ?? 12;
+  const transparentBelow =
+    options.transparentBelow ?? DEFAULT_TRANSPARENT_ALPHA_THRESHOLD;
 
   for (let index = 0; index < cells.length; index += 1) {
-    const offset = index * 4;
-    const alpha = pixels[offset + 3];
+    const offset = index * RGBA_CHANNEL_COUNT;
+    const alpha = pixels[offset + RGBA_ALPHA_OFFSET];
 
     if (alpha < transparentBelow) {
-      cells[index] = 0;
+      cells[index] = EMPTY_CELL_COLOR_INDEX;
       continue;
     }
 

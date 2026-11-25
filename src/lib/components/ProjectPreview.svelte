@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { BeadProject } from '$domain/project';
+  import type { BeadProject } from '$model/project.model';
+  import { PROJECT_PREVIEW } from '$model/project-preview.model';
   import { themeStore } from '$modules/settings/theme.svelte';
 
   interface Props {
@@ -8,10 +9,14 @@
     label?: string;
   }
 
-  let { project, revision = 0, label = 'Pegboard preview' }: Props = $props();
+  let {
+    project,
+    revision = 0,
+    label = PROJECT_PREVIEW.defaultLabel
+  }: Props = $props();
   let canvas: HTMLCanvasElement | undefined = $state();
   let host: HTMLDivElement | undefined = $state();
-  let hostWidth = $state(320);
+  let hostWidth = $state<number>(PROJECT_PREVIEW.initialHostWidth);
 
   function draw(): void {
     if (!canvas || !host || hostWidth <= 0) {
@@ -19,7 +24,13 @@
     }
 
     const scale = window.devicePixelRatio || 1;
-    const viewportHeight = Math.max(180, Math.min(460, hostWidth * 0.72));
+    const viewportHeight = Math.max(
+      PROJECT_PREVIEW.minViewportHeight,
+      Math.min(
+        PROJECT_PREVIEW.maxViewportHeight,
+        hostWidth * PROJECT_PREVIEW.viewportHeightRatio
+      )
+    );
     canvas.width = Math.round(hostWidth * scale);
     canvas.height = Math.round(viewportHeight * scale);
     canvas.style.height = `${viewportHeight}px`;
@@ -38,7 +49,7 @@
     context.fillStyle = stageColor;
     context.fillRect(0, 0, hostWidth, viewportHeight);
 
-    const padding = 24;
+    const padding = PROJECT_PREVIEW.padding;
     const cellSize = Math.min(
       (hostWidth - padding * 2) / project.width,
       (viewportHeight - padding * 2) / project.height
@@ -54,15 +65,15 @@
         context.fillRect(
           originX + x * cellSize,
           originY + y * cellSize,
-          Math.ceil(cellSize + 0.2),
-          Math.ceil(cellSize + 0.2)
+          Math.ceil(cellSize + PROJECT_PREVIEW.pixelPadding),
+          Math.ceil(cellSize + PROJECT_PREVIEW.pixelPadding)
         );
       }
     }
 
-    if (cellSize > 7) {
+    if (cellSize > PROJECT_PREVIEW.gridVisibilityCellSize) {
       context.strokeStyle = styles.getPropertyValue('--board-line').trim() || 'rgba(0,0,0,.12)';
-      context.lineWidth = 0.5;
+      context.lineWidth = PROJECT_PREVIEW.gridLineWidth;
       for (let x = 0; x <= project.width; x += 1) {
         context.beginPath();
         context.moveTo(originX + x * cellSize, originY);
@@ -92,7 +103,10 @@
     }
 
     const observer = new ResizeObserver(([entry]) => {
-      hostWidth = Math.max(120, entry.contentRect.width);
+      hostWidth = Math.max(
+        PROJECT_PREVIEW.minHostWidth,
+        entry.contentRect.width
+      );
     });
     observer.observe(host);
 

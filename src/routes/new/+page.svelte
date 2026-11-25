@@ -4,15 +4,17 @@
   import Icon from '$lib/components/Icon.svelte';
   import {
     DEFAULT_PEGBOARD,
-    PEGBOARD_PRESETS
-  } from '$lib/config/pegboard';
+    PEGBOARD_PRESETS,
+    type PegboardPreset
+  } from '$model/pegboard.model';
+  import { IconName } from '$model/icon.model';
+  import {
+    DEFAULT_GAME_VERSION,
+    MAX_PROJECT_NAME_LENGTH
+  } from '$model/project.model';
   import { createStarterPalette } from '$domain/palette';
   import { createProject } from '$domain/project';
   import { workspace } from '$modules/workspace/workspace.svelte';
-
-  const presetLabels: Record<string, string> = {
-    'default-24x18': 'new.preset.default'
-  };
 
   const palette = createStarterPalette();
   let name = $state('');
@@ -20,7 +22,7 @@
   let creating = $state(false);
   let error = $state('');
 
-  function choosePreset(preset: (typeof PEGBOARD_PRESETS)[number]): void {
+  function choosePreset(preset: PegboardPreset): void {
     selectedPegboard = preset;
   }
 
@@ -39,7 +41,7 @@
         width: selectedPegboard.width,
         height: selectedPegboard.height,
         palette,
-        gameVersion: '3.0'
+        gameVersion: DEFAULT_GAME_VERSION
       });
       await workspace.create(project);
       await goto('/');
@@ -63,7 +65,7 @@
         <p>{$_('new.description')}</p>
       </div>
       <a class="button ghost compact" href="/">
-        <Icon name="arrow-left" size={16} />
+        <Icon name={IconName.ArrowLeft} size={16} />
         {$_('new.back')}
       </a>
     </header>
@@ -77,7 +79,7 @@
             <input
               class="field"
               bind:value={name}
-              maxlength="80"
+              maxlength={MAX_PROJECT_NAME_LENGTH}
               placeholder={$_('new.defaultName')}
             />
           </label>
@@ -92,7 +94,7 @@
                   type="button"
                   onclick={() => choosePreset(preset)}
                 >
-                  <span>{$_(presetLabels[preset.id] ?? 'new.preset.default')}</span>
+                  <span>{$_(preset.labelKey)}</span>
                   <strong>{preset.width} × {preset.height}</strong>
                 </button>
               {/each}

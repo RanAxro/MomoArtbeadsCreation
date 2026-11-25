@@ -5,7 +5,11 @@
     BoardCell,
     BoardLayout,
     BoardViewCenter
-  } from '$modules/editor/board-layout';
+  } from '$model/editor.model';
+  import {
+    DEFAULT_BOARD_LAYOUT,
+    EditorTool
+  } from '$model/editor.model';
   import {
     boardOriginForView,
     calculateBoardLayout,
@@ -16,10 +20,18 @@
   } from '$modules/editor/board-layout';
   import {
     combineSelections,
-    createSelectionRectangle,
-    type SelectionOperation,
-    type SelectionRectangle
+    createSelectionRectangle
   } from '$modules/editor/selection';
+  import {
+    DEFAULT_SELECTION_COLOR,
+    DEFAULT_SELECTION_FILL,
+    SELECTION_BASELINE_OUTLINE_STYLE,
+    SELECTION_DRAG_OUTLINE_STYLE,
+    SELECTION_OUTLINE_STYLE,
+    SelectionOperation,
+    type SelectionRectangle
+  } from '$model/selection.model';
+  import { KeyboardKey } from '$model/ui.model';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { _ } from 'svelte-i18n';
 
@@ -46,35 +58,8 @@
     rectangle: SelectionRectangle;
   } | null>(null);
 
-  let baseLayout: BoardLayout = {
-    edgeInset: 8,
-    contentX: 0,
-    contentY: 0,
-    contentWidth: 1,
-    contentHeight: 1,
-    originX: 0,
-    originY: 0,
-    boardWidth: 0,
-    boardHeight: 0,
-    cellSize: 20,
-    rulerThickness: 20,
-    rulerGap: 4
-  };
-
-  let layout: BoardLayout = {
-    edgeInset: 8,
-    contentX: 0,
-    contentY: 0,
-    contentWidth: 1,
-    contentHeight: 1,
-    originX: 0,
-    originY: 0,
-    boardWidth: 0,
-    boardHeight: 0,
-    cellSize: 20,
-    rulerThickness: 20,
-    rulerGap: 4
-  };
+  let baseLayout: BoardLayout = { ...DEFAULT_BOARD_LAYOUT };
+  let layout: BoardLayout = { ...DEFAULT_BOARD_LAYOUT };
   let viewInitialized = false;
   let viewProjectId: string | null = null;
   let panLastX = 0;
@@ -153,9 +138,11 @@
     const rulerText = styles.getPropertyValue('--muted').trim() || '#707070';
     const activeRulerColor = styles.getPropertyValue('--text').trim() || '#111111';
     const activeRulerText = styles.getPropertyValue('--selected-text').trim() || '#ffffff';
-    const selectionColor = styles.getPropertyValue('--selection').trim() || '#2f6fed';
+    const selectionColor =
+      styles.getPropertyValue('--selection').trim() || DEFAULT_SELECTION_COLOR;
     const selectionFill =
-      styles.getPropertyValue('--selection-fill').trim() || 'rgba(47, 111, 237, 0.32)';
+      styles.getPropertyValue('--selection-fill').trim() ||
+      DEFAULT_SELECTION_FILL;
     const fontFamily =
       styles.getPropertyValue('font-family').trim() || 'system-ui, sans-serif';
 
@@ -270,7 +257,13 @@
         context,
         editor.selectedCells,
         selectionColor,
-        Math.max(1, Math.min(2, cellSize * 0.08))
+        Math.max(
+          SELECTION_OUTLINE_STYLE.minWidth,
+          Math.min(
+            SELECTION_OUTLINE_STYLE.maxWidth,
+            cellSize * SELECTION_OUTLINE_STYLE.widthRatio
+          )
+        )
       );
     }
 
@@ -278,10 +271,22 @@
       const { minX, minY, width, height } = selectionDrag.rectangle;
       context.save();
       context.strokeStyle = selectionColor;
-      context.lineWidth = Math.max(1.25, Math.min(2.25, cellSize * 0.1));
+      context.lineWidth = Math.max(
+        SELECTION_DRAG_OUTLINE_STYLE.minWidth,
+        Math.min(
+          SELECTION_DRAG_OUTLINE_STYLE.maxWidth,
+          cellSize * SELECTION_DRAG_OUTLINE_STYLE.widthRatio
+        )
+      );
       context.setLineDash([
-        Math.max(4, cellSize * 0.28),
-        Math.max(3, cellSize * 0.2)
+        Math.max(
+          SELECTION_DRAG_OUTLINE_STYLE.minDashLength,
+          cellSize * SELECTION_DRAG_OUTLINE_STYLE.dashLengthRatio
+        ),
+        Math.max(
+          SELECTION_DRAG_OUTLINE_STYLE.minGapLength,
+          cellSize * SELECTION_DRAG_OUTLINE_STYLE.gapLengthRatio
+        )
       ]);
       context.strokeRect(
         originX + minX * cellSize,
@@ -292,17 +297,29 @@
       context.restore();
 
       if (
-        selectionDrag.operation === 'intersect' &&
+        selectionDrag.operation === SelectionOperation.Intersect &&
         selectionDrag.previous.size > 0
       ) {
         strokeSelectionOutline(
           context,
           selectionDrag.previous,
           selectionColor,
-          Math.max(1.5, Math.min(2.5, cellSize * 0.1)),
+          Math.max(
+            SELECTION_BASELINE_OUTLINE_STYLE.minWidth,
+            Math.min(
+              SELECTION_BASELINE_OUTLINE_STYLE.maxWidth,
+              cellSize * SELECTION_BASELINE_OUTLINE_STYLE.widthRatio
+            )
+          ),
           [
-            Math.max(3, cellSize * 0.2),
-            Math.max(2, cellSize * 0.14)
+            Math.max(
+              SELECTION_BASELINE_OUTLINE_STYLE.minDashLength,
+              cellSize * SELECTION_BASELINE_OUTLINE_STYLE.dashLengthRatio
+            ),
+            Math.max(
+              SELECTION_BASELINE_OUTLINE_STYLE.minGapLength,
+              cellSize * SELECTION_BASELINE_OUTLINE_STYLE.gapLengthRatio
+            )
           ]
         );
       }
@@ -593,20 +610,20 @@
 
     if (event.button === 0) {
       if (command) {
-        return 'union';
+        return SelectionOperation.Union;
       }
       if (event.altKey) {
-        return 'subtract';
+        return SelectionOperation.Subtract;
       }
-      return 'replace';
+      return SelectionOperation.Replace;
     }
 
     if (event.button === 2) {
       if (command) {
-        return 'xor';
+        return SelectionOperation.Xor;
       }
       if (event.altKey) {
-        return 'intersect';
+        return SelectionOperation.Intersect;
       }
       return 'clear';
     }
@@ -889,8 +906,8 @@
     touchPoints.set(event.pointerId, point);
 
     if (touchPoints.size === 1) {
-      if (editor.tool === 'select') {
-        beginSelectionDrag(event, 'replace');
+      if (editor.tool === EditorTool.Select) {
+        beginSelectionDrag(event, SelectionOperation.Replace);
       } else {
         updateHoveredCell(null);
       }
@@ -954,7 +971,7 @@
       return;
     }
 
-    if (editor.tool === 'select') {
+    if (editor.tool === EditorTool.Select) {
       if (selectionDrag?.pointerId === event.pointerId) {
         updateSelectionDrag(event);
         updateHoveredCell(cellFromPoint(point));
@@ -1035,7 +1052,7 @@
       return;
     }
 
-    if (editor.tool === 'select') {
+    if (editor.tool === EditorTool.Select) {
       const operation = selectionOperationForPointer(event);
       if (operation === 'clear') {
         cancelSelectionDrag();
@@ -1056,7 +1073,7 @@
       return;
     }
 
-    if (editor.tool === 'fill' && event.button === 0) {
+    if (editor.tool === EditorTool.Fill && event.button === 0) {
       editor.fill(cell.index);
       return;
     }
@@ -1156,13 +1173,13 @@
         return;
       }
 
-      if (event.key === 'Escape' && selectionDrag) {
+      if (event.key === KeyboardKey.Escape && selectionDrag) {
         event.preventDefault();
         cancelSelectionDrag();
         return;
       }
 
-      if (event.code !== 'Space') {
+      if (event.code !== KeyboardKey.Space) {
         return;
       }
 
@@ -1170,7 +1187,7 @@
       spacePressed = true;
     };
     const onKeyUp = (event: KeyboardEvent): void => {
-      if (event.code === 'Space') {
+      if (event.code === KeyboardKey.Space) {
         spacePressed = false;
       }
     };
@@ -1223,7 +1240,7 @@
 >
   <canvas
     bind:this={canvas}
-    class:fill-tool={editor.tool === 'fill'}
+    class:fill-tool={editor.tool === EditorTool.Fill}
     class:pan-ready={spacePressed && panPointerId === null}
     class:panning={panPointerId !== null || pinching}
     aria-hidden="true"

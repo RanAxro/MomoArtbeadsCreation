@@ -1,25 +1,18 @@
-export interface ImageCrop {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+import {
+  DEFAULT_CROP_CENTER,
+  MIN_CROP_SCALE,
+  type CropCenter,
+  type CropTransform,
+  type ImageBounds,
+  type ImageCrop
+} from '$model/image-import.model';
 
-export interface CropCenter {
-  x: number;
-  y: number;
-}
-
-export interface CropTransform extends CropCenter {
-  scale: number;
-}
-
-export interface ImageBounds {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-}
+export type {
+  CropCenter,
+  CropTransform,
+  ImageBounds,
+  ImageCrop
+} from '$model/image-import.model';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -29,8 +22,8 @@ export function calculateAspectCrop(
   sourceWidth: number,
   sourceHeight: number,
   aspectRatio: number,
-  centerX = 0.5,
-  centerY = 0.5,
+  centerX = DEFAULT_CROP_CENTER,
+  centerY = DEFAULT_CROP_CENTER,
   scale = 1
 ): ImageCrop {
   if (sourceWidth <= 0 || sourceHeight <= 0 || aspectRatio <= 0) {
@@ -45,7 +38,7 @@ export function calculateAspectCrop(
     maxWidth = sourceHeight * aspectRatio;
   }
 
-  const safeScale = clamp(scale, 0.05, 1);
+  const safeScale = clamp(scale, MIN_CROP_SCALE, 1);
   const width = maxWidth * safeScale;
   const height = maxHeight * safeScale;
   const safeCenterX = clamp(centerX, width / sourceWidth / 2, 1 - width / sourceWidth / 2);
@@ -65,7 +58,7 @@ export function calculateAspectCrop(
 
 export function cropCenter(crop: ImageCrop, sourceWidth: number, sourceHeight: number): CropCenter {
   if (sourceWidth <= 0 || sourceHeight <= 0) {
-    return { x: 0.5, y: 0.5 };
+    return { x: DEFAULT_CROP_CENTER, y: DEFAULT_CROP_CENTER };
   }
 
   return {

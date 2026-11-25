@@ -9,23 +9,33 @@
     DEFAULT_PEGBOARD,
     PEGBOARD_PRESETS,
     type PegboardPreset
-  } from '$lib/config/pegboard';
+  } from '$model/pegboard.model';
+  import { IconName } from '$model/icon.model';
+  import {
+    AUTO_PREVIEW_DELAY_MS,
+    DEFAULT_CROP_CENTER,
+    DEFAULT_CROP_SCALE,
+    IMAGE_FILE_PATTERN,
+    IMAGE_MIME_PREFIX,
+    IMAGE_MIME_TYPES,
+    type CropTransform
+  } from '$model/image-import.model';
+  import {
+    DEFAULT_GAME_VERSION,
+    MAX_PROJECT_NAME_LENGTH
+  } from '$model/project.model';
+  import type { BeadProject } from '$model/project.model';
   import { createStarterPalette } from '$domain/palette';
-  import { createProject, type BeadProject } from '$domain/project';
+  import { createProject } from '$domain/project';
   import {
     calculateAspectCrop,
-    cropCenter,
-    type CropTransform
+    cropCenter
   } from '$modules/image-import/crop';
   import {
     convertImageToPattern,
     readImageDimensions
   } from '$modules/image-import/image-to-pattern';
   import { workspace } from '$modules/workspace/workspace.svelte';
-
-  const presetLabels: Record<string, string> = {
-    'default-24x18': 'new.preset.default'
-  };
 
   const palette = createStarterPalette();
   let fileInput: HTMLInputElement | undefined = $state();
@@ -34,9 +44,9 @@
   let sourceDimensions = $state({ width: 0, height: 0 });
   let schemeName = $state('');
   let selectedPegboard = $state<PegboardPreset>(DEFAULT_PEGBOARD);
-  let cropCenterX = $state(0.5);
-  let cropCenterY = $state(0.5);
-  let cropScale = $state(1);
+  let cropCenterX = $state(DEFAULT_CROP_CENTER);
+  let cropCenterY = $state(DEFAULT_CROP_CENTER);
+  let cropScale = $state(DEFAULT_CROP_SCALE);
   let previewProject = $state<BeadProject | null>(null);
   let usedColors = $state(0);
   let busy = $state(false);
@@ -60,7 +70,7 @@
     }
   }
 
-  function scheduleAutoPreview(delay = 180): void {
+  function scheduleAutoPreview(delay = AUTO_PREVIEW_DELAY_MS): void {
     clearScheduledPreview();
     scheduledPreview = setTimeout(() => {
       scheduledPreview = undefined;
@@ -70,8 +80,8 @@
 
   function isImageFile(file: File): boolean {
     return (
-      file.type.startsWith('image/') ||
-      /\.(png|jpe?g|webp|gif)$/i.test(file.name)
+      file.type.startsWith(IMAGE_MIME_PREFIX) ||
+      IMAGE_FILE_PATTERN.test(file.name)
     );
   }
 
@@ -91,9 +101,9 @@
     sourceFile = file;
     sourceUrl = URL.createObjectURL(file);
     sourceDimensions = { width: 0, height: 0 };
-    cropCenterX = 0.5;
-    cropCenterY = 0.5;
-    cropScale = 1;
+    cropCenterX = DEFAULT_CROP_CENTER;
+    cropCenterY = DEFAULT_CROP_CENTER;
+    cropScale = DEFAULT_CROP_SCALE;
     schemeName = file.name.replace(/\.[^.]+$/, '') || $_('import.defaultName');
     busy = true;
 
@@ -159,9 +169,9 @@
     sourceFile = null;
     sourceDimensions = { width: 0, height: 0 };
     schemeName = '';
-    cropCenterX = 0.5;
-    cropCenterY = 0.5;
-    cropScale = 1;
+    cropCenterX = DEFAULT_CROP_CENTER;
+    cropCenterY = DEFAULT_CROP_CENTER;
+    cropScale = DEFAULT_CROP_SCALE;
     previewProject = null;
     usedColors = 0;
     busy = false;
@@ -243,7 +253,7 @@
         width: pegboard.width,
         height: pegboard.height,
         palette,
-        gameVersion: '3.0'
+        gameVersion: DEFAULT_GAME_VERSION
       });
       project.cells = converted.cells;
       previewProject = project;
@@ -300,7 +310,7 @@
         <p>{$_('import.description')}</p>
       </div>
       <a class="button ghost compact" href="/">
-        <Icon name="arrow-left" size={16} />
+        <Icon name={IconName.ArrowLeft} size={16} />
         {$_('import.back')}
       </a>
     </header>
@@ -348,7 +358,7 @@
               bind:this={fileInput}
               class="visually-hidden"
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
+              accept={IMAGE_MIME_TYPES.join(',')}
               onchange={selectSource}
             />
             {#if sourceFile}
@@ -368,7 +378,7 @@
               <input
                 class="field"
                 bind:value={schemeName}
-                maxlength="80"
+                maxlength={MAX_PROJECT_NAME_LENGTH}
                 placeholder={$_('import.defaultName')}
               />
             </label>
@@ -378,7 +388,7 @@
               <select class="field" value={selectedPegboard.id} onchange={changePegboard}>
                 {#each PEGBOARD_PRESETS as preset}
                   <option value={preset.id}>
-                    {$_(presetLabels[preset.id] ?? 'new.preset.default')}
+                    {$_(preset.labelKey)}
                     · {preset.width} × {preset.height}
                   </option>
                 {/each}

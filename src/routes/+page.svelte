@@ -3,28 +3,23 @@
   import { _ } from 'svelte-i18n';
   import BeadCanvas from '$lib/components/BeadCanvas.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import { ARTBEAD_COLORS } from '$lib/config/pegboard';
+  import { ARTBEAD_COLORS } from '$model/pegboard.model';
+  import {
+    AUTO_SAVE_DELAY_MS,
+    EditorCommandKey,
+    EDITOR_TOOL_DEFINITIONS,
+    EditorTool
+  } from '$model/editor.model';
+  import { IconName } from '$model/icon.model';
   import { countBeads, countColorUsage } from '$domain/project';
   import { projectRepository } from '$data/project-repository';
-  import type { EditorTool } from '$modules/editor/editor-store.svelte';
   import {
     MAX_BOARD_ZOOM,
     MIN_BOARD_ZOOM
-  } from '$modules/editor/board-layout';
+  } from '$model/editor.model';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   const editor = workspace.editor;
-  const tools: {
-    id: EditorTool;
-    icon: 'select' | 'pencil' | 'eraser' | 'fill';
-    labelKey: string;
-    shortcut: string;
-  }[] = [
-    { id: 'select', icon: 'select', labelKey: 'board.select', shortcut: 'M' },
-    { id: 'pencil', icon: 'pencil', labelKey: 'board.pencil', shortcut: 'B' },
-    { id: 'eraser', icon: 'eraser', labelKey: 'board.eraser', shortcut: 'E' },
-    { id: 'fill', icon: 'fill', labelKey: 'board.fill', shortcut: 'G' }
-  ];
 
   let saving = $state(false);
   let saveFailed = $state(false);
@@ -95,7 +90,7 @@
     }
     saveTimer = setTimeout(() => {
       void persist();
-    }, 550);
+    }, AUTO_SAVE_DELAY_MS);
   }
 
   function saveNow(): void {
@@ -112,23 +107,23 @@
     }
 
     const command = event.ctrlKey || event.metaKey;
-    if (command && event.key.toLowerCase() === 'z') {
+    if (command && event.key.toLowerCase() === EditorCommandKey.Undo) {
       event.preventDefault();
       event.shiftKey ? editor.redo() : editor.undo();
       return;
     }
-    if (command && event.key.toLowerCase() === 'y') {
+    if (command && event.key.toLowerCase() === EditorCommandKey.Redo) {
       event.preventDefault();
       editor.redo();
       return;
     }
-    if (command && event.key.toLowerCase() === 's') {
+    if (command && event.key.toLowerCase() === EditorCommandKey.Save) {
       event.preventDefault();
       saveNow();
       return;
     }
 
-    const tool = tools.find(
+    const tool = EDITOR_TOOL_DEFINITIONS.find(
       (candidate) => candidate.shortcut.toLowerCase() === event.key.toLowerCase()
     );
     if (tool) {
@@ -224,7 +219,7 @@
 
         <div class="board-actions">
           <div class="tools">
-            {#each tools as tool}
+            {#each EDITOR_TOOL_DEFINITIONS as tool}
               <button
                 class="tool"
                 class:active={editor.tool === tool.id}
@@ -246,7 +241,7 @@
               disabled={!editor.canUndo}
               onclick={() => editor.undo()}
             >
-              <Icon name="undo" size={18} />
+              <Icon name={IconName.Undo} size={18} />
             </button>
             <button
               class="tool"
@@ -256,7 +251,7 @@
               disabled={!editor.canRedo}
               onclick={() => editor.redo()}
             >
-              <Icon name="redo" size={18} />
+              <Icon name={IconName.Redo} size={18} />
             </button>
           </div>
 
@@ -285,7 +280,9 @@
 
       <footer class="board-footer">
         <span>
-          {editor.tool === 'select' ? $_('board.selectionHint') : $_('board.hint')}
+          {editor.tool === EditorTool.Select
+            ? $_('board.selectionHint')
+            : $_('board.hint')}
         </span>
         <div class="zoom-control">
           <label for="board-zoom">{$_('board.zoom')}</label>
@@ -310,7 +307,7 @@
             aria-label={$_('board.zoomReset')}
             onclick={() => editor.setZoom(1)}
           >
-            <Icon name="reset" size={16} />
+            <Icon name={IconName.Reset} size={16} />
           </button>
         </div>
       </footer>
@@ -324,11 +321,11 @@
         <p>{$_('home.description')}</p>
         <div class="quick-actions">
           <a class="button primary" href="/new">
-            <Icon name="plus" size={17} />
+            <Icon name={IconName.Plus} size={17} />
             {$_('home.new')}
           </a>
           <a class="button secondary" href="/import">
-            <Icon name="image" size={17} />
+            <Icon name={IconName.Image} size={17} />
             {$_('home.import')}
           </a>
         </div>
