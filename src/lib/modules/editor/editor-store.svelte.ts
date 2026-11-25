@@ -14,13 +14,18 @@ import {
   type BeadProject
 } from '$model/project.model';
 import type { SelectionClipboard } from '$model/selection-clipboard.model';
+import type { SelectionLayer } from '$model/selection-layer.model';
 import { clonePalette, createEmptyBeadColor } from '$domain/palette';
 import { floodFill, touchProject } from '$domain/project';
 import { clampBoardZoom } from './board-layout';
 import {
   createSelectionClipboard as createClipboardFromSelection,
-  pasteSelectionClipboard as buildSelectionPaste
+  createSelectionLayer,
+  getVisibleLayerSelection,
+  mergeSelectionLayer,
+  moveSelectionLayer
 } from './selection-clipboard';
+import { getSelectionBounds } from './selection';
 
 interface EditorSnapshot {
   cells: number[];
@@ -45,10 +50,14 @@ export class EditorStore {
   canRedo = $state(false);
   zoom = $state(DEFAULT_EDITOR_ZOOM);
   visibleBoardCenter = $state<BoardViewCenter>({ x: 0, y: 0 });
+  activePasteLayer = $state<SelectionLayer | null>(null);
+  previewRevision = $state(0);
 
   private undoStack: EditorSnapshot[] = [];
   private redoStack: EditorSnapshot[] = [];
   private strokeSnapshot: EditorSnapshot | null = null;
+  private selectionMoveSnapshot: EditorSnapshot | null = null;
+  private selectionMoveOriginal: ReadonlySet<number> | null = null;
 
   load(project: BeadProject): void {
     this.project = project;
@@ -59,9 +68,13 @@ export class EditorStore {
     this.undoStack = [];
     this.redoStack = [];
     this.strokeSnapshot = null;
+    this.selectionMoveSnapshot = null;
+    this.selectionMoveOriginal = null;
     this.selectedCells = new Set();
     this.zoom = DEFAULT_EDITOR_ZOOM;
     this.visibleBoardCenter = { x: 0, y: 0 };
+    this.activePasteLayer = null;
+    this.previewRevision += 1;
     this.refreshHistoryState();
     this.revision += 1;
     this.savedRevision = this.revision;
@@ -72,9 +85,13 @@ export class EditorStore {
     this.undoStack = [];
     this.redoStack = [];
     this.strokeSnapshot = null;
+    this.selectionMoveSnapshot = null;
+    this.selectionMoveOriginal = null;
     this.selectedCells = new Set();
     this.zoom = DEFAULT_EDITOR_ZOOM;
     this.visibleBoardCenter = { x: 0, y: 0 };
+    this.activePasteLayer = null;
+    this.previewRevision += 1;
     this.canUndo = false;
     this.canRedo = false;
   }
@@ -112,6 +129,9 @@ export class EditorStore {
   }
 
   setTool(tool: EditorTool): void {
+    if (this.activePasteLayer && tool !== EditorTool.Move) {
+      this.mergePasteLayer();
+    }
     this.tool = tool;
   }
 
@@ -138,6 +158,9 @@ export class EditorStore {
   }
 
   clearSelection(): void {
+    if (this.activePasteLayer) {
+      this.mergePasteLayer();
+    }
     if (this.selectedCells.size > 0) {
       this.selectedCells = new Set();
     }
@@ -148,8 +171,21 @@ export class EditorStore {
       return null;
     }
 
+    const project = $state.snapshot(this.project) as BeadProject;
+    if (this.activePasteLayer) {
+      const composite = mergeSelectionLayer(project, this.activePasteLayer);
+      if (composite) {
+        project.cells = composite.cells;
+        project.palette = composite.palette;
+        return createClipboardFromSelection(
+          project,
+          composite.selection
+        );
+      }
+    }
+
     return createClipboardFromSelection(
-      $state.snapshot(this.project) as BeadProject,
+      project,
       this.selectedCells
     );
   }
@@ -159,16 +195,67 @@ export class EditorStore {
       return false;
     }
 
-    const result = buildSelectionPaste(
-      this.project,
+    if (this.activePasteLayer) {
+      this.mergePasteLayer();
+    }
+
+    const createdLayer = createSelectionLayer(
       clipboard,
       this.visibleBoardCenter
     );
-    if (!result) {
+    if (!createdLayer) {
       return false;
     }
 
-    if (result.changed) {
+    const layer = moveSelectionLayer(
+      createdLayer,
+      createdLayer.x,
+      createdLayer.y,
+      this.project.width,
+      this.project.height
+    );
+    this.activePasteLayer = layer;
+    this.tool = EditorTool.Move;
+    this.selectedCells = new Set(
+      getVisibleLayerSelection(
+        layer,
+        this.project.width,
+        this.project.height
+      )
+    );
+    this.previewRevision += 1;
+    return true;
+  }
+
+  movePasteLayer(x: number, y: number): void {
+    if (!this.project || !this.activePasteLayer) {
+      return;
+    }
+
+    this.activePasteLayer = moveSelectionLayer(
+      this.activePasteLayer,
+      x,
+      y,
+      this.project.width,
+      this.project.height
+    );
+    this.selectedCells = new Set(
+      getVisibleLayerSelection(
+        this.activePasteLayer,
+        this.project.width,
+        this.project.height
+      )
+    );
+    this.previewRevision += 1;
+  }
+
+  mergePasteLayer(): void {
+    if (!this.project || !this.activePasteLayer) {
+      return;
+    }
+
+    const result = mergeSelectionLayer(this.project, this.activePasteLayer);
+    if (result?.changed) {
       this.pushUndoSnapshot(createEditorSnapshot(this.project));
       this.project.cells = result.cells;
       this.project.palette = result.palette;
@@ -177,14 +264,113 @@ export class EditorStore {
       this.markChanged();
     }
 
-    this.setSelection(result.selection);
+    this.selectedCells = result ? new Set(result.selection) : new Set();
+    this.activePasteLayer = null;
+    this.previewRevision += 1;
+  }
+
+  beginSelectionMove(): boolean {
+    if (
+      !this.project ||
+      this.activePasteLayer ||
+      this.selectedCells.size === 0 ||
+      this.selectionMoveSnapshot
+    ) {
+      return false;
+    }
+
+    this.selectionMoveSnapshot = createEditorSnapshot(this.project);
+    this.selectionMoveOriginal = new Set(this.selectedCells);
     return true;
+  }
+
+  updateSelectionMove(deltaX: number, deltaY: number): void {
+    const project = this.project;
+    if (
+      !project ||
+      !this.selectionMoveSnapshot ||
+      !this.selectionMoveOriginal
+    ) {
+      return;
+    }
+
+    const bounds = getSelectionBounds(
+      this.selectionMoveOriginal,
+      project.width,
+      project.height
+    );
+    if (!bounds) {
+      return;
+    }
+
+    const moveX = Math.max(
+      -bounds.minX,
+      Math.min(project.width - 1 - bounds.maxX, Math.round(deltaX))
+    );
+    const moveY = Math.max(
+      -bounds.minY,
+      Math.min(project.height - 1 - bounds.maxY, Math.round(deltaY))
+    );
+    const cells = [...this.selectionMoveSnapshot.cells];
+    const selection = new Set<number>();
+
+    for (const sourceIndex of this.selectionMoveOriginal) {
+      cells[sourceIndex] = EMPTY_CELL_COLOR_INDEX;
+    }
+    for (const sourceIndex of this.selectionMoveOriginal) {
+      const sourceX = sourceIndex % project.width;
+      const sourceY = Math.floor(sourceIndex / project.width);
+      const destinationIndex =
+        (sourceY + moveY) * project.width + sourceX + moveX;
+      cells[destinationIndex] =
+        this.selectionMoveSnapshot.cells[sourceIndex] ??
+        EMPTY_CELL_COLOR_INDEX;
+      selection.add(destinationIndex);
+    }
+
+    project.cells = cells;
+    this.selectedCells = selection;
+    this.previewRevision += 1;
+  }
+
+  endSelectionMove(): void {
+    if (!this.project || !this.selectionMoveSnapshot) {
+      return;
+    }
+
+    const changed = this.selectionMoveSnapshot.cells.some(
+      (cell, index) => cell !== this.project?.cells[index]
+    );
+    if (changed) {
+      this.pushUndoSnapshot(this.selectionMoveSnapshot);
+      this.redoStack = [];
+      this.refreshHistoryState();
+      this.markChanged();
+    }
+
+    this.selectionMoveSnapshot = null;
+    this.selectionMoveOriginal = null;
+  }
+
+  cancelSelectionMove(): void {
+    if (!this.project || !this.selectionMoveSnapshot) {
+      return;
+    }
+
+    this.project.cells = [...this.selectionMoveSnapshot.cells];
+    this.project.palette = clonePalette(this.selectionMoveSnapshot.palette);
+    this.selectedCells = new Set(this.selectionMoveOriginal ?? []);
+    this.selectionMoveSnapshot = null;
+    this.selectionMoveOriginal = null;
+    this.previewRevision += 1;
   }
 
   paint(index: number): void {
     if (
       !this.project ||
       this.tool === EditorTool.Select ||
+      this.tool === EditorTool.Move ||
+      this.activePasteLayer ||
       index < 0 ||
       index >= this.project.cells.length
     ) {
@@ -302,6 +488,9 @@ export class EditorStore {
   }
 
   toSnapshot(): BeadProject | null {
+    if (this.activePasteLayer) {
+      this.mergePasteLayer();
+    }
     return this.project ? touchProject($state.snapshot(this.project)) : null;
   }
 

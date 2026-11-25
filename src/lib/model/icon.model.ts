@@ -1,5 +1,6 @@
 export enum IconName {
   Select = 'select',
+  Move = 'move',
   Pencil = 'pencil',
   Eraser = 'eraser',
   Fill = 'fill',

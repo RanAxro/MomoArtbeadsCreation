@@ -57,6 +57,13 @@
     previous: ReadonlySet<number>;
     rectangle: SelectionRectangle;
   } | null>(null);
+  let moveDrag = $state<{
+    pointerId: number;
+    mode: 'selection' | 'layer';
+    startCell: BoardCell;
+    layerStartX: number;
+    layerStartY: number;
+  } | null>(null);
 
   let baseLayout: BoardLayout = { ...DEFAULT_BOARD_LAYOUT };
   let layout: BoardLayout = { ...DEFAULT_BOARD_LAYOUT };
@@ -213,6 +220,53 @@
         const cellY = originY + y * cellSize;
         context.fillStyle = bead.hex;
         context.fillRect(cellX, cellY, Math.ceil(cellSize + 0.2), Math.ceil(cellSize + 0.2));
+      }
+    }
+
+    const pasteLayer = editor.activePasteLayer;
+    if (pasteLayer) {
+      for (const layerIndex of pasteLayer.selectionCells) {
+        if (layerIndex < 0 || layerIndex >= pasteLayer.cells.length) {
+          continue;
+        }
+
+        const layerX = layerIndex % pasteLayer.width;
+        const layerY = Math.floor(layerIndex / pasteLayer.width);
+        const projectX = pasteLayer.x + layerX;
+        const projectY = pasteLayer.y + layerY;
+        if (
+          projectX < 0 ||
+          projectY < 0 ||
+          projectX >= project.width ||
+          projectY >= project.height
+        ) {
+          continue;
+        }
+
+        const colorIndex = pasteLayer.cells[layerIndex];
+        if (colorIndex === 0) {
+          context.fillStyle = boardColor;
+          context.fillRect(
+            originX + projectX * cellSize,
+            originY + projectY * cellSize,
+            Math.ceil(cellSize + 0.2),
+            Math.ceil(cellSize + 0.2)
+          );
+          continue;
+        }
+
+        const bead = pasteLayer.palette.colors[colorIndex - 1];
+        if (!bead) {
+          continue;
+        }
+
+        context.fillStyle = bead.hex;
+        context.fillRect(
+          originX + projectX * cellSize,
+          originY + projectY * cellSize,
+          Math.ceil(cellSize + 0.2),
+          Math.ceil(cellSize + 0.2)
+        );
       }
     }
 
@@ -729,6 +783,106 @@
     return true;
   }
 
+  function beginMove(event: PointerEvent): boolean {
+    if (event.button !== 0) {
+      return false;
+    }
+
+    const project = editor.project;
+    const startCell = cellFromPointer(event);
+    if (
+      !project ||
+      !startCell ||
+      !editor.selectedCells.has(startCell.index)
+    ) {
+      return false;
+    }
+
+    const pasteLayer = editor.activePasteLayer;
+    if (pasteLayer) {
+      moveDrag = {
+        pointerId: event.pointerId,
+        mode: 'layer',
+        startCell,
+        layerStartX: pasteLayer.x,
+        layerStartY: pasteLayer.y
+      };
+    } else {
+      if (!editor.beginSelectionMove()) {
+        return false;
+      }
+      moveDrag = {
+        pointerId: event.pointerId,
+        mode: 'selection',
+        startCell,
+        layerStartX: 0,
+        layerStartY: 0
+      };
+    }
+
+    canvas?.setPointerCapture(event.pointerId);
+    updateHoveredCell(startCell);
+    return true;
+  }
+
+  function updateMove(event: PointerEvent): void {
+    if (!moveDrag || moveDrag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const endCell = clampedCellFromPointer(event);
+    if (!endCell) {
+      return;
+    }
+
+    const deltaX = endCell.x - moveDrag.startCell.x;
+    const deltaY = endCell.y - moveDrag.startCell.y;
+    if (moveDrag.mode === 'layer') {
+      editor.movePasteLayer(
+        moveDrag.layerStartX + deltaX,
+        moveDrag.layerStartY + deltaY
+      );
+    } else {
+      editor.updateSelectionMove(deltaX, deltaY);
+    }
+    updateHoveredCell(cellFromPointer(event));
+  }
+
+  function cancelActiveMove(): void {
+    const drag = moveDrag;
+    if (!drag) {
+      return;
+    }
+
+    if (drag.mode === 'layer') {
+      editor.movePasteLayer(drag.layerStartX, drag.layerStartY);
+    } else {
+      editor.cancelSelectionMove();
+    }
+    releaseSelectionPointer(drag.pointerId);
+    moveDrag = null;
+  }
+
+  function finishMove(event: PointerEvent, cancel = false): boolean {
+    if (!moveDrag || moveDrag.pointerId !== event.pointerId) {
+      return false;
+    }
+
+    if (cancel) {
+      cancelActiveMove();
+    } else {
+      updateMove(event);
+      if (moveDrag.mode === 'selection') {
+        editor.endSelectionMove();
+      }
+    }
+
+    releaseSelectionPointer(event.pointerId);
+    moveDrag = null;
+    updateHoveredCell(cellFromPointer(event));
+    return true;
+  }
+
   function paintPoint(point: { x: number; y: number }): void {
     const cell = cellFromPoint(point);
     if (cell) {
@@ -891,6 +1045,7 @@
 
     endPaintStroke();
     cancelSelectionDrag();
+    cancelActiveMove();
     updateHoveredCell(null);
     pinchState = {
       distance: metrics.distance,
@@ -913,7 +1068,9 @@
     touchPoints.set(event.pointerId, point);
 
     if (touchPoints.size === 1) {
-      if (editor.tool === EditorTool.Select) {
+      if (editor.tool === EditorTool.Move) {
+        beginMove(event);
+      } else if (editor.tool === EditorTool.Select) {
         beginSelectionDrag(event, SelectionOperation.Replace);
       } else {
         updateHoveredCell(null);
@@ -978,6 +1135,11 @@
       return;
     }
 
+    if (editor.tool === EditorTool.Move) {
+      updateMove(event);
+      return;
+    }
+
     if (editor.tool === EditorTool.Select) {
       if (selectionDrag?.pointerId === event.pointerId) {
         updateSelectionDrag(event);
@@ -1001,6 +1163,7 @@
 
   function onTouchPointerEnd(event: PointerEvent): void {
     const finishingSelection = selectionDrag?.pointerId === event.pointerId;
+    const finishingMove = moveDrag?.pointerId === event.pointerId;
     touchPoints.delete(event.pointerId);
     if (canvas?.hasPointerCapture(event.pointerId)) {
       canvas.releasePointerCapture(event.pointerId);
@@ -1021,6 +1184,9 @@
     touchGestureStarted = false;
     pinching = false;
     pinchState = null;
+    if (finishingMove) {
+      finishMove(event);
+    }
     if (finishingSelection) {
       finishSelectionDrag(event);
     }
@@ -1056,6 +1222,20 @@
     event.preventDefault();
     if (event.button === 1 || (event.button === 0 && spacePressed)) {
       startPan(event);
+      return;
+    }
+
+    if (editor.tool === EditorTool.Move) {
+      if (event.button === 2) {
+        cancelActiveMove();
+        editor.clearSelection();
+        updateHoveredCell(cellFromPointer(event));
+        return;
+      }
+      if (event.button === 0 && beginMove(event)) {
+        return;
+      }
+      updateHoveredCell(cellFromPointer(event));
       return;
     }
 
@@ -1104,6 +1284,11 @@
       return;
     }
 
+    if (moveDrag?.pointerId === event.pointerId) {
+      updateMove(event);
+      return;
+    }
+
     if (selectionDrag?.pointerId === event.pointerId) {
       updateSelectionDrag(event);
       updateHoveredCell(cellFromPointer(event));
@@ -1121,7 +1306,8 @@
       !pointerDown &&
       panPointerId === null &&
       !pinching &&
-      !selectionDrag
+      !selectionDrag &&
+      !moveDrag
     ) {
       updateHoveredCell(null);
     }
@@ -1149,6 +1335,10 @@
       return;
     }
 
+    if (finishMove(event)) {
+      return;
+    }
+
     if (finishSelectionDrag(event)) {
       return;
     }
@@ -1162,6 +1352,7 @@
       return;
     }
 
+    cancelActiveMove();
     cancelSelectionDrag(event);
     finishPan(event);
     finishStroke(event);
@@ -1180,8 +1371,12 @@
         return;
       }
 
-      if (event.key === KeyboardKey.Escape && selectionDrag) {
+      if (
+        event.key === KeyboardKey.Escape &&
+        (selectionDrag || moveDrag)
+      ) {
         event.preventDefault();
+        cancelActiveMove();
         cancelSelectionDrag();
         return;
       }
@@ -1200,6 +1395,8 @@
     };
     const onBlur = (): void => {
       spacePressed = false;
+      cancelActiveMove();
+      cancelSelectionDrag();
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -1215,8 +1412,10 @@
   $effect(() => {
     editor.project;
     editor.revision;
+    editor.previewRevision;
     editor.zoom;
     editor.selectedCells;
+    editor.activePasteLayer;
     viewCenterX;
     viewCenterY;
     hoveredCell;
@@ -1248,6 +1447,7 @@
   <canvas
     bind:this={canvas}
     class:fill-tool={editor.tool === EditorTool.Fill}
+    class:move-tool={editor.tool === EditorTool.Move}
     class:pan-ready={spacePressed && panPointerId === null}
     class:panning={panPointerId !== null || pinching}
     aria-hidden="true"
@@ -1285,6 +1485,10 @@
 
   canvas.fill-tool {
     cursor: cell;
+  }
+
+  canvas.move-tool {
+    cursor: move;
   }
 
   canvas.pan-ready {

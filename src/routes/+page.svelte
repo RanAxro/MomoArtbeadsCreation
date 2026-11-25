@@ -64,18 +64,21 @@
       : undefined
   );
 
-  let isDirty = $derived(editor.revision !== editor.savedRevision);
+  let isDirty = $derived(
+    editor.revision !== editor.savedRevision ||
+      editor.activePasteLayer !== null
+  );
 
   async function persist(): Promise<void> {
     if (!editor.project || !isDirty) {
       return;
     }
 
-    const revision = editor.revision;
     const snapshot = editor.toSnapshot();
     if (!snapshot) {
       return;
     }
+    const revision = editor.revision;
 
     saving = true;
     saveFailed = false;
@@ -373,7 +376,9 @@
         <span>
           {editor.tool === EditorTool.Select
             ? $_('board.selectionHint')
-            : $_('board.hint')}
+            : editor.tool === EditorTool.Move
+              ? $_('board.moveHint')
+              : $_('board.hint')}
         </span>
         <div class="zoom-control">
           <label for="board-zoom">{$_('board.zoom')}</label>

@@ -19,14 +19,13 @@ import {
   SelectionClipboardRecordId,
   type SelectionClipboard
 } from '$model/selection-clipboard.model';
+import type { SelectionLayer } from '$model/selection-layer.model';
 import { getSelectionBounds } from './selection';
 
 export interface SelectionPasteResult {
   cells: number[];
   palette: BeadPalette;
   selection: ReadonlySet<number>;
-  targetX: number;
-  targetY: number;
   changed: boolean;
 }
 
@@ -89,40 +88,111 @@ export function createSelectionClipboard(
   };
 }
 
-export function pasteSelectionClipboard(
-  project: BeadProject,
+export function createSelectionLayer(
   clipboard: SelectionClipboard,
   visibleCenter: BoardViewCenter
-): SelectionPasteResult | null {
+): SelectionLayer | null {
   const clipboardProject = clipboard.project;
   if (
     clipboardProject.width <= 0 ||
     clipboardProject.height <= 0 ||
     clipboardProject.cells.length !==
-      clipboardProject.width * clipboardProject.height
+      clipboardProject.width * clipboardProject.height ||
+    clipboard.selectionCells.length === 0
   ) {
     return null;
   }
 
+  return {
+    width: clipboardProject.width,
+    height: clipboardProject.height,
+    cells: [...clipboardProject.cells],
+    palette: clonePalette(clipboardProject.palette),
+    selectionCells: [...clipboard.selectionCells],
+    x: Math.round(visibleCenter.x - clipboardProject.width / 2),
+    y: Math.round(visibleCenter.y - clipboardProject.height / 2)
+  };
+}
+
+export function getVisibleLayerSelection(
+  layer: SelectionLayer,
+  projectWidth: number,
+  projectHeight: number
+): ReadonlySet<number> {
+  const selection = new Set<number>();
+
+  for (const layerIndex of layer.selectionCells) {
+    if (layerIndex < 0 || layerIndex >= layer.cells.length) {
+      continue;
+    }
+    const layerX = layerIndex % layer.width;
+    const layerY = Math.floor(layerIndex / layer.width);
+    const projectX = layer.x + layerX;
+    const projectY = layer.y + layerY;
+    if (
+      projectX < 0 ||
+      projectY < 0 ||
+      projectX >= projectWidth ||
+      projectY >= projectHeight
+    ) {
+      continue;
+    }
+    selection.add(projectY * projectWidth + projectX);
+  }
+
+  return selection;
+}
+
+export function moveSelectionLayer(
+  layer: SelectionLayer,
+  x: number,
+  y: number,
+  projectWidth: number,
+  projectHeight: number
+): SelectionLayer {
+  const bounds = getSelectionBounds(
+    new Set(layer.selectionCells),
+    layer.width,
+    layer.height
+  );
+  if (!bounds || projectWidth <= 0 || projectHeight <= 0) {
+    return layer;
+  }
+
+  return {
+    ...layer,
+    x: Math.max(
+      -bounds.maxX,
+      Math.min(projectWidth - 1 - bounds.minX, Math.round(x))
+    ),
+    y: Math.max(
+      -bounds.maxY,
+      Math.min(projectHeight - 1 - bounds.minY, Math.round(y))
+    )
+  };
+}
+
+export function mergeSelectionLayer(
+  project: BeadProject,
+  layer: SelectionLayer
+): SelectionPasteResult | null {
   const cells = [...project.cells];
   const palette = clonePalette(project.palette);
   const selection = new Set<number>();
-  const targetX = Math.round(visibleCenter.x - clipboardProject.width / 2);
-  const targetY = Math.round(visibleCenter.y - clipboardProject.height / 2);
   const colorMap = new Map<number, number>();
 
-  for (const clipboardIndex of clipboard.selectionCells) {
+  for (const layerIndex of layer.selectionCells) {
     if (
-      clipboardIndex < 0 ||
-      clipboardIndex >= clipboardProject.cells.length
+      layerIndex < 0 ||
+      layerIndex >= layer.cells.length
     ) {
       continue;
     }
 
-    const clipboardX = clipboardIndex % clipboardProject.width;
-    const clipboardY = Math.floor(clipboardIndex / clipboardProject.width);
-    const destinationX = targetX + clipboardX;
-    const destinationY = targetY + clipboardY;
+    const layerX = layerIndex % layer.width;
+    const layerY = Math.floor(layerIndex / layer.width);
+    const destinationX = layer.x + layerX;
+    const destinationY = layer.y + layerY;
     if (
       destinationX < 0 ||
       destinationY < 0 ||
@@ -132,7 +202,7 @@ export function pasteSelectionClipboard(
       continue;
     }
 
-    const sourceColorIndex = clipboardProject.cells[clipboardIndex];
+    const sourceColorIndex = layer.cells[layerIndex];
     if (sourceColorIndex === EMPTY_CELL_COLOR_INDEX) {
       cells[destinationY * project.width + destinationX] =
         EMPTY_CELL_COLOR_INDEX;
@@ -143,7 +213,7 @@ export function pasteSelectionClipboard(
     let destinationColorIndex = colorMap.get(sourceColorIndex);
     if (destinationColorIndex === undefined) {
       destinationColorIndex = resolveClipboardColor(
-        clipboardProject.palette,
+        layer.palette,
         sourceColorIndex,
         palette
       );
@@ -167,8 +237,6 @@ export function pasteSelectionClipboard(
     cells,
     palette,
     selection,
-    targetX,
-    targetY,
     changed
   };
 }

@@ -2,6 +2,7 @@ import { IconName } from './icon.model';
 
 export enum EditorTool {
   Select = 'select',
+  Move = 'move',
   Pencil = 'pencil',
   Eraser = 'eraser',
   Fill = 'fill'
@@ -9,6 +10,7 @@ export enum EditorTool {
 
 export enum EditorToolShortcut {
   Select = 'M',
+  Move = 'V',
   Pencil = 'B',
   Eraser = 'E',
   Fill = 'G'
@@ -16,6 +18,7 @@ export enum EditorToolShortcut {
 
 export enum EditorToolLabelKey {
   Select = 'board.select',
+  Move = 'board.move',
   Pencil = 'board.pencil',
   Eraser = 'board.eraser',
   Fill = 'board.fill'
@@ -68,6 +71,12 @@ export const EDITOR_TOOL_DEFINITIONS: readonly EditorToolDefinition[] = [
     icon: IconName.Select,
     labelKey: EditorToolLabelKey.Select,
     shortcut: EditorToolShortcut.Select
+  },
+  {
+    id: EditorTool.Move,
+    icon: IconName.Move,
+    labelKey: EditorToolLabelKey.Move,
+    shortcut: EditorToolShortcut.Move
   },
   {
     id: EditorTool.Pencil,

@@ -4,7 +4,8 @@ import { createProject } from '$domain/project';
 import { GameVersion } from '$model/project.model';
 import {
   createSelectionClipboard,
-  pasteSelectionClipboard
+  createSelectionLayer,
+  mergeSelectionLayer
 } from './selection-clipboard';
 
 describe('selection clipboard', () => {
@@ -51,14 +52,17 @@ describe('selection clipboard', () => {
       gameVersion: GameVersion.V3
     });
 
-    const result = pasteSelectionClipboard(
-      destination,
+    const layer = createSelectionLayer(
       clipboard!,
       { x: 4, y: 3 }
     );
+    const result = mergeSelectionLayer(
+      destination,
+      layer!
+    );
 
-    expect(result?.targetX).toBe(3);
-    expect(result?.targetY).toBe(3);
+    expect(layer?.x).toBe(3);
+    expect(layer?.y).toBe(3);
     expect(result?.cells[27]).toBe(1);
     expect(result?.cells[28]).toBe(2);
     expect([...(result?.selection ?? [])]).toEqual([27, 28]);
@@ -87,14 +91,50 @@ describe('selection clipboard', () => {
     });
     const originalColorCount = destination.palette.colors.length;
 
-    const result = pasteSelectionClipboard(
-      destination,
+    const layer = createSelectionLayer(
       clipboard!,
       { x: 2, y: 2 }
+    );
+    const result = mergeSelectionLayer(
+      destination,
+      layer!
     );
 
     expect(result?.palette.colors).toHaveLength(originalColorCount + 1);
     expect(result?.palette.colors.at(-1)?.hex).toBe('#123456');
     expect(result?.cells[10]).toBe(originalColorCount + 1);
+  });
+
+  it('keeps the pasted layer outside the board until it is merged', () => {
+    const source = createProject({
+      name: '大选区',
+      width: 6,
+      height: 2,
+      gameVersion: GameVersion.V3
+    });
+    for (let index = 0; index < 12; index += 1) {
+      source.cells[index] = 1;
+    }
+    const clipboard = createSelectionClipboard(
+      source,
+      new Set(source.cells.map((_, index) => index))
+    );
+    const destination = createProject({
+      name: '小格板',
+      width: 8,
+      height: 4,
+      gameVersion: GameVersion.V3
+    });
+
+    const layer = createSelectionLayer(
+      clipboard!,
+      { x: 7, y: 3 }
+    );
+    expect(layer?.x).toBe(4);
+    expect(layer?.x! + layer!.width).toBe(10);
+
+    const result = mergeSelectionLayer(destination, layer!);
+    expect(result?.selection.size).toBe(8);
+    expect(result?.cells[23]).toBe(1);
   });
 });

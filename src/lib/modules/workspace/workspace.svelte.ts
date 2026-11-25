@@ -66,7 +66,11 @@ class WorkspaceStore {
   }
 
   async saveActiveScheme(): Promise<void> {
-    if (!this.editor.project || this.editor.revision === this.editor.savedRevision) {
+    if (
+      !this.editor.project ||
+      (this.editor.revision === this.editor.savedRevision &&
+        !this.editor.activePasteLayer)
+    ) {
       return;
     }
 
