@@ -1,11 +1,14 @@
-import type { BeadPalette } from './palette.model';
+import { z } from 'zod';
+import { paletteSchema } from './palette.model';
 
-export interface SelectionLayer {
-  width: number;
-  height: number;
-  cells: number[];
-  palette: BeadPalette;
-  selectionCells: number[];
-  x: number;
-  y: number;
-}
+export const selectionLayerSchema = z.object({
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  cells: z.array(z.number().int().nonnegative()),
+  palette: paletteSchema,
+  selectionCells: z.array(z.number().int().nonnegative()),
+  x: z.number().int(),
+  y: z.number().int()
+});
+
+export type SelectionLayer = z.infer<typeof selectionLayerSchema>;

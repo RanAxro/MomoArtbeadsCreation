@@ -1,11 +1,13 @@
 import { z } from 'zod';
+import { EditorTool } from './editor.model';
 import { paletteSchema, type BeadPalette } from './palette.model';
+import { selectionLayerSchema } from './selection-layer.model';
 
 export enum GameVersion {
   V3 = '3.0'
 }
 
-export const PROJECT_SCHEMA_VERSION = 1;
+export const PROJECT_SCHEMA_VERSION = 2;
 export const MAX_PROJECT_DIMENSION = 300;
 export const MAX_PROJECT_NAME_LENGTH = 80;
 export const MIN_PROJECT_DIMENSION = 1;
@@ -13,6 +15,12 @@ export const DEFAULT_GAME_VERSION = GameVersion.V3;
 export const DEFAULT_PROJECT_NAME = '未命名拼绘方案';
 export const DEFAULT_DUPLICATE_SUFFIX = ' 副本';
 export const EMPTY_CELL_COLOR_INDEX = 0;
+
+const projectEditorStateSchema = z.object({
+  tool: z.nativeEnum(EditorTool),
+  selectionCells: z.array(z.number().int().nonnegative()),
+  temporaryLayer: selectionLayerSchema.nullable()
+});
 
 export const beadProjectSchema = z.object({
   id: z.string().min(1),
@@ -30,6 +38,7 @@ export const beadProjectSchema = z.object({
     .max(MAX_PROJECT_DIMENSION),
   cells: z.array(z.number().int().nonnegative()),
   palette: paletteSchema,
+  editorState: projectEditorStateSchema.optional(),
   schemaVersion: z.number().int().positive(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()

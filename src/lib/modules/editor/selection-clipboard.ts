@@ -114,6 +114,18 @@ export function createSelectionLayer(
   };
 }
 
+export function cloneSelectionLayer(layer: SelectionLayer): SelectionLayer {
+  return {
+    width: layer.width,
+    height: layer.height,
+    cells: [...layer.cells],
+    palette: clonePalette(layer.palette),
+    selectionCells: [...layer.selectionCells],
+    x: layer.x,
+    y: layer.y
+  };
+}
+
 export function getVisibleLayerSelection(
   layer: SelectionLayer,
   projectWidth: number,

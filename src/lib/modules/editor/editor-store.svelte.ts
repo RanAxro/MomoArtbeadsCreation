@@ -19,6 +19,7 @@ import { clonePalette, createEmptyBeadColor } from '$domain/palette';
 import { floodFill, touchProject } from '$domain/project';
 import { clampBoardZoom } from './board-layout';
 import {
+  cloneSelectionLayer,
   createSelectionClipboard as createClipboardFromSelection,
   createSelectionLayer,
   getVisibleLayerSelection,
@@ -60,6 +61,20 @@ export class EditorStore {
   private selectionMoveOriginal: ReadonlySet<number> | null = null;
 
   load(project: BeadProject): void {
+    const savedEditorState = project.editorState;
+    const restoredLayer =
+      savedEditorState?.temporaryLayer &&
+      savedEditorState.temporaryLayer.cells.length ===
+        savedEditorState.temporaryLayer.width *
+          savedEditorState.temporaryLayer.height
+        ? cloneSelectionLayer(savedEditorState.temporaryLayer)
+        : null;
+    const restoredSelection = new Set(
+      (savedEditorState?.selectionCells ?? []).filter(
+        (index) => index >= 0 && index < project.cells.length
+      )
+    );
+
     this.project = project;
     this.selectedColorIndex =
       project.palette.colors.length > 0
@@ -70,10 +85,21 @@ export class EditorStore {
     this.strokeSnapshot = null;
     this.selectionMoveSnapshot = null;
     this.selectionMoveOriginal = null;
-    this.selectedCells = new Set();
+    this.selectedCells = restoredLayer
+      ? new Set(
+          getVisibleLayerSelection(
+            restoredLayer,
+            project.width,
+            project.height
+          )
+        )
+      : restoredSelection;
     this.zoom = DEFAULT_EDITOR_ZOOM;
     this.visibleBoardCenter = { x: 0, y: 0 };
-    this.activePasteLayer = null;
+    this.activePasteLayer = restoredLayer;
+    this.tool = restoredLayer
+      ? EditorTool.Move
+      : (savedEditorState?.tool ?? DEFAULT_EDITOR_TOOL);
     this.previewRevision += 1;
     this.refreshHistoryState();
     this.revision += 1;
@@ -129,10 +155,14 @@ export class EditorStore {
   }
 
   setTool(tool: EditorTool): void {
+    const previousTool = this.tool;
     if (this.activePasteLayer && tool !== EditorTool.Move) {
       this.mergePasteLayer();
     }
     this.tool = tool;
+    if (previousTool !== tool) {
+      this.markChanged();
+    }
   }
 
   setSelectedColor(index: number): void {
@@ -155,6 +185,7 @@ export class EditorStore {
 
   setSelection(cells: ReadonlySet<number>): void {
     this.selectedCells = new Set(cells);
+    this.markChanged();
   }
 
   clearSelection(): void {
@@ -163,6 +194,7 @@ export class EditorStore {
     }
     if (this.selectedCells.size > 0) {
       this.selectedCells = new Set();
+      this.markChanged();
     }
   }
 
@@ -223,6 +255,7 @@ export class EditorStore {
         this.project.height
       )
     );
+    this.markChanged();
     this.previewRevision += 1;
     return true;
   }
@@ -246,6 +279,7 @@ export class EditorStore {
         this.project.height
       )
     );
+    this.markChanged();
     this.previewRevision += 1;
   }
 
@@ -266,6 +300,7 @@ export class EditorStore {
 
     this.selectedCells = result ? new Set(result.selection) : new Set();
     this.activePasteLayer = null;
+    this.markChanged();
     this.previewRevision += 1;
   }
 
@@ -488,10 +523,21 @@ export class EditorStore {
   }
 
   toSnapshot(): BeadProject | null {
-    if (this.activePasteLayer) {
-      this.mergePasteLayer();
+    if (!this.project) {
+      return null;
     }
-    return this.project ? touchProject($state.snapshot(this.project)) : null;
+
+    const snapshot = $state.snapshot(this.project) as BeadProject;
+    snapshot.editorState = {
+      tool: this.tool,
+      selectionCells: [...this.selectedCells].sort(
+        (first, second) => first - second
+      ),
+      temporaryLayer: this.activePasteLayer
+        ? cloneSelectionLayer(this.activePasteLayer)
+        : null
+    };
+    return touchProject(snapshot);
   }
 
   private pushUndoSnapshot(snapshot: EditorSnapshot): void {

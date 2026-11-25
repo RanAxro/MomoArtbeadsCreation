@@ -3,6 +3,7 @@ import { createStarterPalette } from '$domain/palette';
 import { createProject } from '$domain/project';
 import { GameVersion } from '$model/project.model';
 import {
+  cloneSelectionLayer,
   createSelectionClipboard,
   createSelectionLayer,
   mergeSelectionLayer
@@ -136,5 +137,26 @@ describe('selection clipboard', () => {
     const result = mergeSelectionLayer(destination, layer!);
     expect(result?.selection.size).toBe(8);
     expect(result?.cells[23]).toBe(1);
+  });
+
+  it('deep clones temporary layer data without sharing references', () => {
+    const source = createProject({
+      name: '引用检查',
+      width: 2,
+      height: 2,
+      gameVersion: GameVersion.V3
+    });
+    source.cells[0] = 1;
+    const clipboard = createSelectionClipboard(source, new Set([0]));
+    const layer = createSelectionLayer(clipboard!, { x: 1, y: 1 });
+    const clone = cloneSelectionLayer(layer!);
+
+    clone.cells[0] = 2;
+    clone.selectionCells.length = 0;
+    clone.palette.colors[0].hex = '#123456';
+
+    expect(layer?.cells[0]).toBe(1);
+    expect(layer?.selectionCells).toEqual([0]);
+    expect(layer?.palette.colors[0].hex).toBe('#000000');
   });
 });

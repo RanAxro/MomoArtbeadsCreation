@@ -1,4 +1,5 @@
 import { createStarterPalette } from './palette';
+import { DEFAULT_EDITOR_TOOL } from '$model/editor.model';
 import {
   DEFAULT_GAME_VERSION,
   DEFAULT_PROJECT_NAME,
@@ -48,6 +49,11 @@ export function createProject(options: NewProjectOptions): BeadProject {
     height,
     cells: Array.from({ length: width * height }, () => EMPTY_CELL_COLOR_INDEX),
     palette: options.palette ?? createStarterPalette(),
+    editorState: {
+      tool: DEFAULT_EDITOR_TOOL,
+      selectionCells: [],
+      temporaryLayer: null
+    },
     schemaVersion: PROJECT_SCHEMA_VERSION,
     createdAt: now,
     updatedAt: now
