@@ -25,6 +25,17 @@ describe('image crop geometry', () => {
     expect(cropCenter(crop, 1600, 900).x).toBe(0.375);
   });
 
+  it('scales the crop while preserving the target aspect ratio', () => {
+    const crop = calculateAspectCrop(1600, 900, 4 / 3, 0.5, 0.5, 0.5);
+
+    expect(crop).toEqual({
+      x: 500,
+      y: 225,
+      width: 600,
+      height: 450
+    });
+  });
+
   it('fits the source image inside the crop stage while preserving its ratio', () => {
     expect(fitImageWithinViewport(600, 400, 1600, 900)).toEqual({
       left: 0,

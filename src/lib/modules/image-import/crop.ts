@@ -10,6 +10,10 @@ export interface CropCenter {
   y: number;
 }
 
+export interface CropTransform extends CropCenter {
+  scale: number;
+}
+
 export interface ImageBounds {
   left: number;
   top: number;
@@ -26,20 +30,24 @@ export function calculateAspectCrop(
   sourceHeight: number,
   aspectRatio: number,
   centerX = 0.5,
-  centerY = 0.5
+  centerY = 0.5,
+  scale = 1
 ): ImageCrop {
   if (sourceWidth <= 0 || sourceHeight <= 0 || aspectRatio <= 0) {
     return { x: 0, y: 0, width: 0, height: 0 };
   }
 
-  let width = sourceWidth;
-  let height = sourceWidth / aspectRatio;
+  let maxWidth = sourceWidth;
+  let maxHeight = sourceWidth / aspectRatio;
 
-  if (height > sourceHeight) {
-    height = sourceHeight;
-    width = sourceHeight * aspectRatio;
+  if (maxHeight > sourceHeight) {
+    maxHeight = sourceHeight;
+    maxWidth = sourceHeight * aspectRatio;
   }
 
+  const safeScale = clamp(scale, 0.05, 1);
+  const width = maxWidth * safeScale;
+  const height = maxHeight * safeScale;
   const safeCenterX = clamp(centerX, width / sourceWidth / 2, 1 - width / sourceWidth / 2);
   const safeCenterY = clamp(
     centerY,

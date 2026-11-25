@@ -14,7 +14,7 @@
   import {
     calculateAspectCrop,
     cropCenter,
-    type CropCenter
+    type CropTransform
   } from '$modules/image-import/crop';
   import {
     convertImageToPattern,
@@ -35,6 +35,7 @@
   let selectedPegboard = $state<PegboardPreset>(DEFAULT_PEGBOARD);
   let cropCenterX = $state(0.5);
   let cropCenterY = $state(0.5);
+  let cropScale = $state(1);
   let previewProject = $state<BeadProject | null>(null);
   let usedColors = $state(0);
   let busy = $state(false);
@@ -91,6 +92,7 @@
     sourceDimensions = { width: 0, height: 0 };
     cropCenterX = 0.5;
     cropCenterY = 0.5;
+    cropScale = 1;
     schemeName = file.name.replace(/\.[^.]+$/, '') || $_('import.defaultName');
     busy = true;
 
@@ -158,6 +160,7 @@
     schemeName = '';
     cropCenterX = 0.5;
     cropCenterY = 0.5;
+    cropScale = 1;
     previewProject = null;
     usedColors = 0;
     busy = false;
@@ -180,7 +183,8 @@
           sourceDimensions.height,
           preset.width / preset.height,
           cropCenterX,
-          cropCenterY
+          cropCenterY,
+          cropScale
         ),
         sourceDimensions.width,
         sourceDimensions.height
@@ -191,9 +195,10 @@
     scheduleAutoPreview(0);
   }
 
-  function changeCrop(center: CropCenter): void {
-    cropCenterX = center.x;
-    cropCenterY = center.y;
+  function changeCrop(transform: CropTransform): void {
+    cropCenterX = transform.x;
+    cropCenterY = transform.y;
+    cropScale = transform.scale;
     scheduleAutoPreview();
   }
 
@@ -218,7 +223,8 @@
         sourceDimensions.height,
         pegboard.width / pegboard.height,
         cropCenterX,
-        cropCenterY
+        cropCenterY,
+        cropScale
       );
       const converted = await convertImageToPattern(file, {
         width: pegboard.width,
@@ -308,6 +314,7 @@
                 aspectRatio={selectedPegboard.width / selectedPegboard.height}
                 centerX={cropCenterX}
                 centerY={cropCenterY}
+                scale={cropScale}
                 onCropChange={changeCrop}
                 onRemove={removeSource}
                 onImageDrop={(file) => void loadSourceFile(file)}
