@@ -149,6 +149,14 @@ export class EditorStore {
   }
 
   setTool(tool: EditorTool): void {
+    if (
+      tool === EditorTool.Move &&
+      this.selectedCells.size === 0 &&
+      !this.activePasteLayer
+    ) {
+      return;
+    }
+
     const previousTool = this.tool;
     if (this.activePasteLayer && tool !== EditorTool.Move) {
       this.mergePasteLayer();

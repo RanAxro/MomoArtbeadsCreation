@@ -33,6 +33,9 @@
 
   let hasSelection = $derived(editor.selectedCells.size > 0);
   let clipboardAvailable = $derived(clipboardStore.entries.length > 0);
+  let canMoveSelection = $derived(
+    hasSelection || editor.activePasteLayer !== null
+  );
 
   let beadCount = $derived.by(() => {
     editor.revision;
@@ -333,6 +336,10 @@
                 title={`${$_(tool.labelKey)} (${tool.shortcut})`}
                 aria-label={$_(tool.labelKey)}
                 aria-pressed={editor.tool === tool.id}
+                disabled={
+                  tool.id === EditorTool.Move &&
+                  !canMoveSelection
+                }
                 onclick={() => editor.setTool(tool.id)}
               >
                 <Icon name={tool.icon} size={18} />
