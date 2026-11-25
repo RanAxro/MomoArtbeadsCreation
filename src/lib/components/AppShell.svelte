@@ -996,7 +996,7 @@
     display: grid;
     grid-template-columns: 76px minmax(0, 1fr);
     align-items: center;
-    gap: 10px;
+    gap: 16px;
     width: 100%;
     padding: 9px 10px;
     border: 0;
@@ -1016,6 +1016,8 @@
     display: grid;
     gap: 5px;
     min-width: 0;
+    justify-self: stretch;
+    text-align: right;
   }
 
   .clipboard-item-info strong {

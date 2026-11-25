@@ -6,23 +6,24 @@
     board: ClipboardBoardData;
   }
 
+  const PREVIEW_MAX_WIDTH = 76;
+  const PREVIEW_MAX_HEIGHT = 56;
+
   let { board }: Props = $props();
   let canvas: HTMLCanvasElement | undefined = $state();
-  let host: HTMLDivElement | undefined = $state();
-  let frameWidth = $state(76);
-  let frameHeight = $state(56);
+  let previewSize = $derived.by(() => {
+    const scale = Math.min(
+      PREVIEW_MAX_WIDTH / board.width,
+      PREVIEW_MAX_HEIGHT / board.height
+    );
+    return {
+      width: Math.max(1, board.width * scale),
+      height: Math.max(1, board.height * scale)
+    };
+  });
 
-  function updateFrame(): void {
-    if (!host) {
-      return;
-    }
-    const rect = host.getBoundingClientRect();
-    frameWidth = Math.max(1, rect.width);
-    frameHeight = Math.max(1, rect.height);
-  }
-
-  function draw(): void {
-    if (!canvas || frameWidth <= 1 || frameHeight <= 1) {
+  function draw(frameWidth: number, frameHeight: number): void {
+    if (!canvas) {
       return;
     }
 
@@ -68,36 +69,26 @@
   }
 
   $effect(() => {
-    board;
-    frameWidth;
-    frameHeight;
+    const size = previewSize;
     themeStore.mode;
-    draw();
-  });
-
-  $effect(() => {
-    if (!host) {
-      return;
-    }
-
-    updateFrame();
-    const observer = new ResizeObserver(updateFrame);
-    observer.observe(host);
-    return () => observer.disconnect();
+    draw(size.width, size.height);
   });
 </script>
 
-<div class="clipboard-preview" bind:this={host} aria-hidden="true">
+<div
+  class="clipboard-preview"
+  style:width={`${previewSize.width}px`}
+  style:height={`${previewSize.height}px`}
+  aria-hidden="true"
+>
   <canvas bind:this={canvas}></canvas>
 </div>
 
 <style>
   .clipboard-preview {
-    width: 76px;
-    height: 56px;
     overflow: hidden;
-    border: 1px solid var(--border);
     background: var(--board);
+    outline: 1px solid var(--border-strong);
   }
 
   canvas {
