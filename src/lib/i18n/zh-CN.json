@@ -6,6 +6,7 @@
   },
   "nav": {
     "file": "文件",
+    "view": "视图",
     "clipboard": "剪贴板",
     "settings": "设置",
     "schemes": "方案",
@@ -53,6 +54,18 @@
   "clipboard": {
     "title": "近期剪贴板",
     "empty": "暂无近期复制的格板数据"
+  },
+  "view": {
+    "title": "视图",
+    "close": "关闭视图设置",
+    "rulers": "标尺",
+    "rulersHint": "显示格板四周的行号与列号。",
+    "grid": "网格",
+    "gridHint": "显示每个艺点点格之间的分隔线。",
+    "background": "格板背景",
+    "solid": "纯色",
+    "checker": "深浅灰棋盘格",
+    "checkerDense": "深浅灰棋盘格(密)"
   },
   "board": {
     "title": "Pegboard",

@@ -6,6 +6,7 @@
   },
   "nav": {
     "file": "File",
+    "view": "View",
     "clipboard": "Clipboard",
     "settings": "Settings",
     "schemes": "Schemes",
@@ -53,6 +54,18 @@
   "clipboard": {
     "title": "Recent clipboard",
     "empty": "No copied Pegboard data yet"
+  },
+  "view": {
+    "title": "View",
+    "close": "Close view settings",
+    "rulers": "Rulers",
+    "rulersHint": "Show row and column numbers around the Pegboard.",
+    "grid": "Grid",
+    "gridHint": "Show dividers between individual Artbead cells.",
+    "background": "Pegboard background",
+    "solid": "Solid",
+    "checker": "Light and dark gray checkerboard",
+    "checkerDense": "Dense light and dark gray checkerboard"
   },
   "board": {
     "title": "Pegboard",

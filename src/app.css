@@ -21,6 +21,8 @@
   --selection-fill: rgba(47, 111, 237, 0.3);
   --board: #ffffff;
   --board-line: rgba(0, 0, 0, 0.12);
+  --board-checker-light: #f4f4f1;
+  --board-checker-dark: #d9d9d4;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
   color-scheme: light;
 }
@@ -44,6 +46,8 @@
   --selection-fill: rgba(64, 125, 255, 0.34);
   --board: #1c1c1b;
   --board-line: rgba(255, 255, 255, 0.13);
+  --board-checker-light: #292928;
+  --board-checker-dark: #1b1b1a;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.36);
   color-scheme: dark;
 }

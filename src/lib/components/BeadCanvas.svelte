@@ -10,6 +10,7 @@
     DEFAULT_BOARD_LAYOUT,
     EditorTool
   } from '$model/editor.model';
+  import { BoardBackground } from '$model/view.model';
   import {
     boardOriginForView,
     calculateBoardLayout,
@@ -33,6 +34,7 @@
   } from '$model/selection.model';
   import { KeyboardKey } from '$model/ui.model';
   import { themeStore } from '$modules/settings/theme.svelte';
+  import { viewStore } from '$modules/view/view-store.svelte';
   import { _ } from 'svelte-i18n';
 
   interface Props {
@@ -89,6 +91,84 @@
     frameHeight = Math.max(1, rect.height);
   }
 
+  function calculateViewBaseLayout(
+    columns: number,
+    rows: number
+  ): BoardLayout {
+    return calculateBoardLayout(
+      frameWidth,
+      frameHeight,
+      columns,
+      rows,
+      viewStore.showRulers
+    );
+  }
+
+  function cellBackgroundColor(
+    x: number,
+    y: number,
+    boardColor: string,
+    checkerLight: string,
+    checkerDark: string
+  ): string {
+    if (viewStore.background === BoardBackground.Checker) {
+      return (x + y) % 2 === 1 ? checkerDark : checkerLight;
+    }
+    return viewStore.background === BoardBackground.CheckerDense
+      ? checkerDark
+      : boardColor;
+  }
+
+  function drawCellBackground(
+    context: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    cellX: number,
+    cellY: number,
+    cellSize: number,
+    boardColor: string,
+    checkerLight: string,
+    checkerDark: string
+  ): void {
+    if (viewStore.background === BoardBackground.Solid) {
+      return;
+    }
+
+    if (viewStore.background === BoardBackground.Checker) {
+      context.fillStyle = cellBackgroundColor(
+        x,
+        y,
+        boardColor,
+        checkerLight,
+        checkerDark
+      );
+      context.fillRect(
+        cellX,
+        cellY,
+        Math.ceil(cellSize + 0.2),
+        Math.ceil(cellSize + 0.2)
+      );
+      return;
+    }
+
+    const half = cellSize / 2;
+    const paintSize = Math.ceil(half + 0.2);
+    for (let quarterY = 0; quarterY < 2; quarterY += 1) {
+      for (let quarterX = 0; quarterX < 2; quarterX += 1) {
+        context.fillStyle =
+          (quarterX + quarterY) % 2 === 0
+            ? checkerLight
+            : checkerDark;
+        context.fillRect(
+          cellX + quarterX * half,
+          cellY + quarterY * half,
+          paintSize,
+          paintSize
+        );
+      }
+    }
+  }
+
   function resolveViewLayout(
     base: BoardLayout,
     zoom: number,
@@ -139,6 +219,10 @@
     const stageColor = styles.getPropertyValue('--stage').trim() || '#e7e7e4';
     const boardColor = styles.getPropertyValue('--board').trim() || '#ffffff';
     const boardLine = styles.getPropertyValue('--board-line').trim() || 'rgba(0,0,0,.12)';
+    const checkerLight =
+      styles.getPropertyValue('--board-checker-light').trim() || '#f4f4f1';
+    const checkerDark =
+      styles.getPropertyValue('--board-checker-dark').trim() || '#d9d9d4';
     const rulerColor = styles.getPropertyValue('--surface').trim() || '#ffffff';
     const rulerLine = styles.getPropertyValue('--border').trim() || '#d7d7d3';
     const rulerText = styles.getPropertyValue('--muted').trim() || '#707070';
@@ -156,12 +240,7 @@
     context.fillStyle = stageColor;
     context.fillRect(0, 0, frameWidth, frameHeight);
 
-    baseLayout = calculateBoardLayout(
-      frameWidth,
-      frameHeight,
-      project.width,
-      project.height
-    );
+    baseLayout = calculateViewBaseLayout(project.width, project.height);
     if (!viewInitialized || viewProjectId !== project.id) {
       viewCenterX = baseLayout.boardWidth / 2;
       viewCenterY = baseLayout.boardHeight / 2;
@@ -209,6 +288,19 @@
     for (let y = 0; y < project.height; y += 1) {
       for (let x = 0; x < project.width; x += 1) {
         const index = y * project.width + x;
+        const cellX = originX + x * cellSize;
+        const cellY = originY + y * cellSize;
+        drawCellBackground(
+          context,
+          x,
+          y,
+          cellX,
+          cellY,
+          cellSize,
+          boardColor,
+          checkerLight,
+          checkerDark
+        );
         if (sourceSelectionCells.has(index)) {
           continue;
         }
@@ -222,8 +314,6 @@
           continue;
         }
 
-        const cellX = originX + x * cellSize;
-        const cellY = originY + y * cellSize;
         context.fillStyle = bead.hex;
         context.fillRect(cellX, cellY, Math.ceil(cellSize + 0.2), Math.ceil(cellSize + 0.2));
       }
@@ -250,12 +340,16 @@
 
         const colorIndex = activeLayer.cells[layerIndex];
         if (colorIndex === 0) {
-          context.fillStyle = boardColor;
-          context.fillRect(
+          drawCellBackground(
+            context,
+            projectX,
+            projectY,
             originX + projectX * cellSize,
             originY + projectY * cellSize,
-            Math.ceil(cellSize + 0.2),
-            Math.ceil(cellSize + 0.2)
+            cellSize,
+            boardColor,
+            checkerLight,
+            checkerDark
           );
           continue;
         }
@@ -292,7 +386,7 @@
       }
     }
 
-    if (cellSize >= 5) {
+    if (viewStore.showGrid) {
       context.strokeStyle = boardLine;
       context.lineWidth = Math.max(0.35, Math.min(0.8, cellSize / 18));
       for (let x = 0; x <= project.width; x += 1) {
@@ -395,7 +489,16 @@
     if (hovered) {
       const colorIndex = project.cells[hovered.index];
       const bead = colorIndex > 0 ? project.palette.colors[colorIndex - 1] : undefined;
-      const outline = contrastingOutline(bead?.hex ?? boardColor);
+      const outline = contrastingOutline(
+        bead?.hex ??
+          cellBackgroundColor(
+            hovered.x,
+            hovered.y,
+            boardColor,
+            checkerLight,
+            checkerDark
+          )
+      );
       const strokeWidth = Math.max(1.5, Math.min(3, cellSize * 0.12));
       const inset = strokeWidth / 2 + 0.5;
 
@@ -411,16 +514,18 @@
 
     context.restore();
 
-    drawRulers(context, {
-      columns: project.width,
-      rows: project.height,
-      rulerColor,
-      rulerLine,
-      rulerText,
-      activeRulerColor,
-      activeRulerText,
-      fontFamily
-    });
+    if (viewStore.showRulers) {
+      drawRulers(context, {
+        columns: project.width,
+        rows: project.height,
+        rulerColor,
+        rulerLine,
+        rulerText,
+        activeRulerColor,
+        activeRulerText,
+        fontFamily
+      });
+    }
   }
 
   function strokeSelectionOutline(
@@ -917,7 +1022,7 @@
       return;
     }
 
-    const base = calculateBoardLayout(frameWidth, frameHeight, project.width, project.height);
+    const base = calculateViewBaseLayout(project.width, project.height);
     const center = clampViewCenter(base, editor.zoom, {
       x: viewCenterX - deltaX / editor.zoom,
       y: viewCenterY - deltaY / editor.zoom
@@ -936,7 +1041,7 @@
       return;
     }
 
-    const base = calculateBoardLayout(frameWidth, frameHeight, project.width, project.height);
+    const base = calculateViewBaseLayout(project.width, project.height);
     const currentCenter = clampViewCenter(base, editor.zoom, {
       x: viewCenterX,
       y: viewCenterY
@@ -963,12 +1068,7 @@
       return;
     }
 
-    const base = calculateBoardLayout(
-      frameWidth,
-      frameHeight,
-      project.width,
-      project.height
-    );
+    const base = calculateViewBaseLayout(project.width, project.height);
     const nextLayout = resolveViewLayout(base, editor.zoom, {
       x: viewCenterX,
       y: viewCenterY
@@ -1098,12 +1198,7 @@
       if (!project) {
         return;
       }
-      const base = calculateBoardLayout(
-        frameWidth,
-        frameHeight,
-        project.width,
-        project.height
-      );
+      const base = calculateViewBaseLayout(project.width, project.height);
       const center = clampViewCenter(base, zoom, {
         x:
           pinchState.anchorX +
@@ -1405,6 +1500,9 @@
     editor.zoom;
     editor.selectedCells;
     editor.activePasteLayer;
+    viewStore.showRulers;
+    viewStore.showGrid;
+    viewStore.background;
     viewCenterX;
     viewCenterY;
     hoveredCell;

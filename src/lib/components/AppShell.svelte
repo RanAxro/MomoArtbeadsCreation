@@ -12,6 +12,7 @@
     type SelectionClipboard
   } from '$model/selection-clipboard.model';
   import { KeyboardKey } from '$model/ui.model';
+  import { BoardBackground } from '$model/view.model';
   import {
     SCHEME_DATE_FORMAT,
     SCHEME_MENU_SIZE,
@@ -26,6 +27,7 @@
   import { setAppLocale } from '$lib/i18n';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
   import { themeStore } from '$modules/settings/theme.svelte';
+  import { viewStore } from '$modules/view/view-store.svelte';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   interface Props {
@@ -35,6 +37,7 @@
   let { children }: Props = $props();
   let fileOpen = $state(false);
   let clipboardOpen = $state(false);
+  let viewOpen = $state(false);
   let settingsOpen = $state(false);
   let fileArea: HTMLDivElement | undefined = $state();
   let clipboardArea: HTMLDivElement | undefined = $state();
@@ -120,6 +123,7 @@
   async function openScheme(id: string): Promise<void> {
     fileOpen = false;
     clipboardOpen = false;
+    viewOpen = false;
     schemePopoverOpen = false;
     const opened = await workspace.select(id);
     if (opened && page.url.pathname !== '/') {
@@ -130,12 +134,14 @@
   function closeScheme(event: MouseEvent): void {
     event.stopPropagation();
     clipboardOpen = false;
+    viewOpen = false;
     workspace.close();
   }
 
   async function toggleClipboard(event: MouseEvent): Promise<void> {
     event.stopPropagation();
     fileOpen = false;
+    viewOpen = false;
     settingsOpen = false;
     schemeMenu = null;
     clipboardOpen = !clipboardOpen;
@@ -163,6 +169,7 @@
     event.stopPropagation();
     fileOpen = false;
     clipboardOpen = false;
+    viewOpen = false;
     settingsOpen = false;
     if (!preservePopover) {
       schemePopoverOpen = false;
@@ -327,6 +334,7 @@
       if (event.key === KeyboardKey.Escape) {
         fileOpen = false;
         clipboardOpen = false;
+        viewOpen = false;
         settingsOpen = false;
         schemeMenu = null;
         schemePopoverOpen = false;
@@ -425,6 +433,25 @@
         {/if}
       </div>
 
+      <button
+        class="nav-button"
+        class:active={viewOpen}
+        type="button"
+        aria-haspopup="dialog"
+        aria-controls="view-dialog"
+        aria-expanded={viewOpen}
+        onclick={(event) => {
+          event.stopPropagation();
+          fileOpen = false;
+          clipboardOpen = false;
+          settingsOpen = false;
+          schemeMenu = null;
+          viewOpen = true;
+        }}
+      >
+        {$_('nav.view')}
+      </button>
+
       {#if workspace.activeId}
         <div class="clipboard-area" bind:this={clipboardArea}>
           <button
@@ -492,6 +519,7 @@
         onclick={() => {
           schemeMenu = null;
           clipboardOpen = false;
+          viewOpen = false;
           settingsOpen = true;
         }}
       >
@@ -632,6 +660,94 @@
 <div class="shell-body">
   {@render children()}
 </div>
+
+{#if viewOpen}
+  <button
+    class="dialog-backdrop"
+    type="button"
+    aria-label={$_('view.close')}
+    onclick={() => { viewOpen = false; }}
+  ></button>
+  <div
+    id="view-dialog"
+    class="settings-dialog view-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="view-title"
+  >
+    <div class="dialog-heading">
+      <div>
+        <span class="dialog-index">02</span>
+        <h2 id="view-title">{$_('view.title')}</h2>
+      </div>
+      <button
+        class="icon-button"
+        type="button"
+        aria-label={$_('view.close')}
+        onclick={() => { viewOpen = false; }}
+      >
+        <Icon name={IconName.Close} size={18} />
+      </button>
+    </div>
+
+    <form
+      class="view-form"
+      onsubmit={(event) => event.preventDefault()}
+    >
+      <div class="setting-group">
+        <h3>{$_('view.rulers')}</h3>
+        <label class="view-switch">
+          <span>{$_('view.rulersHint')}</span>
+          <span class="switch-control">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={viewStore.showRulers}
+              onchange={(event) =>
+                viewStore.setShowRulers(event.currentTarget.checked)}
+            />
+            <span class="switch-track" aria-hidden="true"></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="setting-group">
+        <h3>{$_('view.grid')}</h3>
+        <label class="view-switch">
+          <span>{$_('view.gridHint')}</span>
+          <span class="switch-control">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={viewStore.showGrid}
+              onchange={(event) =>
+                viewStore.setShowGrid(event.currentTarget.checked)}
+            />
+            <span class="switch-track" aria-hidden="true"></span>
+          </span>
+        </label>
+      </div>
+
+      <label class="field-label">
+        <span>{$_('view.background')}</span>
+        <select
+          class="field"
+          value={viewStore.background}
+          onchange={(event) =>
+            viewStore.setBackground(
+              event.currentTarget.value as BoardBackground
+            )}
+        >
+          <option value={BoardBackground.Solid}>{$_('view.solid')}</option>
+          <option value={BoardBackground.Checker}>{$_('view.checker')}</option>
+          <option value={BoardBackground.CheckerDense}>
+            {$_('view.checkerDense')}
+          </option>
+        </select>
+      </label>
+    </form>
+  </div>
+{/if}
 
 {#if settingsOpen}
   <button
@@ -1425,6 +1541,78 @@
     color: var(--muted);
     font-size: 0.82rem;
     line-height: 1.65;
+  }
+
+  .view-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.65;
+    cursor: pointer;
+  }
+
+  .view-form {
+    display: grid;
+    gap: 22px;
+  }
+
+  .switch-control {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex: 0 0 auto;
+  }
+
+  .switch-control input {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .switch-track {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: var(--border-strong);
+    transition: background 140ms ease;
+  }
+
+  .switch-track::after {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--surface);
+    content: "";
+    transition: transform 140ms ease, background 140ms ease;
+  }
+
+  .switch-control input:checked + .switch-track {
+    background: var(--text);
+  }
+
+  .switch-control input:checked + .switch-track::after {
+    background: var(--surface);
+    transform: translateX(16px);
+  }
+
+  .switch-control input:focus-visible + .switch-track {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
+
+  .view-dialog .field {
+    cursor: pointer;
   }
 
   .clipboard-limit-field {

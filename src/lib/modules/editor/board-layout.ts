@@ -29,21 +29,24 @@ export function calculateBoardLayout(
   frameWidth: number,
   frameHeight: number,
   columns: number,
-  rows: number
+  rows: number,
+  showRulers = true
 ): BoardLayout {
   const safeWidth = Math.max(BOARD_LAYOUT.minCanvasSize, frameWidth);
   const safeHeight = Math.max(BOARD_LAYOUT.minCanvasSize, frameHeight);
   const safeColumns = Math.max(BOARD_LAYOUT.minCanvasSize, columns);
   const safeRows = Math.max(BOARD_LAYOUT.minCanvasSize, rows);
   const frameSize = Math.min(safeWidth, safeHeight);
-  const rulerThickness = Math.max(
-    BOARD_LAYOUT.minRulerThickness,
-    Math.min(
-      BOARD_LAYOUT.maxRulerThickness,
-      frameSize * BOARD_LAYOUT.rulerThicknessRatio
-    )
-  );
-  const rulerGap = BOARD_LAYOUT.rulerGap;
+  const rulerThickness = showRulers
+    ? Math.max(
+        BOARD_LAYOUT.minRulerThickness,
+        Math.min(
+          BOARD_LAYOUT.maxRulerThickness,
+          frameSize * BOARD_LAYOUT.rulerThicknessRatio
+        )
+      )
+    : 0;
+  const rulerGap = showRulers ? BOARD_LAYOUT.rulerGap : 0;
   const edgeInset = Math.max(
     BOARD_LAYOUT.minEdgeInset,
     Math.min(

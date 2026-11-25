@@ -21,6 +21,26 @@ describe('board layout', () => {
     expect(layout.originY).toBeGreaterThanOrEqual(layout.contentY);
   });
 
+  it('reclaims ruler gutters when rulers are hidden', () => {
+    const withRulers = calculateBoardLayout(800, 600, 24, 18);
+    const withoutRulers = calculateBoardLayout(
+      800,
+      600,
+      24,
+      18,
+      false
+    );
+
+    expect(withoutRulers.rulerThickness).toBe(0);
+    expect(withoutRulers.rulerGap).toBe(0);
+    expect(withoutRulers.contentWidth).toBeGreaterThan(
+      withRulers.contentWidth
+    );
+    expect(withoutRulers.contentHeight).toBeGreaterThan(
+      withRulers.contentHeight
+    );
+  });
+
   it('maps the sixth column and fourth row to one-based ruler indexes', () => {
     const layout = calculateBoardLayout(800, 600, 24, 18);
     const cell = cellFromCanvasPoint(
