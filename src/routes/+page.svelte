@@ -353,6 +353,8 @@
       (candidate) => candidate.shortcut.toLowerCase() === event.key.toLowerCase()
     );
     if (tool) {
+      referenceOpen = false;
+      referenceError = '';
       editor.setTool(tool.id);
     }
   }
@@ -481,16 +483,28 @@
             {#each EDITOR_TOOL_DEFINITIONS as tool}
               <button
                 class="tool"
-                class:active={editor.tool === tool.id}
+                class:active={
+                  editor.tool === tool.id &&
+                  !referenceOpen &&
+                  !editor.selectedReferenceImageId
+                }
                 type="button"
                 title={`${$_(tool.labelKey)} (${tool.shortcut})`}
                 aria-label={$_(tool.labelKey)}
-                aria-pressed={editor.tool === tool.id}
+                aria-pressed={
+                  editor.tool === tool.id &&
+                  !referenceOpen &&
+                  !editor.selectedReferenceImageId
+                }
                 disabled={
                   tool.id === EditorTool.Move &&
                   !canMoveSelection
                 }
-                onclick={() => editor.setTool(tool.id)}
+                onclick={() => {
+                  referenceOpen = false;
+                  referenceError = '';
+                  editor.setTool(tool.id);
+                }}
               >
                 <Icon name={tool.icon} size={18} />
               </button>
@@ -526,6 +540,7 @@
                 aria-haspopup="dialog"
                 aria-controls="reference-popover"
                 aria-expanded={referenceOpen}
+                aria-label={$_('reference.button')}
                 title={$_('reference.hint')}
                 onclick={() => {
                   referenceOpen = !referenceOpen;
@@ -533,12 +548,6 @@
                 }}
               >
                 <Icon name={IconName.Image} size={18} />
-                <span>{$_('reference.button')}</span>
-                {#if editor.referenceImages.length > 0}
-                  <span class="reference-count">
-                    {editor.referenceImages.length}
-                  </span>
-                {/if}
               </button>
 
               <input
@@ -635,7 +644,6 @@
                     {/each}
                   </div>
 
-                  <p class="reference-tip">{$_('reference.transformHint')}</p>
                 </div>
               {/if}
             </div>
@@ -726,7 +734,11 @@
       </header>
 
       <div class="board-surface">
-        <BeadCanvas {editor} />
+        <BeadCanvas
+          {editor}
+          referenceMode={referenceOpen ||
+            Boolean(editor.selectedReferenceImageId)}
+        />
       </div>
 
       <footer class="board-footer">
@@ -1020,24 +1032,8 @@
   }
 
   .reference-tool {
-    display: inline-flex;
-    width: auto;
-    gap: 7px;
-    padding: 0 9px;
-    white-space: nowrap;
-  }
-
-  .reference-count {
-    display: grid;
-    place-items: center;
-    min-width: 17px;
-    height: 17px;
-    padding: 0 4px;
-    border: 1px solid currentColor;
-    border-radius: 999px;
-    font-size: 0.58rem;
-    font-variant-numeric: tabular-nums;
-    line-height: 1;
+    width: 34px;
+    padding: 0;
   }
 
   .reference-file-input {
@@ -1247,15 +1243,6 @@
     color: var(--text);
   }
 
-  .reference-tip {
-    margin: 0;
-    padding: 9px 10px;
-    border-top: 1px solid var(--border);
-    color: var(--muted);
-    font-size: 0.66rem;
-    line-height: 1.55;
-  }
-
   .tool-divider {
     width: 1px;
     height: 22px;
@@ -1448,15 +1435,6 @@
     }
 
     .board-meta {
-      display: none;
-    }
-
-    .reference-tool {
-      width: 34px;
-      padding: 0;
-    }
-
-    .reference-tool > span {
       display: none;
     }
 

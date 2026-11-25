@@ -70,8 +70,7 @@
     "invalidFile": "Choose an image file.",
     "fileTooLarge": "The image must be 20 MB or smaller.",
     "readError": "This image cannot be read. Try PNG, JPEG, WebP, or another common image format.",
-    "hint": "Open reference images",
-    "transformHint": "After selecting, drag the image to move it, drag a corner to resize, or drag the top handle to rotate."
+    "hint": "Open reference images"
   },
   "view": {
     "title": "View",

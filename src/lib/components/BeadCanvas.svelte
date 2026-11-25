@@ -45,9 +45,10 @@
 
   interface Props {
     editor: EditorStore;
+    referenceMode?: boolean;
   }
 
-  let { editor }: Props = $props();
+  let { editor, referenceMode = false }: Props = $props();
   let canvas: HTMLCanvasElement | undefined = $state();
   let host: HTMLDivElement | undefined = $state();
   let frameWidth = $state(0);
@@ -1417,6 +1418,13 @@
   }
 
   function updateReferenceCursor(event: PointerEvent): void {
+    if (spacePressed) {
+      if (canvas) {
+        canvas.style.cursor = '';
+      }
+      return;
+    }
+
     if (!canvas || !editor.selectedReferenceImage) {
       if (canvas) {
         canvas.style.cursor = '';
@@ -1626,6 +1634,10 @@
       if (beginReferenceInteraction(event)) {
         return;
       }
+      if (referenceMode) {
+        updateHoveredCell(null);
+        return;
+      }
       if (editor.tool === EditorTool.Move) {
         beginMove(event);
       } else if (editor.tool === EditorTool.Select) {
@@ -1690,6 +1702,12 @@
 
     if (referenceDrag?.pointerId === event.pointerId) {
       updateReferenceInteraction(event);
+      return;
+    }
+
+    if (referenceMode) {
+      updateHoveredCell(null);
+      updateReferenceCursor(event);
       return;
     }
 
@@ -1791,6 +1809,10 @@
     if (beginReferenceInteraction(event)) {
       return;
     }
+    if (referenceMode) {
+      updateHoveredCell(null);
+      return;
+    }
 
     if (editor.tool === EditorTool.Move) {
       if (event.button === 2) {
@@ -1853,6 +1875,12 @@
 
     if (referenceDrag?.pointerId === event.pointerId) {
       updateReferenceInteraction(event);
+      return;
+    }
+
+    if (referenceMode) {
+      updateHoveredCell(null);
+      updateReferenceCursor(event);
       return;
     }
 
@@ -2049,6 +2077,7 @@
     class:move-tool={editor.tool === EditorTool.Move}
     class:pan-ready={spacePressed && panPointerId === null}
     class:panning={panPointerId !== null || pinching}
+    class:reference-tool-mode={referenceMode}
     aria-hidden="true"
     onpointerdown={onPointerDown}
     onpointermove={onPointerMove}
@@ -2095,6 +2124,18 @@
   }
 
   canvas.panning {
+    cursor: grabbing;
+  }
+
+  canvas.reference-tool-mode {
+    cursor: default;
+  }
+
+  canvas.reference-tool-mode.pan-ready {
+    cursor: grab;
+  }
+
+  canvas.reference-tool-mode.panning {
     cursor: grabbing;
   }
 
