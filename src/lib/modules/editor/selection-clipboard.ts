@@ -14,7 +14,6 @@ import {
   type BeadProject
 } from '$model/project.model';
 import {
-  SELECTION_CLIPBOARD_NAME_SUFFIX,
   SELECTION_CLIPBOARD_VERSION,
   type SelectionClipboard
 } from '$model/selection-clipboard.model';
@@ -72,17 +71,11 @@ export function createSelectionClipboard(
     lastUsedAt: now,
     sourceProjectId: project.id,
     sourceBounds: bounds,
-    project: {
-      id: crypto.randomUUID(),
-      name: `${project.name}${SELECTION_CLIPBOARD_NAME_SUFFIX}`,
-      gameVersion: project.gameVersion,
+    board: {
       width: bounds.width,
       height: bounds.height,
       cells: copiedCells,
-      palette: clonePalette(project.palette),
-      schemaVersion: project.schemaVersion,
-      createdAt: now,
-      updatedAt: now
+      palette: clonePalette(project.palette)
     },
     selectionCells
   };
@@ -92,25 +85,25 @@ export function createSelectionLayer(
   clipboard: SelectionClipboard,
   visibleCenter: BoardViewCenter
 ): SelectionLayer | null {
-  const clipboardProject = clipboard.project;
+  const clipboardBoard = clipboard.board;
   if (
-    clipboardProject.width <= 0 ||
-    clipboardProject.height <= 0 ||
-    clipboardProject.cells.length !==
-      clipboardProject.width * clipboardProject.height ||
+    clipboardBoard.width <= 0 ||
+    clipboardBoard.height <= 0 ||
+    clipboardBoard.cells.length !==
+      clipboardBoard.width * clipboardBoard.height ||
     clipboard.selectionCells.length === 0
   ) {
     return null;
   }
 
   return {
-    width: clipboardProject.width,
-    height: clipboardProject.height,
-    cells: [...clipboardProject.cells],
-    palette: clonePalette(clipboardProject.palette),
+    width: clipboardBoard.width,
+    height: clipboardBoard.height,
+    cells: [...clipboardBoard.cells],
+    palette: clonePalette(clipboardBoard.palette),
     selectionCells: [...clipboard.selectionCells],
-    x: Math.round(visibleCenter.x - clipboardProject.width / 2),
-    y: Math.round(visibleCenter.y - clipboardProject.height / 2)
+    x: Math.round(visibleCenter.x - clipboardBoard.width / 2),
+    y: Math.round(visibleCenter.y - clipboardBoard.height / 2)
   };
 }
 

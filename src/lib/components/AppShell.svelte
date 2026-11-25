@@ -20,6 +20,8 @@
     type SchemeTarget
   } from '$model/workspace.model';
   import { _, locale } from 'svelte-i18n';
+  import { countFilledCells } from '$domain/project';
+  import ClipboardPreview from '$lib/components/ClipboardPreview.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { setAppLocale } from '$lib/i18n';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
@@ -460,23 +462,21 @@
                     type="button"
                     onclick={() => void pasteClipboardEntry(clipboard)}
                   >
-                    <span class="clipboard-item-heading">
-                      <strong>{clipboard.project.name}</strong>
-                      <span>{clipboard.project.width} × {clipboard.project.height}</span>
-                    </span>
-                    <span class="clipboard-item-meta">
-                      {$_('clipboard.selectionCount', {
-                        values: { count: clipboard.selectionCells.length }
-                      })}
-                    </span>
-                    <span class="clipboard-item-time">
-                      {$_('clipboard.usedAt', {
+                    <ClipboardPreview board={clipboard.board} />
+                    <span class="clipboard-item-info">
+                      <strong>{$_('board.size', {
                         values: {
-                          date: formatModifiedAt(
-                            clipboard.lastUsedAt ?? clipboard.copiedAt
-                          )
+                          width: clipboard.board.width,
+                          height: clipboard.board.height
                         }
-                      })}
+                      })}</strong>
+                      <span>
+                        {$_('board.artbeads', {
+                          values: {
+                            count: countFilledCells(clipboard.board.cells)
+                          }
+                        })}
+                      </span>
                     </span>
                   </button>
                 {/each}
@@ -994,7 +994,9 @@
 
   .clipboard-item {
     display: grid;
-    gap: 4px;
+    grid-template-columns: 76px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
     width: 100%;
     padding: 9px 10px;
     border: 0;
@@ -1010,29 +1012,24 @@
     background: var(--hover);
   }
 
-  .clipboard-item-heading {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
+  .clipboard-item-info {
+    display: grid;
+    gap: 5px;
     min-width: 0;
   }
 
-  .clipboard-item-heading strong {
-    overflow: hidden;
+  .clipboard-item-info strong {
+    color: var(--text);
     font-size: 0.8rem;
     font-weight: 600;
-    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 
-  .clipboard-item-heading > span,
-  .clipboard-item-meta,
-  .clipboard-item-time {
+  .clipboard-item-info > span {
     color: var(--muted);
-    font-size: 0.66rem;
+    font-size: 0.68rem;
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
   }
 
   .clipboard-empty {

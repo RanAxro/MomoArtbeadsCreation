@@ -27,11 +27,11 @@ describe('selection clipboard', () => {
       new Set([6, 7, 11])
     );
 
-    expect(clipboard?.project.width).toBe(2);
-    expect(clipboard?.project.height).toBe(2);
-    expect(clipboard?.project.cells).toEqual([1, 2, 3, 4]);
+    expect(clipboard?.board.width).toBe(2);
+    expect(clipboard?.board.height).toBe(2);
+    expect(clipboard?.board.cells).toEqual([1, 2, 3, 4]);
     expect(clipboard?.selectionCells).toEqual([0, 1, 2]);
-    expect(clipboard?.project.palette.colors).toHaveLength(
+    expect(clipboard?.board.palette.colors).toHaveLength(
       project.palette.colors.length
     );
   });

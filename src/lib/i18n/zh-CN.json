@@ -52,9 +52,7 @@
   },
   "clipboard": {
     "title": "近期剪贴板",
-    "empty": "暂无近期复制的格板数据",
-    "selectionCount": "{count} 个框选格",
-    "usedAt": "使用于 {date}"
+    "empty": "暂无近期复制的格板数据"
   },
   "board": {
     "title": "Pegboard",

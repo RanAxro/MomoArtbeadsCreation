@@ -1,5 +1,15 @@
-import type { BeadProject } from './project.model';
+import { z } from 'zod';
+import { paletteSchema } from './palette.model';
 import type { SelectionBounds } from './selection.model';
+
+export const clipboardBoardSchema = z.object({
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  cells: z.array(z.number().int().nonnegative()),
+  palette: paletteSchema
+});
+
+export type ClipboardBoardData = z.infer<typeof clipboardBoardSchema>;
 
 export interface SelectionClipboard {
   id: string;
@@ -8,12 +18,11 @@ export interface SelectionClipboard {
   lastUsedAt?: string;
   sourceProjectId: string;
   sourceBounds: SelectionBounds;
-  project: BeadProject;
+  board: ClipboardBoardData;
   selectionCells: number[];
 }
 
 export const SELECTION_CLIPBOARD_VERSION = 1;
-export const SELECTION_CLIPBOARD_NAME_SUFFIX = ' 框选';
 export const DEFAULT_CLIPBOARD_HISTORY_LIMIT = 5;
 export const MIN_CLIPBOARD_HISTORY_LIMIT = 1;
 export const MAX_CLIPBOARD_HISTORY_LIMIT = 50;

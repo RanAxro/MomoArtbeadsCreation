@@ -68,7 +68,11 @@ export function touchProject(project: BeadProject): BeadProject {
 }
 
 export function countBeads(project: BeadProject): number {
-  return project.cells.reduce(
+  return countFilledCells(project.cells);
+}
+
+export function countFilledCells(cells: readonly number[]): number {
+  return cells.reduce(
     (count, cell) => count + (cell !== EMPTY_CELL_COLOR_INDEX ? 1 : 0),
     0
   );

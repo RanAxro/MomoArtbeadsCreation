@@ -52,9 +52,7 @@
   },
   "clipboard": {
     "title": "Recent clipboard",
-    "empty": "No copied Pegboard data yet",
-    "selectionCount": "{count} selected cells",
-    "usedAt": "Used {date}"
+    "empty": "No copied Pegboard data yet"
   },
   "board": {
     "title": "Pegboard",
