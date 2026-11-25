@@ -53,7 +53,7 @@
     "title": "Pegboard",
     "size": "{width} × {height}",
     "artbeads": "{count} Artbeads",
-    "hint": "Left click to draw · B pencil · E eraser · G fill",
+    "hint": "Wheel to pan · Shift + wheel to pan sideways · Ctrl + wheel to zoom · Middle mouse or Space + left drag",
     "saved": "Saved",
     "saving": "Saving…",
     "dirty": "Waiting to save",
@@ -63,7 +63,9 @@
     "redo": "Redo",
     "pencil": "Pencil",
     "eraser": "Eraser",
-    "fill": "Fill"
+    "fill": "Fill",
+    "zoom": "Zoom",
+    "zoomReset": "Reset zoom to 100%"
   },
   "settings": {
     "title": "Settings",

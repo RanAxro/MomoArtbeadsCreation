@@ -53,7 +53,7 @@
     "title": "Pegboard",
     "size": "{width} × {height}",
     "artbeads": "{count} 个艺点点",
-    "hint": "左键绘制 · B 画笔 · E 橡皮 · G 填充",
+    "hint": "滚轮上下移动 · Shift + 滚轮左右移动 · Ctrl + 滚轮缩放 · 中键或空格 + 左键拖拽",
     "saved": "已保存",
     "saving": "保存中…",
     "dirty": "等待保存",
@@ -63,7 +63,9 @@
     "redo": "重做",
     "pencil": "画笔",
     "eraser": "橡皮",
-    "fill": "填充"
+    "fill": "填充",
+    "zoom": "缩放",
+    "zoomReset": "恢复到 100%"
   },
   "settings": {
     "title": "设置",

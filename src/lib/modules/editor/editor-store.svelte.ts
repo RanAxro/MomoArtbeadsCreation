@@ -1,6 +1,7 @@
 import type { BeadColor, BeadProject } from '$domain/project';
 import { createEmptyBeadColor } from '$domain/palette';
 import { floodFill, touchProject } from '$domain/project';
+import { clampBoardZoom } from './board-layout';
 
 export type EditorTool = 'pencil' | 'eraser' | 'fill';
 
@@ -12,6 +13,7 @@ export class EditorStore {
   savedRevision = $state(0);
   canUndo = $state(false);
   canRedo = $state(false);
+  zoom = $state(1);
 
   private undoStack: number[][] = [];
   private redoStack: number[][] = [];
@@ -23,6 +25,7 @@ export class EditorStore {
     this.undoStack = [];
     this.redoStack = [];
     this.strokeSnapshot = null;
+    this.zoom = 1;
     this.refreshHistoryState();
     this.revision += 1;
     this.savedRevision = this.revision;
@@ -33,6 +36,7 @@ export class EditorStore {
     this.undoStack = [];
     this.redoStack = [];
     this.strokeSnapshot = null;
+    this.zoom = 1;
     this.canUndo = false;
     this.canRedo = false;
   }
@@ -75,6 +79,10 @@ export class EditorStore {
 
   setSelectedColor(index: number): void {
     this.selectedColorIndex = index;
+  }
+
+  setZoom(zoom: number): void {
+    this.zoom = clampBoardZoom(zoom);
   }
 
   paint(index: number): void {

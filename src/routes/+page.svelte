@@ -6,6 +6,10 @@
   import { countBeads, countColorUsage } from '$domain/project';
   import { projectRepository } from '$data/project-repository';
   import type { EditorTool } from '$modules/editor/editor-store.svelte';
+  import {
+    MAX_BOARD_ZOOM,
+    MIN_BOARD_ZOOM
+  } from '$modules/editor/board-layout';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   const editor = workspace.editor;
@@ -274,7 +278,30 @@
 
       <footer class="board-footer">
         <span>{$_('board.hint')}</span>
-        <span>{editor.project.width} × {editor.project.height}</span>
+        <div class="zoom-control">
+          <label for="board-zoom">{$_('board.zoom')}</label>
+          <div class="zoom-slider">
+            <input
+              id="board-zoom"
+              type="range"
+              min={MIN_BOARD_ZOOM}
+              max={MAX_BOARD_ZOOM}
+              step="0.05"
+              value={editor.zoom}
+              aria-label={$_('board.zoom')}
+              oninput={(event) =>
+                editor.setZoom(Number((event.currentTarget as HTMLInputElement).value))}
+            />
+            <button
+              class="zoom-100-marker"
+              type="button"
+              title={$_('board.zoomReset')}
+              aria-label={$_('board.zoomReset')}
+              onclick={() => editor.setZoom(1)}
+            ></button>
+          </div>
+          <output for="board-zoom">{Math.round(editor.zoom * 100)}%</output>
+        </div>
       </footer>
     {:else}
       <section class="workspace-home">
@@ -551,6 +578,7 @@
 
   .board-footer {
     display: flex;
+    align-items: center;
     justify-content: space-between;
     gap: 20px;
     padding: 8px 18px;
@@ -558,6 +586,69 @@
     background: var(--surface);
     color: var(--muted);
     font-size: 0.64rem;
+  }
+
+  .zoom-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+
+  .zoom-control label {
+    color: var(--muted);
+  }
+
+  .zoom-slider {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 132px;
+    height: 18px;
+  }
+
+  .zoom-control input {
+    width: 100%;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--text);
+    cursor: pointer;
+  }
+
+  .zoom-100-marker {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 14.2857%;
+    display: grid;
+    place-items: center;
+    width: 14px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+  }
+
+  .zoom-100-marker::before {
+    width: 6px;
+    height: 6px;
+    border: 1px solid var(--text);
+    background: var(--surface);
+    content: "";
+  }
+
+  .zoom-100-marker:hover::before,
+  .zoom-100-marker:focus-visible::before {
+    background: var(--text);
+  }
+
+  .zoom-control output {
+    width: 34px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
   }
 
   .workspace-home {
@@ -628,7 +719,7 @@
 
   @media (max-width: 680px) {
     .workspace {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto minmax(0, 1fr);
       overflow: auto;
     }
@@ -681,6 +772,24 @@
 
     .board-area {
       min-height: 560px;
+    }
+
+    .board-footer {
+      gap: 8px;
+      padding: 8px 10px;
+    }
+
+    .board-footer > span {
+      display: none;
+    }
+
+    .zoom-control {
+      width: 100%;
+      justify-content: flex-end;
+    }
+
+    .zoom-slider {
+      width: min(160px, 48vw);
     }
 
     .workspace-home {
