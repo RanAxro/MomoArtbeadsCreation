@@ -403,6 +403,25 @@
       }
     }
 
+    if (viewStore.showCoarseGrid) {
+      const spacing = Math.max(2, viewStore.coarseGridSpacing);
+      context.strokeStyle =
+        styles.getPropertyValue('--border-strong').trim() || '#b8b8b3';
+      context.lineWidth = Math.max(1, Math.min(2.5, cellSize * 0.08));
+      for (let x = spacing; x < project.width; x += spacing) {
+        context.beginPath();
+        context.moveTo(originX + x * cellSize, originY);
+        context.lineTo(originX + x * cellSize, originY + boardHeight);
+        context.stroke();
+      }
+      for (let y = spacing; y < project.height; y += spacing) {
+        context.beginPath();
+        context.moveTo(originX, originY + y * cellSize);
+        context.lineTo(originX + boardWidth, originY + y * cellSize);
+        context.stroke();
+      }
+    }
+
     context.strokeStyle = styles.getPropertyValue('--border-strong').trim() || '#b8b8b3';
     context.lineWidth = 1;
     context.strokeRect(
@@ -1502,6 +1521,8 @@
     editor.activePasteLayer;
     viewStore.showRulers;
     viewStore.showGrid;
+    viewStore.showCoarseGrid;
+    viewStore.coarseGridSpacing;
     viewStore.background;
     viewCenterX;
     viewCenterY;

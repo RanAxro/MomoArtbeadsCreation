@@ -12,7 +12,11 @@
     type SelectionClipboard
   } from '$model/selection-clipboard.model';
   import { KeyboardKey } from '$model/ui.model';
-  import { BoardBackground } from '$model/view.model';
+  import {
+    BoardBackground,
+    MAX_COARSE_GRID_SPACING,
+    MIN_COARSE_GRID_SPACING
+  } from '$model/view.model';
   import {
     SCHEME_DATE_FORMAT,
     SCHEME_MENU_SIZE,
@@ -726,6 +730,40 @@
             <span class="switch-track" aria-hidden="true"></span>
           </span>
         </label>
+      </div>
+
+      <div class="setting-group">
+        <h3>{$_('view.coarseGrid')}</h3>
+        <label class="view-switch">
+          <span>{$_('view.coarseGridHint')}</span>
+          <span class="switch-control">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={viewStore.showCoarseGrid}
+              onchange={(event) =>
+                viewStore.setShowCoarseGrid(event.currentTarget.checked)}
+            />
+            <span class="switch-track" aria-hidden="true"></span>
+          </span>
+        </label>
+        {#if viewStore.showCoarseGrid}
+          <label class="field-label coarse-grid-spacing">
+            <span>{$_('view.coarseGridSpacing')}</span>
+            <input
+              class="field"
+              type="number"
+              min={MIN_COARSE_GRID_SPACING}
+              max={MAX_COARSE_GRID_SPACING}
+              step="1"
+              value={viewStore.coarseGridSpacing}
+              onchange={(event) =>
+                viewStore.setCoarseGridSpacing(
+                  Number(event.currentTarget.value)
+                )}
+            />
+          </label>
+        {/if}
       </div>
 
       <label class="field-label">
