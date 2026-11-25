@@ -15,7 +15,8 @@
     centerX: number;
     centerY: number;
     onCropChange: (center: CropCenter) => void;
-    onReplace: () => void;
+    onRemove: () => void;
+    onImageDrop: (file: File) => void;
   }
 
   interface DragState {
@@ -34,13 +35,15 @@
     centerX,
     centerY,
     onCropChange,
-    onReplace
+    onRemove,
+    onImageDrop
   }: Props = $props();
 
   let stage: HTMLDivElement | undefined = $state();
   let stageWidth = $state(0);
   let stageHeight = $state(0);
   let drag = $state<DragState | null>(null);
+  let fileDragActive = $state(false);
 
   let crop = $derived(
     calculateAspectCrop(sourceWidth, sourceHeight, aspectRatio, centerX, centerY)
@@ -134,6 +137,31 @@
     moveCropTo(centerX + delta[0], centerY + delta[1]);
   }
 
+  function onFileDragOver(event: DragEvent): void {
+    event.preventDefault();
+    fileDragActive = true;
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  function onFileDragLeave(event: DragEvent): void {
+    const target = event.currentTarget as HTMLElement;
+    const nextTarget = event.relatedTarget;
+    if (!(nextTarget instanceof Node) || !target.contains(nextTarget)) {
+      fileDragActive = false;
+    }
+  }
+
+  function onFileDrop(event: DragEvent): void {
+    event.preventDefault();
+    fileDragActive = false;
+    const file = event.dataTransfer?.files[0];
+    if (file) {
+      onImageDrop(file);
+    }
+  }
+
   $effect(() => {
     const currentStage = stage;
     if (!currentStage) {
@@ -155,9 +183,13 @@
 
 <div
   class="crop-stage"
+  class:drop-active={fileDragActive}
   bind:this={stage}
   role="group"
   aria-label={$_('import.cropArea')}
+  ondragover={onFileDragOver}
+  ondragleave={onFileDragLeave}
+  ondrop={onFileDrop}
 >
   {#if imageBounds.width > 0 && crop.width > 0}
     <img
@@ -194,9 +226,12 @@
       <span class="crop-corner bottom-left"></span>
       <span class="crop-corner bottom-right"></span>
     </button>
-    <button class="replace-label" type="button" onclick={onReplace}>
-      {$_('import.replace')}
+    <button class="remove-label" type="button" onclick={onRemove}>
+      {$_('import.remove')}
     </button>
+  {/if}
+  {#if fileDragActive}
+    <div class="drop-notice">{$_('import.dropActive')}</div>
   {/if}
 </div>
 
@@ -209,6 +244,12 @@
     background: #111111;
     touch-action: none;
     user-select: none;
+  }
+
+  .crop-stage.drop-active {
+    border-color: #ffffff;
+    outline: 2px solid #ffffff;
+    outline-offset: -6px;
   }
 
   img {
@@ -274,7 +315,7 @@
     border-width: 0 3px 3px 0;
   }
 
-  .replace-label {
+  .remove-label {
     position: absolute;
     right: 10px;
     bottom: 10px;
@@ -287,8 +328,19 @@
     cursor: pointer;
   }
 
-  .replace-label:hover {
+  .remove-label:hover {
     border-color: #ffffff;
   }
 
+  .drop-notice {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    background: rgba(17, 17, 17, 0.72);
+    color: #ffffff;
+    font-size: 0.82rem;
+    pointer-events: none;
+  }
 </style>

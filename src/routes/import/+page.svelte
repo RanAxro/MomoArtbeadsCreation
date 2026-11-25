@@ -39,6 +39,7 @@
   let usedColors = $state(0);
   let busy = $state(false);
   let error = $state('');
+  let dragActive = $state(false);
   let sourceReadSequence = 0;
   let conversionSequence = 0;
   let scheduledPreview: ReturnType<typeof setTimeout> | undefined;
@@ -65,9 +66,16 @@
     }, delay);
   }
 
-  async function selectSource(event: Event): Promise<void> {
-    const file = (event.currentTarget as HTMLInputElement).files?.[0];
-    if (!file) {
+  function isImageFile(file: File): boolean {
+    return (
+      file.type.startsWith('image/') ||
+      /\.(png|jpe?g|webp|gif)$/i.test(file.name)
+    );
+  }
+
+  async function loadSourceFile(file: File): Promise<void> {
+    if (!isImageFile(file)) {
+      error = $_('import.invalidFile');
       return;
     }
 
@@ -100,6 +108,60 @@
         busy = false;
       }
     }
+  }
+
+  async function selectSource(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) {
+      await loadSourceFile(file);
+    }
+  }
+
+  function onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    dragActive = true;
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  function onDragLeave(event: DragEvent): void {
+    const target = event.currentTarget as HTMLElement;
+    const nextTarget = event.relatedTarget;
+    if (!(nextTarget instanceof Node) || !target.contains(nextTarget)) {
+      dragActive = false;
+    }
+  }
+
+  function onDrop(event: DragEvent): void {
+    event.preventDefault();
+    dragActive = false;
+    const file = event.dataTransfer?.files[0];
+    if (file) {
+      void loadSourceFile(file);
+    }
+  }
+
+  function removeSource(): void {
+    sourceReadSequence += 1;
+    conversionSequence += 1;
+    clearScheduledPreview();
+    dragActive = false;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+    revokeSourceUrl();
+    sourceFile = null;
+    sourceDimensions = { width: 0, height: 0 };
+    schemeName = '';
+    cropCenterX = 0.5;
+    cropCenterY = 0.5;
+    previewProject = null;
+    usedColors = 0;
+    busy = false;
+    error = '';
   }
 
   function changePegboard(event: Event): void {
@@ -247,16 +309,27 @@
                 centerX={cropCenterX}
                 centerY={cropCenterY}
                 onCropChange={changeCrop}
-                onReplace={() => fileInput?.click()}
+                onRemove={removeSource}
+                onImageDrop={(file) => void loadSourceFile(file)}
               />
             {:else}
-              <button class="drop-zone" type="button" onclick={() => fileInput?.click()}>
+              <button
+                class="drop-zone"
+                class:dragging={dragActive}
+                type="button"
+                onclick={() => fileInput?.click()}
+                ondragover={onDragOver}
+                ondragleave={onDragLeave}
+                ondrop={onDrop}
+              >
                 {#if sourceUrl}
                   <img src={sourceUrl} alt={$_('import.preview')} />
-                  <span class="replace-label">{$_('import.processing')}</span>
+                  <span class="status-label">{$_('import.processing')}</span>
                 {:else}
                   <strong>{$_('import.noFile')}</strong>
-                  <small>{$_('import.localHint')}</small>
+                  <small>
+                    {dragActive ? $_('import.dropActive') : $_('import.localHint')}
+                  </small>
                 {/if}
               </button>
             {/if}
@@ -448,6 +521,12 @@
     border-color: var(--text);
   }
 
+  .drop-zone.dragging {
+    border-style: solid;
+    border-color: var(--text);
+    background: var(--hover);
+  }
+
   .drop-zone img {
     position: absolute;
     width: 100%;
@@ -466,7 +545,7 @@
     font-size: 0.72rem;
   }
 
-  .replace-label {
+  .status-label {
     position: absolute;
     right: 10px;
     bottom: 10px;
