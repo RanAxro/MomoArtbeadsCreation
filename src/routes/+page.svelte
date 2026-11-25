@@ -16,10 +16,11 @@
   const editor = workspace.editor;
   const tools: {
     id: EditorTool;
-    icon: 'pencil' | 'eraser' | 'fill';
+    icon: 'select' | 'pencil' | 'eraser' | 'fill';
     labelKey: string;
     shortcut: string;
   }[] = [
+    { id: 'select', icon: 'select', labelKey: 'board.select', shortcut: 'M' },
     { id: 'pencil', icon: 'pencil', labelKey: 'board.pencil', shortcut: 'B' },
     { id: 'eraser', icon: 'eraser', labelKey: 'board.eraser', shortcut: 'E' },
     { id: 'fill', icon: 'fill', labelKey: 'board.fill', shortcut: 'G' }
@@ -283,7 +284,9 @@
       </div>
 
       <footer class="board-footer">
-        <span>{$_('board.hint')}</span>
+        <span>
+          {editor.tool === 'select' ? $_('board.selectionHint') : $_('board.hint')}
+        </span>
         <div class="zoom-control">
           <label for="board-zoom">{$_('board.zoom')}</label>
           <div class="zoom-slider">

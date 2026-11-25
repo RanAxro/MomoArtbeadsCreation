@@ -1,5 +1,6 @@
 <script module lang="ts">
   export type IconName =
+    | 'select'
     | 'pencil'
     | 'eraser'
     | 'fill'

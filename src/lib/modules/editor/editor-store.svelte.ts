@@ -3,12 +3,13 @@ import { createEmptyBeadColor } from '$domain/palette';
 import { floodFill, touchProject } from '$domain/project';
 import { clampBoardZoom } from './board-layout';
 
-export type EditorTool = 'pencil' | 'eraser' | 'fill';
+export type EditorTool = 'select' | 'pencil' | 'eraser' | 'fill';
 
 export class EditorStore {
   project = $state<BeadProject | null>(null);
   selectedColorIndex = $state(1);
   tool = $state<EditorTool>('pencil');
+  selectedCells = $state<ReadonlySet<number>>(new Set());
   revision = $state(0);
   savedRevision = $state(0);
   canUndo = $state(false);
@@ -25,6 +26,7 @@ export class EditorStore {
     this.undoStack = [];
     this.redoStack = [];
     this.strokeSnapshot = null;
+    this.selectedCells = new Set();
     this.zoom = 1;
     this.refreshHistoryState();
     this.revision += 1;
@@ -36,6 +38,7 @@ export class EditorStore {
     this.undoStack = [];
     this.redoStack = [];
     this.strokeSnapshot = null;
+    this.selectedCells = new Set();
     this.zoom = 1;
     this.canUndo = false;
     this.canRedo = false;
@@ -85,8 +88,23 @@ export class EditorStore {
     this.zoom = clampBoardZoom(zoom);
   }
 
+  setSelection(cells: ReadonlySet<number>): void {
+    this.selectedCells = new Set(cells);
+  }
+
+  clearSelection(): void {
+    if (this.selectedCells.size > 0) {
+      this.selectedCells = new Set();
+    }
+  }
+
   paint(index: number): void {
-    if (!this.project || index < 0 || index >= this.project.cells.length) {
+    if (
+      !this.project ||
+      this.tool === 'select' ||
+      index < 0 ||
+      index >= this.project.cells.length
+    ) {
       return;
     }
 

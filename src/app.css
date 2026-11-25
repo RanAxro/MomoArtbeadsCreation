@@ -17,6 +17,8 @@
   --hover: #eeeeeb;
   --selected: #111111;
   --selected-text: #ffffff;
+  --selection: #2f6fed;
+  --selection-fill: rgba(47, 111, 237, 0.3);
   --board: #ffffff;
   --board-line: rgba(0, 0, 0, 0.12);
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
@@ -38,6 +40,8 @@
   --hover: #20201f;
   --selected: #f4f4f1;
   --selected-text: #111111;
+  --selection: #6c9cff;
+  --selection-fill: rgba(64, 125, 255, 0.34);
   --board: #1c1c1b;
   --board-line: rgba(255, 255, 255, 0.13);
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.36);

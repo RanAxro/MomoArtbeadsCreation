@@ -14,6 +14,12 @@
     clampViewCenter,
     contrastingOutline
   } from '$modules/editor/board-layout';
+  import {
+    combineSelections,
+    createSelectionRectangle,
+    type SelectionOperation,
+    type SelectionRectangle
+  } from '$modules/editor/selection';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { _ } from 'svelte-i18n';
 
@@ -33,6 +39,12 @@
   let spacePressed = $state(false);
   let panPointerId = $state<number | null>(null);
   let pinching = $state(false);
+  let selectionDrag = $state<{
+    pointerId: number;
+    operation: SelectionOperation;
+    previous: ReadonlySet<number>;
+    rectangle: SelectionRectangle;
+  } | null>(null);
 
   let baseLayout: BoardLayout = {
     edgeInset: 8,
@@ -141,6 +153,9 @@
     const rulerText = styles.getPropertyValue('--muted').trim() || '#707070';
     const activeRulerColor = styles.getPropertyValue('--text').trim() || '#111111';
     const activeRulerText = styles.getPropertyValue('--selected-text').trim() || '#ffffff';
+    const selectionColor = styles.getPropertyValue('--selection').trim() || '#2f6fed';
+    const selectionFill =
+      styles.getPropertyValue('--selection-fill').trim() || 'rgba(47, 111, 237, 0.32)';
     const fontFamily =
       styles.getPropertyValue('font-family').trim() || 'system-ui, sans-serif';
 
@@ -207,6 +222,23 @@
       }
     }
 
+    if (editor.selectedCells.size > 0) {
+      context.fillStyle = selectionFill;
+      for (const index of editor.selectedCells) {
+        if (index < 0 || index >= project.cells.length) {
+          continue;
+        }
+        const x = index % project.width;
+        const y = Math.floor(index / project.width);
+        context.fillRect(
+          originX + x * cellSize,
+          originY + y * cellSize,
+          Math.ceil(cellSize + 0.2),
+          Math.ceil(cellSize + 0.2)
+        );
+      }
+    }
+
     if (cellSize >= 5) {
       context.strokeStyle = boardLine;
       context.lineWidth = Math.max(0.35, Math.min(0.8, cellSize / 18));
@@ -232,6 +264,64 @@
       boardWidth,
       boardHeight
     );
+
+    if (editor.selectedCells.size > 0) {
+      context.beginPath();
+      for (const index of editor.selectedCells) {
+        if (index < 0 || index >= project.cells.length) {
+          continue;
+        }
+
+        const x = index % project.width;
+        const y = Math.floor(index / project.width);
+        const cellX = originX + x * cellSize;
+        const cellY = originY + y * cellSize;
+
+        if (y === 0 || !editor.selectedCells.has(index - project.width)) {
+          context.moveTo(cellX, cellY);
+          context.lineTo(cellX + cellSize, cellY);
+        }
+        if (
+          y === project.height - 1 ||
+          !editor.selectedCells.has(index + project.width)
+        ) {
+          context.moveTo(cellX, cellY + cellSize);
+          context.lineTo(cellX + cellSize, cellY + cellSize);
+        }
+        if (x === 0 || !editor.selectedCells.has(index - 1)) {
+          context.moveTo(cellX, cellY);
+          context.lineTo(cellX, cellY + cellSize);
+        }
+        if (
+          x === project.width - 1 ||
+          !editor.selectedCells.has(index + 1)
+        ) {
+          context.moveTo(cellX + cellSize, cellY);
+          context.lineTo(cellX + cellSize, cellY + cellSize);
+        }
+      }
+      context.strokeStyle = selectionColor;
+      context.lineWidth = Math.max(1, Math.min(2, cellSize * 0.08));
+      context.stroke();
+    }
+
+    if (selectionDrag) {
+      const { minX, minY, width, height } = selectionDrag.rectangle;
+      context.save();
+      context.strokeStyle = selectionColor;
+      context.lineWidth = Math.max(1.25, Math.min(2.25, cellSize * 0.1));
+      context.setLineDash([
+        Math.max(4, cellSize * 0.28),
+        Math.max(3, cellSize * 0.2)
+      ]);
+      context.strokeRect(
+        originX + minX * cellSize,
+        originY + minY * cellSize,
+        width * cellSize,
+        height * cellSize
+      );
+      context.restore();
+    }
 
     const hovered = hoveredCell;
     if (hovered) {
@@ -431,6 +521,154 @@
     return point ? cellFromPoint(point) : null;
   }
 
+  function clampedCellFromPointer(event: PointerEvent): BoardCell | null {
+    const project = editor.project;
+    const point = pointFromPointer(event);
+    if (!project || !point) {
+      return null;
+    }
+
+    const x = Math.max(
+      0,
+      Math.min(
+        project.width - 1,
+        Math.floor((point.x - layout.originX) / layout.cellSize)
+      )
+    );
+    const y = Math.max(
+      0,
+      Math.min(
+        project.height - 1,
+        Math.floor((point.y - layout.originY) / layout.cellSize)
+      )
+    );
+
+    return {
+      x,
+      y,
+      index: y * project.width + x
+    };
+  }
+
+  function selectionOperationForPointer(
+    event: PointerEvent
+  ): SelectionOperation | 'clear' | null {
+    const command = event.ctrlKey || event.metaKey;
+
+    if (event.button === 0) {
+      if (command) {
+        return 'union';
+      }
+      if (event.altKey) {
+        return 'subtract';
+      }
+      return 'replace';
+    }
+
+    if (event.button === 2) {
+      if (command) {
+        return 'xor';
+      }
+      if (event.altKey) {
+        return 'intersect';
+      }
+      return 'clear';
+    }
+
+    return null;
+  }
+
+  function beginSelectionDrag(
+    event: PointerEvent,
+    operation: SelectionOperation
+  ): boolean {
+    const project = editor.project;
+    const start = cellFromPointer(event);
+    if (!project || !start) {
+      return false;
+    }
+
+    const previous = new Set(editor.selectedCells);
+    const rectangle = createSelectionRectangle(
+      start,
+      start,
+      project.width,
+      project.height,
+      event.shiftKey
+    );
+    editor.setSelection(
+      combineSelections(previous, rectangle.cells, operation)
+    );
+    selectionDrag = {
+      pointerId: event.pointerId,
+      operation,
+      previous,
+      rectangle
+    };
+    canvas?.setPointerCapture(event.pointerId);
+    updateHoveredCell(start);
+    return true;
+  }
+
+  function updateSelectionDrag(event: PointerEvent): void {
+    const project = editor.project;
+    const end = clampedCellFromPointer(event);
+    if (!project || !end || selectionDrag?.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const rectangle = createSelectionRectangle(
+      selectionDrag.rectangle.start,
+      end,
+      project.width,
+      project.height,
+      event.shiftKey
+    );
+    editor.setSelection(
+      combineSelections(
+        selectionDrag.previous,
+        rectangle.cells,
+        selectionDrag.operation
+      )
+    );
+    selectionDrag = {
+      ...selectionDrag,
+      rectangle
+    };
+  }
+
+  function releaseSelectionPointer(pointerId: number): void {
+    if (canvas?.hasPointerCapture(pointerId)) {
+      canvas.releasePointerCapture(pointerId);
+    }
+  }
+
+  function finishSelectionDrag(event: PointerEvent): boolean {
+    if (selectionDrag?.pointerId !== event.pointerId) {
+      return false;
+    }
+
+    releaseSelectionPointer(event.pointerId);
+    selectionDrag = null;
+    updateHoveredCell(cellFromPointer(event));
+    return true;
+  }
+
+  function cancelSelectionDrag(event?: PointerEvent): boolean {
+    if (
+      !selectionDrag ||
+      (event && selectionDrag.pointerId !== event.pointerId)
+    ) {
+      return false;
+    }
+
+    const pointerId = event?.pointerId ?? selectionDrag.pointerId;
+    editor.setSelection(selectionDrag.previous);
+    releaseSelectionPointer(pointerId);
+    selectionDrag = null;
+    return true;
+  }
+
   function paintPoint(point: { x: number; y: number }): void {
     const cell = cellFromPoint(point);
     if (cell) {
@@ -592,6 +830,7 @@
     }
 
     endPaintStroke();
+    cancelSelectionDrag();
     updateHoveredCell(null);
     pinchState = {
       distance: metrics.distance,
@@ -614,7 +853,11 @@
     touchPoints.set(event.pointerId, point);
 
     if (touchPoints.size === 1) {
-      updateHoveredCell(null);
+      if (editor.tool === 'select') {
+        beginSelectionDrag(event, 'replace');
+      } else {
+        updateHoveredCell(null);
+      }
       return;
     }
 
@@ -675,6 +918,14 @@
       return;
     }
 
+    if (editor.tool === 'select') {
+      if (selectionDrag?.pointerId === event.pointerId) {
+        updateSelectionDrag(event);
+        updateHoveredCell(cellFromPoint(point));
+      }
+      return;
+    }
+
     const cell = cellFromPoint(point);
     updateHoveredCell(cell);
     if (!cell) {
@@ -689,6 +940,7 @@
   }
 
   function onTouchPointerEnd(event: PointerEvent): void {
+    const finishingSelection = selectionDrag?.pointerId === event.pointerId;
     touchPoints.delete(event.pointerId);
     if (canvas?.hasPointerCapture(event.pointerId)) {
       canvas.releasePointerCapture(event.pointerId);
@@ -709,6 +961,9 @@
     touchGestureStarted = false;
     pinching = false;
     pinchState = null;
+    if (finishingSelection) {
+      finishSelectionDrag(event);
+    }
     endPaintStroke();
     updateHoveredCell(null);
   }
@@ -744,6 +999,21 @@
       return;
     }
 
+    if (editor.tool === 'select') {
+      const operation = selectionOperationForPointer(event);
+      if (operation === 'clear') {
+        cancelSelectionDrag();
+        editor.clearSelection();
+        updateHoveredCell(cellFromPointer(event));
+        return;
+      }
+      if (operation && beginSelectionDrag(event, operation)) {
+        return;
+      }
+      updateHoveredCell(cellFromPointer(event));
+      return;
+    }
+
     const cell = cellFromPointer(event);
     updateHoveredCell(cell);
     if (!cell) {
@@ -774,6 +1044,12 @@
       return;
     }
 
+    if (selectionDrag?.pointerId === event.pointerId) {
+      updateSelectionDrag(event);
+      updateHoveredCell(cellFromPointer(event));
+      return;
+    }
+
     updateHoveredCell(cellFromPointer(event));
     if (pointerDown) {
       applyPointer(event);
@@ -781,7 +1057,12 @@
   }
 
   function onPointerLeave(): void {
-    if (!pointerDown && panPointerId === null && !pinching) {
+    if (
+      !pointerDown &&
+      panPointerId === null &&
+      !pinching &&
+      !selectionDrag
+    ) {
       updateHoveredCell(null);
     }
   }
@@ -808,6 +1089,10 @@
       return;
     }
 
+    if (finishSelectionDrag(event)) {
+      return;
+    }
+
     finishStroke(event);
   }
 
@@ -817,6 +1102,7 @@
       return;
     }
 
+    cancelSelectionDrag(event);
     finishPan(event);
     finishStroke(event);
   }
@@ -830,7 +1116,17 @@
         )
       );
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.code !== 'Space' || isInteractiveTarget(event.target)) {
+      if (isInteractiveTarget(event.target)) {
+        return;
+      }
+
+      if (event.key === 'Escape' && selectionDrag) {
+        event.preventDefault();
+        cancelSelectionDrag();
+        return;
+      }
+
+      if (event.code !== 'Space') {
         return;
       }
 
@@ -860,9 +1156,11 @@
     editor.project;
     editor.revision;
     editor.zoom;
+    editor.selectedCells;
     viewCenterX;
     viewCenterY;
     hoveredCell;
+    selectionDrag;
     frameWidth;
     frameHeight;
     themeStore.mode;
