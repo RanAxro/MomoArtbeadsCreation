@@ -6,6 +6,7 @@
   },
   "nav": {
     "file": "文件",
+    "clipboard": "剪贴板",
     "settings": "设置",
     "schemes": "方案",
     "noSchemes": "暂无方案",
@@ -49,6 +50,12 @@
     "empty": "打开方案后即可选择艺点点",
     "selected": "当前艺点点"
   },
+  "clipboard": {
+    "title": "近期剪贴板",
+    "empty": "暂无近期复制的格板数据",
+    "selectionCount": "{count} 个框选格",
+    "usedAt": "使用于 {date}"
+  },
   "board": {
     "title": "Pegboard",
     "size": "{width} × {height}",
@@ -82,6 +89,9 @@
     "dark": "暗色",
     "language": "界面语言",
     "storage": "本地存储",
+    "clipboard": "剪贴板",
+    "clipboardLimit": "保存数量",
+    "clipboardLimitHint": "设置近期复制数据最多保留多少个，范围 1–50。",
     "storageCopy": "方案、色板和画布数据只保存在当前浏览器。清除站点数据前请先导出备份。",
     "zh": "简体中文",
     "en": "English"

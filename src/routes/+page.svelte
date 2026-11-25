@@ -13,12 +13,11 @@
   import { IconName } from '$model/icon.model';
   import { countBeads, countColorUsage } from '$domain/project';
   import { projectRepository } from '$data/project-repository';
-  import { selectionClipboardRepository } from '$data/selection-clipboard-repository';
-  import type { SelectionClipboard } from '$model/selection-clipboard.model';
   import {
     MAX_BOARD_ZOOM,
     MIN_BOARD_ZOOM
   } from '$model/editor.model';
+  import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   const editor = workspace.editor;
@@ -26,10 +25,9 @@
   let saving = $state(false);
   let saveFailed = $state(false);
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
-  let copiedSelection = $state<SelectionClipboard | null>(null);
-  let clipboardAvailable = $state(false);
 
   let hasSelection = $derived(editor.selectedCells.size > 0);
+  let clipboardAvailable = $derived(clipboardStore.entries.length > 0);
 
   let beadCount = $derived.by(() => {
     editor.revision;
@@ -111,12 +109,9 @@
 
   async function refreshClipboardState(): Promise<void> {
     try {
-      const clipboard = await selectionClipboardRepository.get();
-      copiedSelection = clipboard ?? null;
-      clipboardAvailable = Boolean(clipboard);
+      await clipboardStore.refresh();
     } catch {
-      copiedSelection = null;
-      clipboardAvailable = false;
+      clipboardStore.entries = [];
     }
   }
 
@@ -127,30 +122,19 @@
     }
 
     try {
-      await selectionClipboardRepository.save(clipboard);
-      copiedSelection = clipboard;
-      clipboardAvailable = true;
+      await clipboardStore.copy(clipboard);
     } catch {
-      clipboardAvailable = false;
+      clipboardStore.entries = [];
     }
   }
 
   async function pasteSelection(): Promise<void> {
-    let clipboard = copiedSelection;
-    if (!clipboard) {
-      try {
-        clipboard = (await selectionClipboardRepository.get()) ?? null;
-      } catch {
-        clipboard = null;
-      }
-    }
-
+    await clipboardStore.initialize();
+    const clipboard = clipboardStore.entries[0];
     if (!clipboard || !editor.pasteSelectionClipboard(clipboard)) {
       return;
     }
-
-    copiedSelection = clipboard;
-    clipboardAvailable = true;
+    await clipboardStore.use(clipboard.id);
   }
 
   function onKeydown(event: KeyboardEvent): void {
@@ -208,7 +192,7 @@
 
   onMount(() => {
     void workspace.initialize();
-    void refreshClipboardState();
+    void clipboardStore.initialize();
     const refreshClipboardOnFocus = (): void => {
       void refreshClipboardState();
     };

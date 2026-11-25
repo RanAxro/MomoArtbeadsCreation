@@ -16,7 +16,6 @@ import {
 import {
   SELECTION_CLIPBOARD_NAME_SUFFIX,
   SELECTION_CLIPBOARD_VERSION,
-  SelectionClipboardRecordId,
   type SelectionClipboard
 } from '$model/selection-clipboard.model';
 import type { SelectionLayer } from '$model/selection-layer.model';
@@ -67,9 +66,10 @@ export function createSelectionClipboard(
 
   const now = new Date().toISOString();
   return {
-    id: SelectionClipboardRecordId.Active,
+    id: crypto.randomUUID(),
     version: SELECTION_CLIPBOARD_VERSION,
     copiedAt: now,
+    lastUsedAt: now,
     sourceProjectId: project.id,
     sourceBounds: bounds,
     project: {

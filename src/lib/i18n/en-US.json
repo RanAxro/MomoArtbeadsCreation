@@ -6,6 +6,7 @@
   },
   "nav": {
     "file": "File",
+    "clipboard": "Clipboard",
     "settings": "Settings",
     "schemes": "Schemes",
     "noSchemes": "No schemes",
@@ -49,6 +50,12 @@
     "empty": "Open a scheme to select Artbeads",
     "selected": "Selected Artbead"
   },
+  "clipboard": {
+    "title": "Recent clipboard",
+    "empty": "No copied Pegboard data yet",
+    "selectionCount": "{count} selected cells",
+    "usedAt": "Used {date}"
+  },
   "board": {
     "title": "Pegboard",
     "size": "{width} × {height}",
@@ -82,6 +89,9 @@
     "dark": "Dark",
     "language": "Language",
     "storage": "Local storage",
+    "clipboard": "Clipboard",
+    "clipboardLimit": "History size",
+    "clipboardLimitHint": "Choose how many recent copies to keep, from 1 to 50.",
     "storageCopy": "Schemes, palettes, and canvas data stay in this browser. Export a backup before clearing site data.",
     "zh": "简体中文",
     "en": "English"

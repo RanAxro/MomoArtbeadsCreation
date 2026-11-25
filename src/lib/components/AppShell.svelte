@@ -6,6 +6,11 @@
   import { MAX_PROJECT_NAME_LENGTH } from '$model/project.model';
   import { IconName } from '$model/icon.model';
   import { AppLocale, ThemeMode } from '$model/settings.model';
+  import {
+    MAX_CLIPBOARD_HISTORY_LIMIT,
+    MIN_CLIPBOARD_HISTORY_LIMIT,
+    type SelectionClipboard
+  } from '$model/selection-clipboard.model';
   import { KeyboardKey } from '$model/ui.model';
   import {
     SCHEME_DATE_FORMAT,
@@ -17,6 +22,7 @@
   import { _, locale } from 'svelte-i18n';
   import Icon from '$lib/components/Icon.svelte';
   import { setAppLocale } from '$lib/i18n';
+  import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
@@ -26,8 +32,10 @@
 
   let { children }: Props = $props();
   let fileOpen = $state(false);
+  let clipboardOpen = $state(false);
   let settingsOpen = $state(false);
   let fileArea: HTMLDivElement | undefined = $state();
+  let clipboardArea: HTMLDivElement | undefined = $state();
   let schemeAreaElement: HTMLDivElement | undefined = $state();
   let schemeTabsElement: HTMLDivElement | undefined = $state();
   let schemeMeasureElement: HTMLDivElement | undefined = $state();
@@ -109,6 +117,7 @@
 
   async function openScheme(id: string): Promise<void> {
     fileOpen = false;
+    clipboardOpen = false;
     schemePopoverOpen = false;
     const opened = await workspace.select(id);
     if (opened && page.url.pathname !== '/') {
@@ -118,7 +127,29 @@
 
   function closeScheme(event: MouseEvent): void {
     event.stopPropagation();
+    clipboardOpen = false;
     workspace.close();
+  }
+
+  async function toggleClipboard(event: MouseEvent): Promise<void> {
+    event.stopPropagation();
+    fileOpen = false;
+    settingsOpen = false;
+    schemeMenu = null;
+    clipboardOpen = !clipboardOpen;
+    if (clipboardOpen) {
+      await clipboardStore.refresh();
+    }
+  }
+
+  async function pasteClipboardEntry(
+    clipboard: SelectionClipboard
+  ): Promise<void> {
+    if (!workspace.editor.pasteSelectionClipboard(clipboard)) {
+      return;
+    }
+    clipboardOpen = false;
+    await clipboardStore.use(clipboard.id);
   }
 
   function showSchemeMenu(
@@ -129,6 +160,7 @@
     event.preventDefault();
     event.stopPropagation();
     fileOpen = false;
+    clipboardOpen = false;
     settingsOpen = false;
     if (!preservePopover) {
       schemePopoverOpen = false;
@@ -264,6 +296,7 @@
   onMount(() => {
     themeStore.initialize();
     void workspace.initialize();
+    void clipboardStore.initialize();
 
     const closeFloatingMenus = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -273,6 +306,9 @@
 
       if (fileArea && !fileArea.contains(target)) {
         fileOpen = false;
+      }
+      if (clipboardArea && !clipboardArea.contains(target)) {
+        clipboardOpen = false;
       }
       if (schemeMenuElement && !schemeMenuElement.contains(target)) {
         schemeMenu = null;
@@ -288,6 +324,7 @@
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === KeyboardKey.Escape) {
         fileOpen = false;
+        clipboardOpen = false;
         settingsOpen = false;
         schemeMenu = null;
         schemePopoverOpen = false;
@@ -305,6 +342,10 @@
 
     window.addEventListener('click', closeFloatingMenus);
     window.addEventListener('keydown', closeOnEscape);
+    const refreshClipboardOnFocus = (): void => {
+      void clipboardStore.refresh();
+    };
+    window.addEventListener('focus', refreshClipboardOnFocus);
     const resizeObserver = new ResizeObserver(() => {
       void updateVisibleSchemeCount();
     });
@@ -315,6 +356,7 @@
     return () => {
       window.removeEventListener('click', closeFloatingMenus);
       window.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('focus', refreshClipboardOnFocus);
       resizeObserver.disconnect();
     };
   });
@@ -322,6 +364,9 @@
   $effect(() => {
     orderedSchemes;
     workspace.activeId;
+    if (!workspace.activeId) {
+      clipboardOpen = false;
+    }
     $locale;
     void updateVisibleSchemeCount();
   });
@@ -378,11 +423,75 @@
         {/if}
       </div>
 
+      {#if workspace.activeId}
+        <div class="clipboard-area" bind:this={clipboardArea}>
+          <button
+            class="nav-button"
+            class:active={clipboardOpen}
+            type="button"
+            aria-haspopup="dialog"
+            aria-controls="clipboard-popover"
+            aria-expanded={clipboardOpen}
+            onclick={(event) => void toggleClipboard(event)}
+          >
+            {$_('nav.clipboard')}
+          </button>
+
+          {#if clipboardOpen}
+            <div
+              id="clipboard-popover"
+              class="clipboard-popover"
+              role="dialog"
+              aria-label={$_('clipboard.title')}
+            >
+              <div class="clipboard-heading">
+                <strong>{$_('clipboard.title')}</strong>
+                <span>
+                  {clipboardStore.entries.length} / {clipboardStore.limit}
+                </span>
+              </div>
+              <div class="clipboard-list">
+                {#if clipboardStore.entries.length === 0}
+                  <p class="clipboard-empty">{$_('clipboard.empty')}</p>
+                {/if}
+                {#each clipboardStore.entries as clipboard (clipboard.id)}
+                  <button
+                    class="clipboard-item"
+                    type="button"
+                    onclick={() => void pasteClipboardEntry(clipboard)}
+                  >
+                    <span class="clipboard-item-heading">
+                      <strong>{clipboard.project.name}</strong>
+                      <span>{clipboard.project.width} × {clipboard.project.height}</span>
+                    </span>
+                    <span class="clipboard-item-meta">
+                      {$_('clipboard.selectionCount', {
+                        values: { count: clipboard.selectionCells.length }
+                      })}
+                    </span>
+                    <span class="clipboard-item-time">
+                      {$_('clipboard.usedAt', {
+                        values: {
+                          date: formatModifiedAt(
+                            clipboard.lastUsedAt ?? clipboard.copiedAt
+                          )
+                        }
+                      })}
+                    </span>
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       <button
         class="nav-button"
         type="button"
         onclick={() => {
           schemeMenu = null;
+          clipboardOpen = false;
           settingsOpen = true;
         }}
       >
@@ -590,6 +699,25 @@
       </div>
     </div>
 
+    <div class="setting-group">
+      <h3>{$_('settings.clipboard')}</h3>
+      <p>{$_('settings.clipboardLimitHint')}</p>
+      <label class="clipboard-limit-field">
+        <span>{$_('settings.clipboardLimit')}</span>
+        <input
+          class="field"
+          type="number"
+          min={MIN_CLIPBOARD_HISTORY_LIMIT}
+          max={MAX_CLIPBOARD_HISTORY_LIMIT}
+          value={clipboardStore.limit}
+          onchange={(event) =>
+            void clipboardStore.setLimit(
+              Number((event.currentTarget as HTMLInputElement).value)
+            )}
+        />
+      </label>
+    </div>
+
     <div class="storage-note">
       <h3>{$_('settings.storage')}</h3>
       <p>{$_('settings.storageCopy')}</p>
@@ -763,6 +891,10 @@
     position: relative;
   }
 
+  .clipboard-area {
+    position: relative;
+  }
+
   .nav-button {
     height: 34px;
     padding: 0 12px;
@@ -819,6 +951,95 @@
     place-items: center;
     width: 16px;
     color: var(--muted);
+  }
+
+  .clipboard-popover {
+    position: absolute;
+    z-index: 37;
+    top: calc(100% + 8px);
+    left: 0;
+    display: grid;
+    width: min(340px, calc(100vw - 20px));
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .clipboard-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .clipboard-heading strong {
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+  }
+
+  .clipboard-heading span {
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .clipboard-list {
+    display: grid;
+    max-height: min(55vh, 400px);
+    overflow-y: auto;
+    padding: 6px;
+  }
+
+  .clipboard-item {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .clipboard-item:hover,
+  .clipboard-item:focus-visible {
+    background: var(--hover);
+  }
+
+  .clipboard-item-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .clipboard-item-heading strong {
+    overflow: hidden;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .clipboard-item-heading > span,
+  .clipboard-item-meta,
+  .clipboard-item-time {
+    color: var(--muted);
+    font-size: 0.66rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .clipboard-empty {
+    margin: 0;
+    padding: 14px 10px;
+    color: var(--muted);
+    font-size: 0.78rem;
   }
 
   .scheme-area {
@@ -1207,6 +1428,22 @@
     line-height: 1.65;
   }
 
+  .clipboard-limit-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 92px;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .clipboard-limit-field .field {
+    min-height: 36px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
   .segmented {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1252,6 +1489,13 @@
     .topbar-left {
       min-width: 0;
       gap: 8px;
+    }
+
+    .clipboard-popover {
+      position: fixed;
+      top: 54px;
+      left: 10px;
+      width: calc(100vw - 20px);
     }
 
     .scheme-label {
