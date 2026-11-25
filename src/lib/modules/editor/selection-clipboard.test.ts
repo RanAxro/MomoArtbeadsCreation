@@ -4,9 +4,11 @@ import { createProject } from '$domain/project';
 import { GameVersion } from '$model/project.model';
 import {
   cloneSelectionLayer,
+  createLiftedSelectionLayer,
   createSelectionClipboard,
   createSelectionLayer,
-  mergeSelectionLayer
+  mergeSelectionLayer,
+  moveSelectionLayer
 } from './selection-clipboard';
 
 describe('selection clipboard', () => {
@@ -137,6 +139,63 @@ describe('selection clipboard', () => {
     const result = mergeSelectionLayer(destination, layer!);
     expect(result?.selection.size).toBe(8);
     expect(result?.cells[23]).toBe(1);
+  });
+
+  it('lifts a selection into a temporary layer without changing the source board', () => {
+    const project = createProject({
+      name: '移动图层',
+      width: 5,
+      height: 4,
+      gameVersion: GameVersion.V3
+    });
+    project.cells[6] = 1;
+    project.cells[7] = 2;
+    project.cells[11] = 3;
+    project.cells[12] = 4;
+
+    const layer = createLiftedSelectionLayer(
+      project,
+      new Set([6, 7, 11])
+    );
+
+    expect(layer?.x).toBe(1);
+    expect(layer?.y).toBe(1);
+    expect(layer?.width).toBe(2);
+    expect(layer?.height).toBe(2);
+    expect(layer?.cells).toEqual([1, 2, 3, 4]);
+    expect(layer?.selectionCells).toEqual([0, 1, 2]);
+    expect(layer?.sourceSelectionCells).toEqual([6, 7, 11]);
+    expect(project.cells[6]).toBe(1);
+    expect(project.cells[7]).toBe(2);
+    expect(project.cells[11]).toBe(3);
+
+    const moved = moveSelectionLayer(layer!, 2, 0, 5, 4);
+    const result = mergeSelectionLayer(project, moved);
+
+    expect(result?.cells[2]).toBe(1);
+    expect(result?.cells[3]).toBe(2);
+    expect(result?.cells[7]).toBe(3);
+    expect(result?.cells[6]).toBe(0);
+    expect(result?.cells[11]).toBe(0);
+    expect(result?.cells[12]).toBe(4);
+    expect([...(result?.selection ?? [])]).toEqual([2, 3, 7]);
+  });
+
+  it('deep clones lifted source cells', () => {
+    const project = createProject({
+      name: '移动引用检查',
+      width: 3,
+      height: 3,
+      gameVersion: GameVersion.V3
+    });
+    project.cells[4] = 1;
+    const layer = createLiftedSelectionLayer(project, new Set([4]));
+    const clone = cloneSelectionLayer(layer!);
+
+    clone.sourceSelectionCells?.push(8);
+
+    expect(layer?.sourceSelectionCells).toEqual([4]);
+    expect(clone.sourceSelectionCells).toEqual([4, 8]);
   });
 
   it('deep clones temporary layer data without sharing references', () => {

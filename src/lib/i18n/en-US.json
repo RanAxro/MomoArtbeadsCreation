@@ -60,7 +60,7 @@
     "artbeads": "{count} Artbeads",
     "hint": "Wheel to pan · Shift + wheel to pan sideways · Ctrl + wheel to zoom · Middle mouse or Space + left drag",
     "selectionHint": "Left drag: replace · Ctrl + left: union · Alt + left: subtract · Ctrl + right: XOR · Alt + right: intersect · Right click: clear · Shift: lock 1:1 · Ctrl+C copy · Ctrl+V paste",
-    "moveHint": "Drag a selection to move its pixels · Right click: clear · Switching tools merges the pasted layer",
+    "moveHint": "Drag a selection to move its pixels · Right click: clear · Switching tools merges the temporary layer",
     "saved": "Saved",
     "saving": "Saving…",
     "dirty": "Waiting to save",

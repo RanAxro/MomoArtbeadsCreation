@@ -7,6 +7,9 @@ export const selectionLayerSchema = z.object({
   cells: z.array(z.number().int().nonnegative()),
   palette: paletteSchema,
   selectionCells: z.array(z.number().int().nonnegative()),
+  sourceSelectionCells: z
+    .array(z.number().int().nonnegative())
+    .optional(),
   x: z.number().int(),
   y: z.number().int()
 });

@@ -59,7 +59,6 @@
   } | null>(null);
   let moveDrag = $state<{
     pointerId: number;
-    mode: 'selection' | 'layer';
     startCell: BoardCell;
     layerStartX: number;
     layerStartY: number;
@@ -203,9 +202,16 @@
     context.fillStyle = boardColor;
     context.fillRect(originX, originY, boardWidth, boardHeight);
 
+    const activeLayer = editor.activePasteLayer;
+    const sourceSelectionCells = new Set(
+      activeLayer?.sourceSelectionCells ?? []
+    );
     for (let y = 0; y < project.height; y += 1) {
       for (let x = 0; x < project.width; x += 1) {
         const index = y * project.width + x;
+        if (sourceSelectionCells.has(index)) {
+          continue;
+        }
         const colorIndex = project.cells[index];
         if (colorIndex === 0) {
           continue;
@@ -223,17 +229,16 @@
       }
     }
 
-    const pasteLayer = editor.activePasteLayer;
-    if (pasteLayer) {
-      for (const layerIndex of pasteLayer.selectionCells) {
-        if (layerIndex < 0 || layerIndex >= pasteLayer.cells.length) {
+    if (activeLayer) {
+      for (const layerIndex of activeLayer.selectionCells) {
+        if (layerIndex < 0 || layerIndex >= activeLayer.cells.length) {
           continue;
         }
 
-        const layerX = layerIndex % pasteLayer.width;
-        const layerY = Math.floor(layerIndex / pasteLayer.width);
-        const projectX = pasteLayer.x + layerX;
-        const projectY = pasteLayer.y + layerY;
+        const layerX = layerIndex % activeLayer.width;
+        const layerY = Math.floor(layerIndex / activeLayer.width);
+        const projectX = activeLayer.x + layerX;
+        const projectY = activeLayer.y + layerY;
         if (
           projectX < 0 ||
           projectY < 0 ||
@@ -243,7 +248,7 @@
           continue;
         }
 
-        const colorIndex = pasteLayer.cells[layerIndex];
+        const colorIndex = activeLayer.cells[layerIndex];
         if (colorIndex === 0) {
           context.fillStyle = boardColor;
           context.fillRect(
@@ -255,7 +260,7 @@
           continue;
         }
 
-        const bead = pasteLayer.palette.colors[colorIndex - 1];
+        const bead = activeLayer.palette.colors[colorIndex - 1];
         if (!bead) {
           continue;
         }
@@ -798,28 +803,23 @@
       return false;
     }
 
-    const pasteLayer = editor.activePasteLayer;
-    if (pasteLayer) {
-      moveDrag = {
-        pointerId: event.pointerId,
-        mode: 'layer',
-        startCell,
-        layerStartX: pasteLayer.x,
-        layerStartY: pasteLayer.y
-      };
-    } else {
+    let layer = editor.activePasteLayer;
+    if (!layer) {
       if (!editor.beginSelectionMove()) {
         return false;
       }
-      moveDrag = {
-        pointerId: event.pointerId,
-        mode: 'selection',
-        startCell,
-        layerStartX: 0,
-        layerStartY: 0
-      };
+      layer = editor.activePasteLayer;
+    }
+    if (!layer) {
+      return false;
     }
 
+    moveDrag = {
+      pointerId: event.pointerId,
+      startCell,
+      layerStartX: layer.x,
+      layerStartY: layer.y
+    };
     canvas?.setPointerCapture(event.pointerId);
     updateHoveredCell(startCell);
     return true;
@@ -837,14 +837,10 @@
 
     const deltaX = endCell.x - moveDrag.startCell.x;
     const deltaY = endCell.y - moveDrag.startCell.y;
-    if (moveDrag.mode === 'layer') {
-      editor.movePasteLayer(
-        moveDrag.layerStartX + deltaX,
-        moveDrag.layerStartY + deltaY
-      );
-    } else {
-      editor.updateSelectionMove(deltaX, deltaY);
-    }
+    editor.movePasteLayer(
+      moveDrag.layerStartX + deltaX,
+      moveDrag.layerStartY + deltaY
+    );
     updateHoveredCell(cellFromPointer(event));
   }
 
@@ -854,11 +850,7 @@
       return;
     }
 
-    if (drag.mode === 'layer') {
-      editor.movePasteLayer(drag.layerStartX, drag.layerStartY);
-    } else {
-      editor.cancelSelectionMove();
-    }
+    editor.movePasteLayer(drag.layerStartX, drag.layerStartY);
     releaseSelectionPointer(drag.pointerId);
     moveDrag = null;
   }
@@ -872,9 +864,6 @@
       cancelActiveMove();
     } else {
       updateMove(event);
-      if (moveDrag.mode === 'selection') {
-        editor.endSelectionMove();
-      }
     }
 
     releaseSelectionPointer(event.pointerId);

@@ -21,12 +21,12 @@ import { clampBoardZoom } from './board-layout';
 import {
   cloneSelectionLayer,
   createSelectionClipboard as createClipboardFromSelection,
+  createLiftedSelectionLayer,
   createSelectionLayer,
   getVisibleLayerSelection,
   mergeSelectionLayer,
   moveSelectionLayer
 } from './selection-clipboard';
-import { getSelectionBounds } from './selection';
 
 interface EditorSnapshot {
   cells: number[];
@@ -57,8 +57,6 @@ export class EditorStore {
   private undoStack: EditorSnapshot[] = [];
   private redoStack: EditorSnapshot[] = [];
   private strokeSnapshot: EditorSnapshot | null = null;
-  private selectionMoveSnapshot: EditorSnapshot | null = null;
-  private selectionMoveOriginal: ReadonlySet<number> | null = null;
 
   load(project: BeadProject): void {
     const savedEditorState = project.editorState;
@@ -83,8 +81,6 @@ export class EditorStore {
     this.undoStack = [];
     this.redoStack = [];
     this.strokeSnapshot = null;
-    this.selectionMoveSnapshot = null;
-    this.selectionMoveOriginal = null;
     this.selectedCells = restoredLayer
       ? new Set(
           getVisibleLayerSelection(
@@ -111,8 +107,6 @@ export class EditorStore {
     this.undoStack = [];
     this.redoStack = [];
     this.strokeSnapshot = null;
-    this.selectionMoveSnapshot = null;
-    this.selectionMoveOriginal = null;
     this.selectedCells = new Set();
     this.zoom = DEFAULT_EDITOR_ZOOM;
     this.visibleBoardCenter = { x: 0, y: 0 };
@@ -308,96 +302,30 @@ export class EditorStore {
     if (
       !this.project ||
       this.activePasteLayer ||
-      this.selectedCells.size === 0 ||
-      this.selectionMoveSnapshot
+      this.selectedCells.size === 0
     ) {
       return false;
     }
 
-    this.selectionMoveSnapshot = createEditorSnapshot(this.project);
-    this.selectionMoveOriginal = new Set(this.selectedCells);
+    const layer = createLiftedSelectionLayer(
+      this.project,
+      this.selectedCells
+    );
+    if (!layer) {
+      return false;
+    }
+
+    this.activePasteLayer = layer;
+    this.selectedCells = new Set(
+      getVisibleLayerSelection(
+        layer,
+        this.project.width,
+        this.project.height
+      )
+    );
+    this.markChanged();
+    this.previewRevision += 1;
     return true;
-  }
-
-  updateSelectionMove(deltaX: number, deltaY: number): void {
-    const project = this.project;
-    if (
-      !project ||
-      !this.selectionMoveSnapshot ||
-      !this.selectionMoveOriginal
-    ) {
-      return;
-    }
-
-    const bounds = getSelectionBounds(
-      this.selectionMoveOriginal,
-      project.width,
-      project.height
-    );
-    if (!bounds) {
-      return;
-    }
-
-    const moveX = Math.max(
-      -bounds.minX,
-      Math.min(project.width - 1 - bounds.maxX, Math.round(deltaX))
-    );
-    const moveY = Math.max(
-      -bounds.minY,
-      Math.min(project.height - 1 - bounds.maxY, Math.round(deltaY))
-    );
-    const cells = [...this.selectionMoveSnapshot.cells];
-    const selection = new Set<number>();
-
-    for (const sourceIndex of this.selectionMoveOriginal) {
-      cells[sourceIndex] = EMPTY_CELL_COLOR_INDEX;
-    }
-    for (const sourceIndex of this.selectionMoveOriginal) {
-      const sourceX = sourceIndex % project.width;
-      const sourceY = Math.floor(sourceIndex / project.width);
-      const destinationIndex =
-        (sourceY + moveY) * project.width + sourceX + moveX;
-      cells[destinationIndex] =
-        this.selectionMoveSnapshot.cells[sourceIndex] ??
-        EMPTY_CELL_COLOR_INDEX;
-      selection.add(destinationIndex);
-    }
-
-    project.cells = cells;
-    this.selectedCells = selection;
-    this.previewRevision += 1;
-  }
-
-  endSelectionMove(): void {
-    if (!this.project || !this.selectionMoveSnapshot) {
-      return;
-    }
-
-    const changed = this.selectionMoveSnapshot.cells.some(
-      (cell, index) => cell !== this.project?.cells[index]
-    );
-    if (changed) {
-      this.pushUndoSnapshot(this.selectionMoveSnapshot);
-      this.redoStack = [];
-      this.refreshHistoryState();
-      this.markChanged();
-    }
-
-    this.selectionMoveSnapshot = null;
-    this.selectionMoveOriginal = null;
-  }
-
-  cancelSelectionMove(): void {
-    if (!this.project || !this.selectionMoveSnapshot) {
-      return;
-    }
-
-    this.project.cells = [...this.selectionMoveSnapshot.cells];
-    this.project.palette = clonePalette(this.selectionMoveSnapshot.palette);
-    this.selectedCells = new Set(this.selectionMoveOriginal ?? []);
-    this.selectionMoveSnapshot = null;
-    this.selectionMoveOriginal = null;
-    this.previewRevision += 1;
   }
 
   paint(index: number): void {

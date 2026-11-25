@@ -60,7 +60,7 @@
     "artbeads": "{count} 个艺点点",
     "hint": "滚轮上下移动 · Shift + 滚轮左右移动 · Ctrl + 滚轮缩放 · 中键或空格 + 左键拖拽",
     "selectionHint": "左键拖拽替换框选 · Ctrl + 左键并集 · Alt + 左键差集 · Ctrl + 右键异或 · Alt + 右键交集 · 右键清除 · Shift 锁定 1:1 · Ctrl+C 复制 · Ctrl+V 粘贴",
-    "moveHint": "拖拽选区移动其中的艺点点 · 右键清除选择 · 切换工具时合并粘贴图层",
+    "moveHint": "拖拽选区移动其中的艺点点 · 右键清除选择 · 切换工具时合并临时图层",
     "saved": "已保存",
     "saving": "保存中…",
     "dirty": "等待保存",

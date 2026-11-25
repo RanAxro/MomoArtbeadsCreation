@@ -81,6 +81,64 @@ export function createSelectionClipboard(
   };
 }
 
+export function createLiftedSelectionLayer(
+  project: BeadProject,
+  selectedCells: ReadonlySet<number>
+): SelectionLayer | null {
+  const bounds = getSelectionBounds(
+    selectedCells,
+    project.width,
+    project.height
+  );
+  if (!bounds) {
+    return null;
+  }
+
+  const sourceSelectionCells = [...selectedCells]
+    .filter(
+      (index) =>
+        index >= 0 && index < project.width * project.height
+    )
+    .sort((first, second) => first - second);
+  if (sourceSelectionCells.length === 0) {
+    return null;
+  }
+
+  const layerCells = Array.from(
+    { length: bounds.width * bounds.height },
+    () => EMPTY_CELL_COLOR_INDEX
+  );
+  const selectionCells: number[] = [];
+
+  for (let y = 0; y < bounds.height; y += 1) {
+    for (let x = 0; x < bounds.width; x += 1) {
+      const sourceIndex =
+        (bounds.minY + y) * project.width + bounds.minX + x;
+      const layerIndex = y * bounds.width + x;
+      layerCells[layerIndex] =
+        project.cells[sourceIndex] ?? EMPTY_CELL_COLOR_INDEX;
+      if (selectedCells.has(sourceIndex)) {
+        selectionCells.push(layerIndex);
+      }
+    }
+  }
+
+  if (selectionCells.length === 0) {
+    return null;
+  }
+
+  return {
+    width: bounds.width,
+    height: bounds.height,
+    cells: layerCells,
+    palette: clonePalette(project.palette),
+    selectionCells,
+    sourceSelectionCells,
+    x: bounds.minX,
+    y: bounds.minY
+  };
+}
+
 export function createSelectionLayer(
   clipboard: SelectionClipboard,
   visibleCenter: BoardViewCenter
@@ -115,7 +173,10 @@ export function cloneSelectionLayer(layer: SelectionLayer): SelectionLayer {
     palette: clonePalette(layer.palette),
     selectionCells: [...layer.selectionCells],
     x: layer.x,
-    y: layer.y
+    y: layer.y,
+    ...(layer.sourceSelectionCells
+      ? { sourceSelectionCells: [...layer.sourceSelectionCells] }
+      : {})
   };
 }
 
@@ -185,6 +246,12 @@ export function mergeSelectionLayer(
   const palette = clonePalette(project.palette);
   const selection = new Set<number>();
   const colorMap = new Map<number, number>();
+
+  for (const sourceIndex of layer.sourceSelectionCells ?? []) {
+    if (sourceIndex >= 0 && sourceIndex < cells.length) {
+      cells[sourceIndex] = EMPTY_CELL_COLOR_INDEX;
+    }
+  }
 
   for (const layerIndex of layer.selectionCells) {
     if (
