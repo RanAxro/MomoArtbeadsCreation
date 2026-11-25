@@ -5,6 +5,7 @@
   import { page } from '$app/state';
   import { MAX_PROJECT_NAME_LENGTH } from '$domain/project';
   import { _, locale } from 'svelte-i18n';
+  import Icon from '$lib/components/Icon.svelte';
   import { setAppLocale, type AppLocale } from '$lib/i18n';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { workspace } from '$modules/workspace/workspace.svelte';
@@ -342,11 +343,11 @@
         {#if fileOpen}
           <div class="file-menu" role="menu">
             <a href="/new" role="menuitem" onclick={() => { fileOpen = false; }}>
-              <span>＋</span>
+              <span><Icon name="plus" size={16} /></span>
               {$_('file.new')}
             </a>
             <a href="/import" role="menuitem" onclick={() => { fileOpen = false; }}>
-              <span>▧</span>
+              <span><Icon name="image" size={16} /></span>
               {$_('file.import')}
             </a>
             {#if workspace.activeId}
@@ -358,7 +359,7 @@
                   fileOpen = false;
                 }}
               >
-                <span>×</span>
+                <span><Icon name="close" size={16} /></span>
                 {$_('file.close')}
               </button>
             {/if}
@@ -410,7 +411,7 @@
               aria-label={$_('nav.closeScheme')}
               onclick={closeScheme}
             >
-              ×
+              <Icon name="close" size={14} />
             </button>
           {/if}
         </div>
@@ -422,7 +423,7 @@
         <div class="scheme-tab" class:active={workspace.activeId === scheme.id}>
           <span class="scheme-name">{scheme.name}</span>
           {#if workspace.activeId === scheme.id}
-            <span class="scheme-close">×</span>
+            <span class="scheme-close"><Icon name="close" size={14} /></span>
           {/if}
         </div>
       {/each}
@@ -443,7 +444,7 @@
           schemePopoverOpen = !schemePopoverOpen;
         }}
       >
-        ⌄
+        <Icon name="chevron-down" size={16} />
       </button>
 
       {#if schemePopoverOpen}
@@ -531,7 +532,7 @@
         aria-label={$_('settings.close')}
         onclick={() => { settingsOpen = false; }}
       >
-        ×
+        <Icon name="close" size={18} />
       </button>
     </div>
 
@@ -544,14 +545,16 @@
           type="button"
           onclick={() => themeStore.set('light')}
         >
-          ☼ {$_('settings.light')}
+          <Icon name="sun" size={16} />
+          {$_('settings.light')}
         </button>
         <button
           class:active={themeStore.mode === 'dark'}
           type="button"
           onclick={() => themeStore.set('dark')}
         >
-          ◐ {$_('settings.dark')}
+          <Icon name="moon" size={16} />
+          {$_('settings.dark')}
         </button>
       </div>
     </div>
@@ -801,9 +804,10 @@
   }
 
   .file-menu span {
+    display: grid;
+    place-items: center;
     width: 16px;
     color: var(--muted);
-    text-align: center;
   }
 
   .scheme-area {
@@ -949,7 +953,7 @@
     width: 28px;
     height: 28px;
     flex: 0 0 auto;
-    padding: 0 0 4px;
+    padding: 0;
     border: 1px solid var(--border-strong);
     border-radius: 3px;
     background: transparent;
@@ -1056,6 +1060,8 @@
   }
 
   .icon-button {
+    display: grid;
+    place-items: center;
     width: 32px;
     height: 32px;
     border: 1px solid var(--border);
@@ -1197,6 +1203,10 @@
   }
 
   .segmented button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     height: 40px;
     border: 0;
     background: transparent;

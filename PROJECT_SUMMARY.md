@@ -28,6 +28,7 @@ Pegboard（格板）图纸，并通过艺点点 Artbead 颜色完成逐格绘制
 - 导航和操作区保持紧凑，编辑区占据主要空间
 - 不使用彩色渐变作为界面背景
 - 艺点点颜色仅出现在颜色槽和 Canvas 图纸中
+- 界面操作图标统一使用 24 × 24 描边 SVG，并通过 `currentColor` 跟随明暗主题
 - `logo.webp` 和 `home.webp` 使用像素化渲染，关闭浏览器平滑缩放
 
 主题模式和语言设置都会保存到 `localStorage`。
@@ -117,6 +118,7 @@ src/
 │  ├─ components/
 │  │  ├─ AppShell.svelte           顶部导航、方案 Tab、设置弹层
 │  │  ├─ BeadCanvas.svelte         Pegboard Canvas 编辑器
+│  │  ├─ Icon.svelte               统一 SVG 图标组件
 │  │  ├─ ImageCropFrame.svelte     格板比例裁剪框、拖动与暗色遮罩
 │  │  └─ ProjectPreview.svelte     图片转换预览
 │  ├─ config/
@@ -143,6 +145,7 @@ src/
 └─ static/
    ├─ logo.webp                    项目 Logo
    ├─ home.webp                    首页图片
+   ├─ icons/ui-icons.svg           统一描边 SVG 图标集
    ├─ manifest.webmanifest         PWA 配置
    └─ sw.js                        离线缓存
 ```
@@ -204,6 +207,7 @@ src/lib/config/pegboard.ts
 - 透明图片区域转换为空格
 - 简体中文与英文切换
 - 亮色与暗色主题切换
+- 所有文字图标均已替换为统一风格 SVG，覆盖编辑工具、导航、主题和返回操作
 - PWA 离线缓存
 - Vercel 静态部署
 
@@ -212,6 +216,7 @@ src/lib/config/pegboard.ts
 ```text
 static/logo.webp
 static/home.webp
+static/icons/ui-icons.svg
 ```
 
 当前处理方式：
@@ -221,6 +226,7 @@ static/home.webp
 - 两张图片均使用最近邻像素渲染
 - CSS 使用 `image-rendering: pixelated`
 - 不使用浏览器抗锯齿缩放
+- SVG 图标统一使用 24 × 24 视口、1.8px 描边、圆角端点，并通过图标集复用
 
 ## 10. 数据存储
 
@@ -320,6 +326,8 @@ npm run preview
   - 移动裁剪框后格板图内容自动更新
   - 格板悬停边框及四边标尺联动高亮正常
   - 滚轮平移、`Shift` + 滚轮横移、`Ctrl` + 滚轮缩放、缩放调节条和恢复图标正常
+  - SVG 图标集加载成功，菜单、设置、编辑工具栏和返回按钮图标正常
+  - SVG 图标可随按钮状态和明暗主题继承颜色
   - 中键拖拽正常
   - 空格加左键拖拽正常，且不会误绘制
   - 双指缩放与拖拽可同时生效，单指绘制正常

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { _ } from 'svelte-i18n';
+  import Icon from '$lib/components/Icon.svelte';
   import {
     DEFAULT_PEGBOARD,
     PEGBOARD_PRESETS
@@ -61,7 +62,10 @@
         <h1>{$_('new.title')}</h1>
         <p>{$_('new.description')}</p>
       </div>
-      <a class="button ghost compact" href="/">← {$_('new.back')}</a>
+      <a class="button ghost compact" href="/">
+        <Icon name="arrow-left" size={16} />
+        {$_('new.back')}
+      </a>
     </header>
 
     <form class="scheme-form" onsubmit={(event) => { event.preventDefault(); createScheme(); }}>

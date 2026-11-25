@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { _ } from 'svelte-i18n';
   import BeadCanvas from '$lib/components/BeadCanvas.svelte';
+  import Icon from '$lib/components/Icon.svelte';
   import { ARTBEAD_COLORS } from '$lib/config/pegboard';
   import { countBeads, countColorUsage } from '$domain/project';
   import { projectRepository } from '$data/project-repository';
@@ -13,10 +14,15 @@
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   const editor = workspace.editor;
-  const tools: { id: EditorTool; icon: string; labelKey: string; shortcut: string }[] = [
-    { id: 'pencil', icon: '✎', labelKey: 'board.pencil', shortcut: 'B' },
-    { id: 'eraser', icon: '⌫', labelKey: 'board.eraser', shortcut: 'E' },
-    { id: 'fill', icon: '◩', labelKey: 'board.fill', shortcut: 'G' }
+  const tools: {
+    id: EditorTool;
+    icon: 'pencil' | 'eraser' | 'fill';
+    labelKey: string;
+    shortcut: string;
+  }[] = [
+    { id: 'pencil', icon: 'pencil', labelKey: 'board.pencil', shortcut: 'B' },
+    { id: 'eraser', icon: 'eraser', labelKey: 'board.eraser', shortcut: 'E' },
+    { id: 'fill', icon: 'fill', labelKey: 'board.fill', shortcut: 'G' }
   ];
 
   let saving = $state(false);
@@ -227,7 +233,7 @@
                 aria-pressed={editor.tool === tool.id}
                 onclick={() => editor.setTool(tool.id)}
               >
-                {tool.icon}
+                <Icon name={tool.icon} size={18} />
               </button>
             {/each}
             <span class="tool-divider"></span>
@@ -239,7 +245,7 @@
               disabled={!editor.canUndo}
               onclick={() => editor.undo()}
             >
-              ↶
+              <Icon name="undo" size={18} />
             </button>
             <button
               class="tool"
@@ -249,7 +255,7 @@
               disabled={!editor.canRedo}
               onclick={() => editor.redo()}
             >
-              ↷
+              <Icon name="redo" size={18} />
             </button>
           </div>
 
@@ -301,7 +307,7 @@
             aria-label={$_('board.zoomReset')}
             onclick={() => editor.setZoom(1)}
           >
-            <span aria-hidden="true">↺</span>
+            <Icon name="reset" size={16} />
           </button>
         </div>
       </footer>
@@ -314,8 +320,14 @@
         <p class="eyebrow">{$_('home.eyebrow')}</p>
         <p>{$_('home.description')}</p>
         <div class="quick-actions">
-          <a class="button primary" href="/new">＋ {$_('home.new')}</a>
-          <a class="button secondary" href="/import">▧ {$_('home.import')}</a>
+          <a class="button primary" href="/new">
+            <Icon name="plus" size={17} />
+            {$_('home.new')}
+          </a>
+          <a class="button secondary" href="/import">
+            <Icon name="image" size={17} />
+            {$_('home.import')}
+          </a>
         </div>
       </section>
     {/if}

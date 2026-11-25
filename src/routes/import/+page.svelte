@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { _ } from 'svelte-i18n';
+  import Icon from '$lib/components/Icon.svelte';
   import ImageCropFrame from '$lib/components/ImageCropFrame.svelte';
   import ProjectPreview from '$lib/components/ProjectPreview.svelte';
   import {
@@ -298,7 +299,10 @@
         <h1>{$_('import.title')}</h1>
         <p>{$_('import.description')}</p>
       </div>
-      <a class="button ghost compact" href="/">← {$_('import.back')}</a>
+      <a class="button ghost compact" href="/">
+        <Icon name="arrow-left" size={16} />
+        {$_('import.back')}
+      </a>
     </header>
 
     <div class="import-grid">
