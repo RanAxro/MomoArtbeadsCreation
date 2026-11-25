@@ -266,43 +266,12 @@
     );
 
     if (editor.selectedCells.size > 0) {
-      context.beginPath();
-      for (const index of editor.selectedCells) {
-        if (index < 0 || index >= project.cells.length) {
-          continue;
-        }
-
-        const x = index % project.width;
-        const y = Math.floor(index / project.width);
-        const cellX = originX + x * cellSize;
-        const cellY = originY + y * cellSize;
-
-        if (y === 0 || !editor.selectedCells.has(index - project.width)) {
-          context.moveTo(cellX, cellY);
-          context.lineTo(cellX + cellSize, cellY);
-        }
-        if (
-          y === project.height - 1 ||
-          !editor.selectedCells.has(index + project.width)
-        ) {
-          context.moveTo(cellX, cellY + cellSize);
-          context.lineTo(cellX + cellSize, cellY + cellSize);
-        }
-        if (x === 0 || !editor.selectedCells.has(index - 1)) {
-          context.moveTo(cellX, cellY);
-          context.lineTo(cellX, cellY + cellSize);
-        }
-        if (
-          x === project.width - 1 ||
-          !editor.selectedCells.has(index + 1)
-        ) {
-          context.moveTo(cellX + cellSize, cellY);
-          context.lineTo(cellX + cellSize, cellY + cellSize);
-        }
-      }
-      context.strokeStyle = selectionColor;
-      context.lineWidth = Math.max(1, Math.min(2, cellSize * 0.08));
-      context.stroke();
+      strokeSelectionOutline(
+        context,
+        editor.selectedCells,
+        selectionColor,
+        Math.max(1, Math.min(2, cellSize * 0.08))
+      );
     }
 
     if (selectionDrag) {
@@ -321,6 +290,22 @@
         height * cellSize
       );
       context.restore();
+
+      if (
+        selectionDrag.operation === 'intersect' &&
+        selectionDrag.previous.size > 0
+      ) {
+        strokeSelectionOutline(
+          context,
+          selectionDrag.previous,
+          selectionColor,
+          Math.max(1.5, Math.min(2.5, cellSize * 0.1)),
+          [
+            Math.max(3, cellSize * 0.2),
+            Math.max(2, cellSize * 0.14)
+          ]
+        );
+      }
     }
 
     const hovered = hoveredCell;
@@ -353,6 +338,57 @@
       activeRulerText,
       fontFamily
     });
+  }
+
+  function strokeSelectionOutline(
+    context: CanvasRenderingContext2D,
+    cells: ReadonlySet<number>,
+    color: string,
+    lineWidth: number,
+    dash: number[] = []
+  ): void {
+    const project = editor.project;
+    if (!project || cells.size === 0) {
+      return;
+    }
+
+    const { originX, originY, cellSize } = layout;
+    context.save();
+    context.beginPath();
+
+    for (const index of cells) {
+      if (index < 0 || index >= project.cells.length) {
+        continue;
+      }
+
+      const x = index % project.width;
+      const y = Math.floor(index / project.width);
+      const cellX = originX + x * cellSize;
+      const cellY = originY + y * cellSize;
+
+      if (y === 0 || !cells.has(index - project.width)) {
+        context.moveTo(cellX, cellY);
+        context.lineTo(cellX + cellSize, cellY);
+      }
+      if (y === project.height - 1 || !cells.has(index + project.width)) {
+        context.moveTo(cellX, cellY + cellSize);
+        context.lineTo(cellX + cellSize, cellY + cellSize);
+      }
+      if (x === 0 || !cells.has(index - 1)) {
+        context.moveTo(cellX, cellY);
+        context.lineTo(cellX, cellY + cellSize);
+      }
+      if (x === project.width - 1 || !cells.has(index + 1)) {
+        context.moveTo(cellX + cellSize, cellY);
+        context.lineTo(cellX + cellSize, cellY + cellSize);
+      }
+    }
+
+    context.strokeStyle = color;
+    context.lineWidth = lineWidth;
+    context.setLineDash(dash);
+    context.stroke();
+    context.restore();
   }
 
   interface RulerStyle {
