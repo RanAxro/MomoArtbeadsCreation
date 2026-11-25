@@ -81,6 +81,7 @@
     anchorY: number;
     scaleVectorX: number;
     scaleVectorY: number;
+    scaleAtStart: number;
     startAngle: number;
   } | null>(null);
   let referenceRenderRevision = $state(0);
@@ -225,6 +226,32 @@
         isInsideReference(reference, point)
       ) ?? null
     );
+  }
+
+  function referenceResizeCursor(
+    reference: ReferenceImage,
+    handle: Exclude<
+      ReturnType<typeof referenceHandleAtPoint>,
+      'rotation' | null
+    >
+  ): 'nwse-resize' | 'nesw-resize' {
+    const signX = handle.endsWith('left') ? -1 : 1;
+    const signY = handle.startsWith('top') ? -1 : 1;
+    const halfWidth = (reference.width * layout.cellSize) / 2;
+    const halfHeight = (reference.height * layout.cellSize) / 2;
+    const corner = localToCanvas(
+      reference,
+      signX * halfWidth,
+      signY * halfHeight
+    );
+    const opposite = localToCanvas(
+      reference,
+      -signX * halfWidth,
+      -signY * halfHeight
+    );
+    return (corner.x - opposite.x) * (corner.y - opposite.y) >= 0
+      ? 'nwse-resize'
+      : 'nesw-resize';
   }
 
   function ensureReferenceImages(): void {
@@ -1284,7 +1311,9 @@
     let anchorY = center.y;
     let scaleVectorX = 0;
     let scaleVectorY = 0;
+    let scaleAtStart = 1;
     let startAngle = 0;
+    let referenceCursor = 'move';
 
     if (handle === 'rotation') {
       mode = 'rotate';
@@ -1302,6 +1331,15 @@
       anchorY = anchor.y;
       scaleVectorX = center.x - anchor.x;
       scaleVectorY = center.y - anchor.y;
+      const denominator =
+        scaleVectorX * scaleVectorX + scaleVectorY * scaleVectorY;
+      if (denominator > 0.0001) {
+        scaleAtStart =
+          ((point.x - anchorX) * scaleVectorX +
+            (point.y - anchorY) * scaleVectorY) /
+          denominator;
+      }
+      referenceCursor = referenceResizeCursor(reference, handle);
     } else if (isInsideReference(reference, point)) {
       mode = 'move';
     } else {
@@ -1321,12 +1359,13 @@
       anchorY,
       scaleVectorX,
       scaleVectorY,
+      scaleAtStart,
       startAngle
     };
     canvas?.setPointerCapture(event.pointerId);
     if (canvas) {
       canvas.style.cursor =
-        mode === 'move' ? 'move' : mode === 'rotate' ? 'grabbing' : 'nwse-resize';
+        mode === 'move' ? 'move' : mode === 'rotate' ? 'grabbing' : referenceCursor;
     }
     return true;
   }
@@ -1394,7 +1433,7 @@
 
     const pointerVectorX = point.x - drag.anchorX;
     const pointerVectorY = point.y - drag.anchorY;
-    const rawScale =
+    const pointerScale =
       (pointerVectorX * drag.scaleVectorX +
         pointerVectorY * drag.scaleVectorY) /
       denominator;
@@ -1410,6 +1449,10 @@
       maxSize / original.width,
       maxSize / original.height
     );
+    // `scaleVector` spans half of the diagonal. Dividing the projected
+    // pointer movement by two makes the dragged corner track the pointer.
+    const rawScale =
+      1 + (pointerScale - drag.scaleAtStart) * 0.5;
     const scale = Math.max(
       minimumScale,
       Math.min(maximumScale, rawScale)
@@ -1487,7 +1530,7 @@
       handle === 'rotation'
         ? 'grab'
         : handle
-          ? 'nwse-resize'
+          ? referenceResizeCursor(reference, handle)
           : referenceUnderPointer
             ? 'move'
             : '';
