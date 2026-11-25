@@ -17,6 +17,11 @@
     MAX_BOARD_ZOOM,
     MIN_BOARD_ZOOM
   } from '$model/editor.model';
+  import {
+    DEFAULT_REFERENCE_IMAGE_COVERAGE,
+    REFERENCE_IMAGE_MAX_FILE_BYTES,
+    type ReferenceImage
+  } from '$model/reference-image.model';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
@@ -30,6 +35,12 @@
   let saveFeedbackRequest = 0;
   let saveFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  let referenceOpen = $state(false);
+  let referenceDragActive = $state(false);
+  let referenceLoading = $state(false);
+  let referenceError = $state('');
+  let referenceInput: HTMLInputElement | undefined = $state();
+  let referenceArea: HTMLDivElement | undefined = $state();
 
   let hasSelection = $derived(editor.selectedCells.size > 0);
   let clipboardAvailable = $derived(clipboardStore.entries.length > 0);
@@ -186,6 +197,121 @@
     await clipboardStore.use(clipboard.id);
   }
 
+  function readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Invalid image data.'));
+        }
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('Read failed.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function imageDimensions(
+    dataUrl: string
+  ): Promise<{ width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = () => {
+        if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+          reject(new Error('Invalid image dimensions.'));
+          return;
+        }
+        resolve({
+          width: image.naturalWidth,
+          height: image.naturalHeight
+        });
+      };
+      image.onerror = () => reject(new Error('Image decode failed.'));
+      image.src = dataUrl;
+    });
+  }
+
+  async function importReferenceImage(file: File): Promise<void> {
+    if (!editor.project || referenceLoading) {
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      referenceError = $_('reference.invalidFile');
+      return;
+    }
+    if (file.size > REFERENCE_IMAGE_MAX_FILE_BYTES) {
+      referenceError = $_('reference.fileTooLarge');
+      return;
+    }
+
+    referenceLoading = true;
+    referenceError = '';
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const dimensions = await imageDimensions(dataUrl);
+      const project = editor.project;
+      if (!project) {
+        return;
+      }
+
+      const aspectRatio = dimensions.width / dimensions.height;
+      let width = project.width * DEFAULT_REFERENCE_IMAGE_COVERAGE;
+      let height = width / aspectRatio;
+      const maxHeight = project.height * DEFAULT_REFERENCE_IMAGE_COVERAGE;
+      if (height > maxHeight) {
+        height = maxHeight;
+        width = height * aspectRatio;
+      }
+
+      const reference: ReferenceImage = {
+        id: crypto.randomUUID(),
+        name: file.name.trim() || $_('reference.defaultName'),
+        dataUrl,
+        width,
+        height,
+        centerX: project.width / 2,
+        centerY: project.height / 2,
+        rotation: 0
+      };
+      editor.addReferenceImage(reference);
+      referenceOpen = false;
+    } catch {
+      referenceError = $_('reference.readError');
+    } finally {
+      referenceLoading = false;
+      if (referenceInput) {
+        referenceInput.value = '';
+      }
+    }
+  }
+
+  function chooseReferenceImage(): void {
+    if (!referenceLoading) {
+      referenceInput?.click();
+    }
+  }
+
+  function selectReferenceImage(id: string): void {
+    if (editor.selectReferenceImage(id)) {
+      referenceOpen = false;
+    }
+  }
+
+  function removeReferenceImage(id: string): void {
+    editor.removeReferenceImage(id);
+  }
+
+  function onReferenceDrop(event: DragEvent): void {
+    event.preventDefault();
+    referenceDragActive = false;
+    const file = event.dataTransfer?.files[0];
+    if (file) {
+      void importReferenceImage(file);
+    }
+  }
+
   function onKeydown(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null;
     if (target?.matches('input, textarea, select') || target?.isContentEditable) {
@@ -234,6 +360,9 @@
   $effect(() => {
     editor.revision;
     editor.savedRevision;
+    if (!editor.project) {
+      referenceOpen = false;
+    }
     if (editor.project && editor.revision !== editor.savedRevision) {
       scheduleSave();
     }
@@ -245,11 +374,32 @@
     const refreshClipboardOnFocus = (): void => {
       void refreshClipboardState();
     };
+    const closeReferencePopover = (event: MouseEvent): void => {
+      if (
+        referenceOpen &&
+        referenceArea &&
+        !referenceArea.contains(event.target as Node)
+      ) {
+        referenceOpen = false;
+        referenceError = '';
+      }
+    };
+    const closeReferenceOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape' && referenceOpen) {
+        referenceOpen = false;
+        referenceError = '';
+        referenceDragActive = false;
+      }
+    };
     window.addEventListener('keydown', onKeydown);
+    window.addEventListener('keydown', closeReferenceOnEscape);
     window.addEventListener('focus', refreshClipboardOnFocus);
+    window.addEventListener('click', closeReferencePopover);
     return () => {
       window.removeEventListener('keydown', onKeydown);
+      window.removeEventListener('keydown', closeReferenceOnEscape);
       window.removeEventListener('focus', refreshClipboardOnFocus);
+      window.removeEventListener('click', closeReferencePopover);
       if (saveTimer) {
         clearTimeout(saveTimer);
       }
@@ -345,6 +495,150 @@
                 <Icon name={tool.icon} size={18} />
               </button>
             {/each}
+            <div
+              class="reference-area"
+              bind:this={referenceArea}
+              role="group"
+              aria-label={$_('reference.title')}
+              ondragenter={(event) => {
+                event.preventDefault();
+                referenceDragActive = true;
+              }}
+              ondragover={(event) => {
+                event.preventDefault();
+                referenceDragActive = true;
+              }}
+              ondragleave={(event) => {
+                if (
+                  !event.currentTarget.contains(
+                    event.relatedTarget as Node | null
+                  )
+                ) {
+                  referenceDragActive = false;
+                }
+              }}
+              ondrop={onReferenceDrop}
+            >
+              <button
+                class="tool reference-tool"
+                class:active={referenceOpen || Boolean(editor.selectedReferenceImageId)}
+                type="button"
+                aria-haspopup="dialog"
+                aria-controls="reference-popover"
+                aria-expanded={referenceOpen}
+                title={$_('reference.hint')}
+                onclick={() => {
+                  referenceOpen = !referenceOpen;
+                  referenceError = '';
+                }}
+              >
+                <Icon name={IconName.Image} size={18} />
+                <span>{$_('reference.button')}</span>
+                {#if editor.referenceImages.length > 0}
+                  <span class="reference-count">
+                    {editor.referenceImages.length}
+                  </span>
+                {/if}
+              </button>
+
+              <input
+                class="reference-file-input"
+                bind:this={referenceInput}
+                type="file"
+                accept="image/*"
+                onchange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file) {
+                    void importReferenceImage(file);
+                  } else if (referenceInput) {
+                    referenceInput.value = '';
+                  }
+                }}
+              />
+
+              {#if referenceOpen}
+                <div
+                  id="reference-popover"
+                  class="reference-popover"
+                  class:dragging={referenceDragActive}
+                  role="dialog"
+                  aria-label={$_('reference.title')}
+                >
+                  <button
+                    class="reference-import"
+                    type="button"
+                    disabled={referenceLoading}
+                    onclick={chooseReferenceImage}
+                  >
+                    <span class="reference-import-icon">
+                      <Icon name={IconName.Plus} size={17} />
+                    </span>
+                    <span>
+                      <strong>
+                        {referenceLoading
+                          ? $_('reference.loading')
+                          : $_('reference.import')}
+                      </strong>
+                      <small>{$_('reference.dropHint')}</small>
+                    </span>
+                  </button>
+
+                  {#if referenceDragActive}
+                    <div class="reference-drop-active">
+                      {$_('reference.dropActive')}
+                    </div>
+                  {/if}
+
+                  {#if referenceError}
+                    <p class="reference-error" role="alert">
+                      {referenceError}
+                    </p>
+                  {/if}
+
+                  <div class="reference-list">
+                    {#if editor.referenceImages.length === 0}
+                      <p class="reference-empty">{$_('reference.empty')}</p>
+                    {/if}
+                    {#each editor.referenceImages as reference, index (reference.id)}
+                      <div
+                        class="reference-item"
+                        class:active={editor.selectedReferenceImageId === reference.id}
+                      >
+                        <button
+                          class="reference-select"
+                          type="button"
+                          aria-pressed={editor.selectedReferenceImageId === reference.id}
+                          onclick={() => selectReferenceImage(reference.id)}
+                        >
+                          <span class="reference-thumb">
+                            <img src={reference.dataUrl} alt="" />
+                          </span>
+                          <span class="reference-name">
+                            <strong>{reference.name}</strong>
+                            {#if index === 0}
+                              <small>{$_('reference.newest')}</small>
+                            {/if}
+                          </span>
+                        </button>
+                        <button
+                          class="reference-remove"
+                          type="button"
+                          title={$_('reference.remove')}
+                          aria-label={$_('reference.removeNamed', {
+                            values: { name: reference.name }
+                          })}
+                          onclick={() => removeReferenceImage(reference.id)}
+                        >
+                          <Icon name={IconName.Close} size={14} />
+                        </button>
+                      </div>
+                    {/each}
+                  </div>
+
+                  <p class="reference-tip">{$_('reference.transformHint')}</p>
+                </div>
+              {/if}
+            </div>
             <span class="tool-divider"></span>
             <button
               class="tool"
@@ -692,6 +986,11 @@
     gap: 2px;
   }
 
+  .reference-area {
+    position: relative;
+    display: flex;
+  }
+
   .tool {
     display: grid;
     place-items: center;
@@ -718,6 +1017,243 @@
   .tool:disabled {
     opacity: 0.28;
     cursor: not-allowed;
+  }
+
+  .reference-tool {
+    display: inline-flex;
+    width: auto;
+    gap: 7px;
+    padding: 0 9px;
+    white-space: nowrap;
+  }
+
+  .reference-count {
+    display: grid;
+    place-items: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.58rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .reference-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .reference-popover {
+    position: absolute;
+    z-index: 25;
+    top: calc(100% + 9px);
+    right: 0;
+    display: grid;
+    width: min(330px, calc(100vw - 20px));
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .reference-popover.dragging {
+    outline: 2px solid var(--selection);
+    outline-offset: -2px;
+  }
+
+  .reference-import {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    padding: 9px 10px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .reference-import:hover:not(:disabled) {
+    background: var(--hover);
+  }
+
+  .reference-import:disabled {
+    cursor: wait;
+    opacity: 0.68;
+  }
+
+  .reference-import-icon {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border-strong);
+  }
+
+  .reference-import > span:last-child {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .reference-import strong {
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .reference-import small {
+    color: var(--muted);
+    font-size: 0.66rem;
+    line-height: 1.4;
+  }
+
+  .reference-drop-active {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--selection-fill);
+    color: var(--selection);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .reference-error {
+    margin: 0;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .reference-list {
+    display: grid;
+    max-height: min(46vh, 330px);
+    overflow-y: auto;
+    padding: 6px;
+  }
+
+  .reference-empty {
+    margin: 0;
+    padding: 14px 9px;
+    color: var(--muted);
+    font-size: 0.76rem;
+  }
+
+  .reference-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 30px;
+    align-items: stretch;
+    border: 1px solid transparent;
+  }
+
+  .reference-item:hover {
+    border-color: var(--border);
+  }
+
+  .reference-item.active {
+    border-color: var(--text);
+  }
+
+  .reference-select {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 62px;
+    padding: 7px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .reference-select:hover {
+    background: var(--hover);
+  }
+
+  .reference-thumb {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 46px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background:
+      linear-gradient(45deg, var(--board-checker-light) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--board-checker-light) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--board-checker-light) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--board-checker-light) 75%),
+      var(--board-checker-dark);
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+    background-size: 8px 8px;
+  }
+
+  .reference-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .reference-name {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .reference-name strong {
+    overflow: hidden;
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .reference-name small {
+    color: var(--muted);
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .reference-remove {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .reference-remove:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+
+  .reference-tip {
+    margin: 0;
+    padding: 9px 10px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.66rem;
+    line-height: 1.55;
   }
 
   .tool-divider {
@@ -915,6 +1451,15 @@
       display: none;
     }
 
+    .reference-tool {
+      width: 34px;
+      padding: 0;
+    }
+
+    .reference-tool > span {
+      display: none;
+    }
+
   }
 
   @media (max-width: 680px) {
@@ -964,6 +1509,13 @@
     .board-actions {
       width: 100%;
       justify-content: space-between;
+    }
+
+    .reference-popover {
+      position: fixed;
+      top: 116px;
+      right: 10px;
+      width: min(330px, calc(100vw - 20px));
     }
 
     .board-title h1 {

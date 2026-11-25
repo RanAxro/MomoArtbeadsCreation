@@ -55,6 +55,24 @@
     "title": "近期剪贴板",
     "empty": "暂无近期复制的格板数据"
   },
+  "reference": {
+    "button": "参考图",
+    "title": "参考图",
+    "import": "导入参考图",
+    "defaultName": "参考图",
+    "dropHint": "点击选择本地图片，或拖拽到此处",
+    "dropActive": "松开以导入参考图",
+    "empty": "此方案还没有参考图",
+    "newest": "最新导入",
+    "remove": "删除参考图",
+    "removeNamed": "删除参考图 {name}",
+    "loading": "正在读取图片…",
+    "invalidFile": "请选择图片文件。",
+    "fileTooLarge": "图片不能超过 20 MB。",
+    "readError": "无法读取这张图片，请尝试 PNG、JPEG、WebP 或其他常见图片格式。",
+    "hint": "打开参考图列表",
+    "transformHint": "选中后可拖动参考图，拖动四角缩放，拖动顶部圆点旋转。"
+  },
   "view": {
     "title": "视图",
     "close": "关闭视图设置",

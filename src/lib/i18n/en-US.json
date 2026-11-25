@@ -55,6 +55,24 @@
     "title": "Recent clipboard",
     "empty": "No copied Pegboard data yet"
   },
+  "reference": {
+    "button": "Reference",
+    "title": "Reference images",
+    "import": "Import reference image",
+    "defaultName": "Reference image",
+    "dropHint": "Choose a local image or drag one here",
+    "dropActive": "Release to import the reference image",
+    "empty": "This scheme has no reference images",
+    "newest": "Newest import",
+    "remove": "Remove reference image",
+    "removeNamed": "Remove reference image {name}",
+    "loading": "Reading image…",
+    "invalidFile": "Choose an image file.",
+    "fileTooLarge": "The image must be 20 MB or smaller.",
+    "readError": "This image cannot be read. Try PNG, JPEG, WebP, or another common image format.",
+    "hint": "Open reference images",
+    "transformHint": "After selecting, drag the image to move it, drag a corner to resize, or drag the top handle to rotate."
+  },
   "view": {
     "title": "View",
     "close": "Close view settings",

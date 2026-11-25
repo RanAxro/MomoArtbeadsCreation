@@ -1,13 +1,14 @@
 import { z } from 'zod';
 import { EditorTool } from './editor.model';
 import { paletteSchema, type BeadPalette } from './palette.model';
+import { referenceImageSchema } from './reference-image.model';
 import { selectionLayerSchema } from './selection-layer.model';
 
 export enum GameVersion {
   V3 = '3.0'
 }
 
-export const PROJECT_SCHEMA_VERSION = 2;
+export const PROJECT_SCHEMA_VERSION = 3;
 export const MAX_PROJECT_DIMENSION = 300;
 export const MAX_PROJECT_NAME_LENGTH = 80;
 export const MIN_PROJECT_DIMENSION = 1;
@@ -19,7 +20,8 @@ export const EMPTY_CELL_COLOR_INDEX = 0;
 const projectEditorStateSchema = z.object({
   tool: z.nativeEnum(EditorTool),
   selectionCells: z.array(z.number().int().nonnegative()),
-  temporaryLayer: selectionLayerSchema.nullable()
+  temporaryLayer: selectionLayerSchema.nullable(),
+  referenceImages: z.array(referenceImageSchema).default([])
 });
 
 export const beadProjectSchema = z.object({

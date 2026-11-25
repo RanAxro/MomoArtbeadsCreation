@@ -23,6 +23,7 @@ describe('project domain', () => {
     expect(project.cells).toHaveLength(96);
     expect(project.cells.every((cell) => cell === 0)).toBe(true);
     expect(project.gameVersion).toBe(GameVersion.V3);
+    expect(project.editorState?.referenceImages).toEqual([]);
   });
 
   it('normalizes project names and enforces the maximum length', () => {

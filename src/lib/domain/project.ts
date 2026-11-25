@@ -52,7 +52,8 @@ export function createProject(options: NewProjectOptions): BeadProject {
     editorState: {
       tool: DEFAULT_EDITOR_TOOL,
       selectionCells: [],
-      temporaryLayer: null
+      temporaryLayer: null,
+      referenceImages: []
     },
     schemaVersion: PROJECT_SCHEMA_VERSION,
     createdAt: now,

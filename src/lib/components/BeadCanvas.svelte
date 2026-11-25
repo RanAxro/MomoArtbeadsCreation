@@ -32,6 +32,12 @@
     SelectionOperation,
     type SelectionRectangle
   } from '$model/selection.model';
+  import {
+    MAX_REFERENCE_IMAGE_SIZE,
+    MIN_REFERENCE_IMAGE_SIZE,
+    referenceImagesForDrawing,
+    type ReferenceImage
+  } from '$model/reference-image.model';
   import { KeyboardKey } from '$model/ui.model';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { viewStore } from '$modules/view/view-store.svelte';
@@ -65,6 +71,18 @@
     layerStartX: number;
     layerStartY: number;
   } | null>(null);
+  let referenceDrag = $state<{
+    pointerId: number;
+    mode: 'move' | 'resize' | 'rotate';
+    reference: ReferenceImage;
+    startPoint: { x: number; y: number };
+    anchorX: number;
+    anchorY: number;
+    scaleVectorX: number;
+    scaleVectorY: number;
+    startAngle: number;
+  } | null>(null);
+  let referenceRenderRevision = $state(0);
 
   let baseLayout: BoardLayout = { ...DEFAULT_BOARD_LAYOUT };
   let layout: BoardLayout = { ...DEFAULT_BOARD_LAYOUT };
@@ -80,6 +98,11 @@
     anchorY: number;
   } | null = null;
   const touchPoints = new Map<number, { x: number; y: number }>();
+  const referenceImageElements = new Map<string, HTMLImageElement>();
+  const pendingReferenceImages = new Set<string>();
+  const REFERENCE_ROTATION_HANDLE_DISTANCE = 30;
+  const REFERENCE_HANDLE_SIZE = 12;
+  const REFERENCE_HANDLE_HIT_RADIUS = 12;
 
   function updateFrame(): void {
     if (!host) {
@@ -89,6 +112,211 @@
     const rect = host.getBoundingClientRect();
     frameWidth = Math.max(1, rect.width);
     frameHeight = Math.max(1, rect.height);
+  }
+
+  function referenceCenter(reference: ReferenceImage): {
+    x: number;
+    y: number;
+  } {
+    return {
+      x: layout.originX + reference.centerX * layout.cellSize,
+      y: layout.originY + reference.centerY * layout.cellSize
+    };
+  }
+
+  function referenceAngle(reference: ReferenceImage): number {
+    return (reference.rotation * Math.PI) / 180;
+  }
+
+  function localToCanvas(
+    reference: ReferenceImage,
+    localX: number,
+    localY: number
+  ): { x: number; y: number } {
+    const center = referenceCenter(reference);
+    const angle = referenceAngle(reference);
+    return {
+      x: center.x + localX * Math.cos(angle) - localY * Math.sin(angle),
+      y: center.y + localX * Math.sin(angle) + localY * Math.cos(angle)
+    };
+  }
+
+  function canvasToReferenceLocal(
+    reference: ReferenceImage,
+    point: { x: number; y: number }
+  ): { x: number; y: number } {
+    const center = referenceCenter(reference);
+    const angle = referenceAngle(reference);
+    const deltaX = point.x - center.x;
+    const deltaY = point.y - center.y;
+    return {
+      x: deltaX * Math.cos(angle) + deltaY * Math.sin(angle),
+      y: -deltaX * Math.sin(angle) + deltaY * Math.cos(angle)
+    };
+  }
+
+  function referenceHandleAtPoint(
+    reference: ReferenceImage,
+    point: { x: number; y: number }
+  ): 'rotation' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | null {
+    const halfWidth = (reference.width * layout.cellSize) / 2;
+    const halfHeight = (reference.height * layout.cellSize) / 2;
+    const rotationPoint = localToCanvas(
+      reference,
+      0,
+      -halfHeight - REFERENCE_ROTATION_HANDLE_DISTANCE
+    );
+    if (
+      Math.hypot(point.x - rotationPoint.x, point.y - rotationPoint.y) <=
+      REFERENCE_HANDLE_HIT_RADIUS
+    ) {
+      return 'rotation';
+    }
+
+    const corners = [
+      ['top-left', -1, -1],
+      ['top-right', 1, -1],
+      ['bottom-left', -1, 1],
+      ['bottom-right', 1, 1]
+    ] as const;
+    for (const [name, signX, signY] of corners) {
+      const corner = localToCanvas(
+        reference,
+        signX * halfWidth,
+        signY * halfHeight
+      );
+      if (
+        Math.hypot(point.x - corner.x, point.y - corner.y) <=
+        REFERENCE_HANDLE_HIT_RADIUS
+      ) {
+        return name;
+      }
+    }
+
+    return null;
+  }
+
+  function isInsideReference(
+    reference: ReferenceImage,
+    point: { x: number; y: number }
+  ): boolean {
+    const local = canvasToReferenceLocal(reference, point);
+    return (
+      Math.abs(local.x) <= (reference.width * layout.cellSize) / 2 &&
+      Math.abs(local.y) <= (reference.height * layout.cellSize) / 2
+    );
+  }
+
+  function ensureReferenceImages(): void {
+    for (const reference of editor.referenceImages) {
+      if (
+        referenceImageElements.has(reference.id) ||
+        pendingReferenceImages.has(reference.id)
+      ) {
+        continue;
+      }
+
+      pendingReferenceImages.add(reference.id);
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = () => {
+        referenceImageElements.set(reference.id, image);
+        pendingReferenceImages.delete(reference.id);
+        referenceRenderRevision += 1;
+      };
+      image.onerror = () => {
+        pendingReferenceImages.delete(reference.id);
+      };
+      image.src = reference.dataUrl;
+    }
+  }
+
+  function drawReferenceImages(
+    context: CanvasRenderingContext2D
+  ): void {
+    ensureReferenceImages();
+    for (const reference of referenceImagesForDrawing(editor.referenceImages)) {
+      const image = referenceImageElements.get(reference.id);
+      if (!image) {
+        continue;
+      }
+
+      const center = referenceCenter(reference);
+      context.save();
+      context.translate(center.x, center.y);
+      context.rotate(referenceAngle(reference));
+      context.drawImage(
+        image,
+        (-reference.width * layout.cellSize) / 2,
+        (-reference.height * layout.cellSize) / 2,
+        reference.width * layout.cellSize,
+        reference.height * layout.cellSize
+      );
+      context.restore();
+    }
+  }
+
+  function drawSelectedReferenceControls(
+    context: CanvasRenderingContext2D,
+    color: string
+  ): void {
+    const reference = editor.selectedReferenceImage;
+    if (!reference) {
+      return;
+    }
+
+    const center = referenceCenter(reference);
+    const width = reference.width * layout.cellSize;
+    const height = reference.height * layout.cellSize;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+    const handleSize = REFERENCE_HANDLE_SIZE;
+
+    context.save();
+    context.translate(center.x, center.y);
+    context.rotate(referenceAngle(reference));
+    context.strokeStyle = color;
+    context.fillStyle = '#ffffff';
+    context.lineWidth = 1.5;
+    context.setLineDash([6, 4]);
+    context.strokeRect(-halfWidth, -halfHeight, width, height);
+    context.setLineDash([]);
+    context.beginPath();
+    context.moveTo(0, -halfHeight);
+    context.lineTo(0, -halfHeight - REFERENCE_ROTATION_HANDLE_DISTANCE);
+    context.stroke();
+
+    for (const [signX, signY] of [
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1]
+    ] as const) {
+      context.fillRect(
+        signX * halfWidth - handleSize / 2,
+        signY * halfHeight - handleSize / 2,
+        handleSize,
+        handleSize
+      );
+      context.strokeRect(
+        signX * halfWidth - handleSize / 2,
+        signY * halfHeight - handleSize / 2,
+        handleSize,
+        handleSize
+      );
+    }
+
+    context.beginPath();
+    context.arc(
+      0,
+      -halfHeight - REFERENCE_ROTATION_HANDLE_DISTANCE,
+      handleSize / 2,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
+    context.stroke();
+    context.restore();
   }
 
   function calculateViewBaseLayout(
@@ -287,7 +515,6 @@
     );
     for (let y = 0; y < project.height; y += 1) {
       for (let x = 0; x < project.width; x += 1) {
-        const index = y * project.width + x;
         const cellX = originX + x * cellSize;
         const cellY = originY + y * cellSize;
         drawCellBackground(
@@ -301,6 +528,16 @@
           checkerLight,
           checkerDark
         );
+      }
+    }
+
+    drawReferenceImages(context);
+
+    for (let y = 0; y < project.height; y += 1) {
+      for (let x = 0; x < project.width; x += 1) {
+        const index = y * project.width + x;
+        const cellX = originX + x * cellSize;
+        const cellY = originY + y * cellSize;
         if (sourceSelectionCells.has(index)) {
           continue;
         }
@@ -340,17 +577,6 @@
 
         const colorIndex = activeLayer.cells[layerIndex];
         if (colorIndex === 0) {
-          drawCellBackground(
-            context,
-            projectX,
-            projectY,
-            originX + projectX * cellSize,
-            originY + projectY * cellSize,
-            cellSize,
-            boardColor,
-            checkerLight,
-            checkerDark
-          );
           continue;
         }
 
@@ -545,6 +771,7 @@
         fontFamily
       });
     }
+    drawSelectedReferenceControls(context, selectionColor);
   }
 
   function strokeSelectionOutline(
@@ -996,6 +1223,225 @@
     return true;
   }
 
+  function beginReferenceInteraction(event: PointerEvent): boolean {
+    if (event.button !== 0) {
+      return false;
+    }
+
+    const reference = editor.selectedReferenceImage;
+    const point = pointFromPointer(event);
+    if (!reference || !point) {
+      return false;
+    }
+
+    const handle = referenceHandleAtPoint(reference, point);
+    const center = referenceCenter(reference);
+    let mode: 'move' | 'resize' | 'rotate';
+    let anchorX = center.x;
+    let anchorY = center.y;
+    let scaleVectorX = 0;
+    let scaleVectorY = 0;
+    let startAngle = 0;
+
+    if (handle === 'rotation') {
+      mode = 'rotate';
+      startAngle = Math.atan2(point.y - center.y, point.x - center.x);
+    } else if (handle) {
+      mode = 'resize';
+      const signX = handle.endsWith('left') ? -1 : 1;
+      const signY = handle.startsWith('top') ? -1 : 1;
+      const anchor = localToCanvas(
+        reference,
+        (-signX * reference.width * layout.cellSize) / 2,
+        (-signY * reference.height * layout.cellSize) / 2
+      );
+      anchorX = anchor.x;
+      anchorY = anchor.y;
+      scaleVectorX = center.x - anchor.x;
+      scaleVectorY = center.y - anchor.y;
+    } else if (isInsideReference(reference, point)) {
+      mode = 'move';
+    } else {
+      return false;
+    }
+
+    endPaintStroke();
+    cancelSelectionDrag();
+    cancelActiveMove();
+    updateHoveredCell(null);
+    referenceDrag = {
+      pointerId: event.pointerId,
+      mode,
+      reference: { ...reference },
+      startPoint: point,
+      anchorX,
+      anchorY,
+      scaleVectorX,
+      scaleVectorY,
+      startAngle
+    };
+    canvas?.setPointerCapture(event.pointerId);
+    if (canvas) {
+      canvas.style.cursor =
+        mode === 'move' ? 'move' : mode === 'rotate' ? 'grabbing' : 'nwse-resize';
+    }
+    return true;
+  }
+
+  function updateReferenceInteraction(event: PointerEvent): void {
+    const drag = referenceDrag;
+    const project = editor.project;
+    const point = pointFromPointer(event);
+    if (
+      !drag ||
+      drag.pointerId !== event.pointerId ||
+      !project ||
+      !point
+    ) {
+      return;
+    }
+
+    const original = drag.reference;
+    if (drag.mode === 'move') {
+      editor.updateReferenceImage(original.id, {
+        centerX: Math.max(
+          0,
+          Math.min(
+            project.width,
+            original.centerX +
+              (point.x - drag.startPoint.x) / layout.cellSize
+          )
+        ),
+        centerY: Math.max(
+          0,
+          Math.min(
+            project.height,
+            original.centerY +
+              (point.y - drag.startPoint.y) / layout.cellSize
+          )
+        )
+      });
+      return;
+    }
+
+    if (drag.mode === 'rotate') {
+      const center = referenceCenter(original);
+      const angle = Math.atan2(point.y - center.y, point.x - center.x);
+      let delta = angle - drag.startAngle;
+      while (delta > Math.PI) {
+        delta -= Math.PI * 2;
+      }
+      while (delta < -Math.PI) {
+        delta += Math.PI * 2;
+      }
+      let rotation = original.rotation + (delta * 180) / Math.PI;
+      if (event.shiftKey) {
+        rotation = Math.round(rotation / 15) * 15;
+      }
+      editor.updateReferenceImage(original.id, { rotation });
+      return;
+    }
+
+    const denominator =
+      drag.scaleVectorX * drag.scaleVectorX +
+      drag.scaleVectorY * drag.scaleVectorY;
+    if (denominator <= 0.0001) {
+      return;
+    }
+
+    const pointerVectorX = point.x - drag.anchorX;
+    const pointerVectorY = point.y - drag.anchorY;
+    const rawScale =
+      (pointerVectorX * drag.scaleVectorX +
+        pointerVectorY * drag.scaleVectorY) /
+      denominator;
+    const maxSize = Math.min(
+      MAX_REFERENCE_IMAGE_SIZE,
+      Math.max(project.width, project.height) * 4
+    );
+    const minimumScale = Math.max(
+      MIN_REFERENCE_IMAGE_SIZE / original.width,
+      MIN_REFERENCE_IMAGE_SIZE / original.height
+    );
+    const maximumScale = Math.min(
+      maxSize / original.width,
+      maxSize / original.height
+    );
+    const scale = Math.max(
+      minimumScale,
+      Math.min(maximumScale, rawScale)
+    );
+    const centerX =
+      drag.anchorX + drag.scaleVectorX * scale;
+    const centerY =
+      drag.anchorY + drag.scaleVectorY * scale;
+
+    editor.updateReferenceImage(original.id, {
+      centerX: (centerX - layout.originX) / layout.cellSize,
+      centerY: (centerY - layout.originY) / layout.cellSize,
+      width: original.width * scale,
+      height: original.height * scale
+    });
+  }
+
+  function finishReferenceInteraction(event: PointerEvent): boolean {
+    if (!referenceDrag || referenceDrag.pointerId !== event.pointerId) {
+      return false;
+    }
+
+    updateReferenceInteraction(event);
+    releaseSelectionPointer(event.pointerId);
+    referenceDrag = null;
+    if (canvas) {
+      canvas.style.cursor = '';
+    }
+    return true;
+  }
+
+  function cancelReferenceInteraction(event?: PointerEvent): boolean {
+    if (
+      !referenceDrag ||
+      (event && referenceDrag.pointerId !== event.pointerId)
+    ) {
+      return false;
+    }
+
+    const drag = referenceDrag;
+    editor.updateReferenceImage(drag.reference.id, drag.reference);
+    releaseSelectionPointer(event?.pointerId ?? drag.pointerId);
+    referenceDrag = null;
+    if (canvas) {
+      canvas.style.cursor = '';
+    }
+    return true;
+  }
+
+  function updateReferenceCursor(event: PointerEvent): void {
+    if (!canvas || !editor.selectedReferenceImage) {
+      if (canvas) {
+        canvas.style.cursor = '';
+      }
+      return;
+    }
+
+    const point = pointFromPointer(event);
+    const reference = editor.selectedReferenceImage;
+    if (!point || !reference) {
+      canvas.style.cursor = '';
+      return;
+    }
+
+    const handle = referenceHandleAtPoint(reference, point);
+    canvas.style.cursor =
+      handle === 'rotation'
+        ? 'grab'
+        : handle
+          ? 'nwse-resize'
+          : isInsideReference(reference, point)
+            ? 'move'
+            : '';
+  }
+
   function paintPoint(point: { x: number; y: number }): void {
     const cell = cellFromPoint(point);
     if (cell) {
@@ -1154,6 +1600,7 @@
     endPaintStroke();
     cancelSelectionDrag();
     cancelActiveMove();
+    cancelReferenceInteraction();
     updateHoveredCell(null);
     pinchState = {
       distance: metrics.distance,
@@ -1176,6 +1623,9 @@
     touchPoints.set(event.pointerId, point);
 
     if (touchPoints.size === 1) {
+      if (beginReferenceInteraction(event)) {
+        return;
+      }
       if (editor.tool === EditorTool.Move) {
         beginMove(event);
       } else if (editor.tool === EditorTool.Select) {
@@ -1238,6 +1688,11 @@
       return;
     }
 
+    if (referenceDrag?.pointerId === event.pointerId) {
+      updateReferenceInteraction(event);
+      return;
+    }
+
     if (editor.tool === EditorTool.Move) {
       updateMove(event);
       return;
@@ -1267,6 +1722,8 @@
   function onTouchPointerEnd(event: PointerEvent): void {
     const finishingSelection = selectionDrag?.pointerId === event.pointerId;
     const finishingMove = moveDrag?.pointerId === event.pointerId;
+    const finishingReference =
+      referenceDrag?.pointerId === event.pointerId;
     touchPoints.delete(event.pointerId);
     if (canvas?.hasPointerCapture(event.pointerId)) {
       canvas.releasePointerCapture(event.pointerId);
@@ -1287,6 +1744,9 @@
     touchGestureStarted = false;
     pinching = false;
     pinchState = null;
+    if (finishingReference) {
+      finishReferenceInteraction(event);
+    }
     if (finishingMove) {
       finishMove(event);
     }
@@ -1325,6 +1785,10 @@
     event.preventDefault();
     if (event.button === 1 || (event.button === 0 && spacePressed)) {
       startPan(event);
+      return;
+    }
+
+    if (beginReferenceInteraction(event)) {
       return;
     }
 
@@ -1387,6 +1851,11 @@
       return;
     }
 
+    if (referenceDrag?.pointerId === event.pointerId) {
+      updateReferenceInteraction(event);
+      return;
+    }
+
     if (moveDrag?.pointerId === event.pointerId) {
       updateMove(event);
       return;
@@ -1399,6 +1868,7 @@
     }
 
     updateHoveredCell(cellFromPointer(event));
+    updateReferenceCursor(event);
     if (pointerDown) {
       applyPointer(event);
     }
@@ -1410,9 +1880,13 @@
       panPointerId === null &&
       !pinching &&
       !selectionDrag &&
-      !moveDrag
+      !moveDrag &&
+      !referenceDrag
     ) {
       updateHoveredCell(null);
+      if (canvas) {
+        canvas.style.cursor = '';
+      }
     }
   }
 
@@ -1438,6 +1912,10 @@
       return;
     }
 
+    if (finishReferenceInteraction(event)) {
+      return;
+    }
+
     if (finishMove(event)) {
       return;
     }
@@ -1457,6 +1935,7 @@
 
     cancelActiveMove();
     cancelSelectionDrag(event);
+    cancelReferenceInteraction(event);
     finishPan(event);
     finishStroke(event);
   }
@@ -1476,11 +1955,20 @@
 
       if (
         event.key === KeyboardKey.Escape &&
-        (selectionDrag || moveDrag)
+        (selectionDrag || moveDrag || referenceDrag)
       ) {
         event.preventDefault();
         cancelActiveMove();
         cancelSelectionDrag();
+        cancelReferenceInteraction();
+        return;
+      }
+
+      if (
+        event.key === KeyboardKey.Escape &&
+        editor.selectedReferenceImageId
+      ) {
+        editor.clearReferenceImageSelection();
         return;
       }
 
@@ -1500,6 +1988,7 @@
       spacePressed = false;
       cancelActiveMove();
       cancelSelectionDrag();
+      cancelReferenceInteraction();
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -1519,6 +2008,7 @@
     editor.zoom;
     editor.selectedCells;
     editor.activePasteLayer;
+    editor.selectedReferenceImageId;
     viewStore.showRulers;
     viewStore.showGrid;
     viewStore.showCoarseGrid;
@@ -1531,6 +2021,7 @@
     frameWidth;
     frameHeight;
     themeStore.mode;
+    referenceRenderRevision;
     draw();
   });
 

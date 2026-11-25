@@ -13,6 +13,12 @@ import {
   EMPTY_CELL_COLOR_INDEX,
   type BeadProject
 } from '$model/project.model';
+import {
+  MAX_REFERENCE_IMAGE_SIZE,
+  MIN_REFERENCE_IMAGE_SIZE,
+  type ReferenceImage,
+  type ReferenceImagePatch
+} from '$model/reference-image.model';
 import type { SelectionClipboard } from '$model/selection-clipboard.model';
 import type { SelectionLayer } from '$model/selection-layer.model';
 import { clonePalette, createEmptyBeadColor } from '$domain/palette';
@@ -52,6 +58,7 @@ export class EditorStore {
   zoom = $state(DEFAULT_EDITOR_ZOOM);
   visibleBoardCenter = $state<BoardViewCenter>({ x: 0, y: 0 });
   activePasteLayer = $state<SelectionLayer | null>(null);
+  selectedReferenceImageId = $state<string | null>(null);
   previewRevision = $state(0);
 
   private undoStack: EditorSnapshot[] = [];
@@ -73,7 +80,19 @@ export class EditorStore {
       )
     );
 
-    this.project = project;
+    this.project = {
+      ...project,
+      editorState: {
+        tool: restoredLayer
+          ? EditorTool.Move
+          : (savedEditorState?.tool ?? DEFAULT_EDITOR_TOOL),
+        selectionCells: [...restoredSelection],
+        temporaryLayer: restoredLayer,
+        referenceImages: (savedEditorState?.referenceImages ?? []).map(
+          (reference) => ({ ...reference })
+        )
+      }
+    };
     this.selectedColorIndex =
       project.palette.colors.length > 0
         ? DEFAULT_SELECTED_PALETTE_INDEX
@@ -93,9 +112,8 @@ export class EditorStore {
     this.zoom = DEFAULT_EDITOR_ZOOM;
     this.visibleBoardCenter = { x: 0, y: 0 };
     this.activePasteLayer = restoredLayer;
-    this.tool = restoredLayer
-      ? EditorTool.Move
-      : (savedEditorState?.tool ?? DEFAULT_EDITOR_TOOL);
+    this.tool = this.project.editorState?.tool ?? DEFAULT_EDITOR_TOOL;
+    this.selectedReferenceImageId = null;
     this.previewRevision += 1;
     this.refreshHistoryState();
     this.revision += 1;
@@ -111,6 +129,7 @@ export class EditorStore {
     this.zoom = DEFAULT_EDITOR_ZOOM;
     this.visibleBoardCenter = { x: 0, y: 0 };
     this.activePasteLayer = null;
+    this.selectedReferenceImageId = null;
     this.previewRevision += 1;
     this.canUndo = false;
     this.canRedo = false;
@@ -162,9 +181,123 @@ export class EditorStore {
       this.mergePasteLayer();
     }
     this.tool = tool;
+    this.selectedReferenceImageId = null;
     if (previousTool !== tool) {
       this.markChanged();
     }
+  }
+
+  get referenceImages(): readonly ReferenceImage[] {
+    return this.project?.editorState?.referenceImages ?? [];
+  }
+
+  get selectedReferenceImage(): ReferenceImage | null {
+    return (
+      this.referenceImages.find(
+        (reference) => reference.id === this.selectedReferenceImageId
+      ) ?? null
+    );
+  }
+
+  selectReferenceImage(id: string): boolean {
+    if (!this.referenceImages.some((reference) => reference.id === id)) {
+      return false;
+    }
+
+    this.selectedReferenceImageId = id;
+    return true;
+  }
+
+  clearReferenceImageSelection(): void {
+    this.selectedReferenceImageId = null;
+  }
+
+  addReferenceImage(reference: ReferenceImage): void {
+    if (!this.project) {
+      return;
+    }
+
+    const editorState = this.ensureEditorState();
+    editorState.referenceImages = [
+      { ...reference },
+      ...editorState.referenceImages
+    ];
+    this.selectedReferenceImageId = reference.id;
+    this.markChanged();
+  }
+
+  updateReferenceImage(
+    id: string,
+    patch: Partial<ReferenceImagePatch>
+  ): void {
+    if (!this.project) {
+      return;
+    }
+
+    const editorState = this.ensureEditorState();
+    const index = editorState.referenceImages.findIndex(
+      (reference) => reference.id === id
+    );
+    const reference = editorState.referenceImages[index];
+    if (!reference) {
+      return;
+    }
+
+    const maxSize = Math.min(
+      MAX_REFERENCE_IMAGE_SIZE,
+      Math.max(this.project.width, this.project.height) * 4
+    );
+    const width = Math.max(
+      MIN_REFERENCE_IMAGE_SIZE,
+      Math.min(maxSize, patch.width ?? reference.width)
+    );
+    const height = Math.max(
+      MIN_REFERENCE_IMAGE_SIZE,
+      Math.min(maxSize, patch.height ?? reference.height)
+    );
+    const next: ReferenceImage = {
+      ...reference,
+      ...patch,
+      width,
+      height,
+      rotation:
+        patch.rotation === undefined
+          ? reference.rotation
+          : ((patch.rotation % 360) + 360) % 360
+    };
+    if (
+      next.centerX === reference.centerX &&
+      next.centerY === reference.centerY &&
+      next.width === reference.width &&
+      next.height === reference.height &&
+      next.rotation === reference.rotation
+    ) {
+      return;
+    }
+
+    editorState.referenceImages = editorState.referenceImages.map(
+      (candidate) => (candidate.id === id ? next : candidate)
+    );
+    this.markChanged();
+  }
+
+  removeReferenceImage(id: string): void {
+    if (!this.project) {
+      return;
+    }
+
+    const editorState = this.ensureEditorState();
+    if (!editorState.referenceImages.some((reference) => reference.id === id)) {
+      return;
+    }
+
+    editorState.referenceImages = editorState.referenceImages.filter(
+      (reference) => reference.id !== id
+    );
+    if (this.selectedReferenceImageId === id) {
+      this.selectedReferenceImageId = null;
+    }
+    this.markChanged();
   }
 
   setSelectedColor(index: number): void {
@@ -471,9 +604,31 @@ export class EditorStore {
       ),
       temporaryLayer: this.activePasteLayer
         ? cloneSelectionLayer(this.activePasteLayer)
-        : null
+        : null,
+      referenceImages: this.referenceImages.map((reference) => ({
+        ...reference
+      }))
     };
     return touchProject(snapshot);
+  }
+
+  private ensureEditorState(): NonNullable<BeadProject['editorState']> {
+    if (!this.project) {
+      throw new Error('Editor project is not open.');
+    }
+    if (!this.project.editorState) {
+      this.project.editorState = {
+        tool: this.tool,
+        selectionCells: [...this.selectedCells],
+        temporaryLayer: null,
+        referenceImages: []
+      };
+    }
+    if (!this.project.editorState.referenceImages) {
+      this.project.editorState.referenceImages = [];
+    }
+
+    return this.project.editorState;
   }
 
   private pushUndoSnapshot(snapshot: EditorSnapshot): void {
