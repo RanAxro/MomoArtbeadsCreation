@@ -208,6 +208,25 @@
     );
   }
 
+  function referenceAtPoint(
+    point: { x: number; y: number }
+  ): ReferenceImage | null {
+    if (
+      point.x < layout.contentX ||
+      point.y < layout.contentY ||
+      point.x > layout.contentX + layout.contentWidth ||
+      point.y > layout.contentY + layout.contentHeight
+    ) {
+      return null;
+    }
+
+    return (
+      editor.referenceImages.find((reference) =>
+        isInsideReference(reference, point)
+      ) ?? null
+    );
+  }
+
   function ensureReferenceImages(): void {
     for (const reference of editor.referenceImages) {
       if (
@@ -244,6 +263,8 @@
 
       const center = referenceCenter(reference);
       context.save();
+      context.imageSmoothingEnabled = false;
+      context.imageSmoothingQuality = 'low';
       context.translate(center.x, center.y);
       context.rotate(referenceAngle(reference));
       context.drawImage(
@@ -1229,13 +1250,34 @@
       return false;
     }
 
-    const reference = editor.selectedReferenceImage;
     const point = pointFromPointer(event);
-    if (!reference || !point) {
+    if (!point) {
       return false;
     }
 
-    const handle = referenceHandleAtPoint(reference, point);
+    const selectedReference = editor.selectedReferenceImage;
+    let reference: ReferenceImage | null = null;
+    let handle: ReturnType<typeof referenceHandleAtPoint> = null;
+
+    if (selectedReference) {
+      handle = referenceHandleAtPoint(selectedReference, point);
+      if (handle) {
+        reference = selectedReference;
+      }
+    }
+
+    if (!reference) {
+      reference = referenceAtPoint(point);
+      if (reference) {
+        if (reference.id !== selectedReference?.id) {
+          editor.selectReferenceImage(reference.id);
+        }
+      }
+    }
+    if (!reference) {
+      return false;
+    }
+
     const center = referenceCenter(reference);
     let mode: 'move' | 'resize' | 'rotate';
     let anchorX = center.x;
@@ -1440,12 +1482,13 @@
     }
 
     const handle = referenceHandleAtPoint(reference, point);
+    const referenceUnderPointer = referenceAtPoint(point);
     canvas.style.cursor =
       handle === 'rotation'
         ? 'grab'
         : handle
           ? 'nwse-resize'
-          : isInsideReference(reference, point)
+          : referenceUnderPointer
             ? 'move'
             : '';
   }
@@ -1631,7 +1674,7 @@
     touchPoints.set(event.pointerId, point);
 
     if (touchPoints.size === 1) {
-      if (beginReferenceInteraction(event)) {
+      if (referenceMode && beginReferenceInteraction(event)) {
         return;
       }
       if (referenceMode) {
@@ -1806,7 +1849,7 @@
       return;
     }
 
-    if (beginReferenceInteraction(event)) {
+    if (referenceMode && beginReferenceInteraction(event)) {
       return;
     }
     if (referenceMode) {
