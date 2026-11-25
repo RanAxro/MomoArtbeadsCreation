@@ -292,15 +292,17 @@
               oninput={(event) =>
                 editor.setZoom(Number((event.currentTarget as HTMLInputElement).value))}
             />
-            <button
-              class="zoom-100-marker"
-              type="button"
-              title={$_('board.zoomReset')}
-              aria-label={$_('board.zoomReset')}
-              onclick={() => editor.setZoom(1)}
-            ></button>
           </div>
           <output for="board-zoom">{Math.round(editor.zoom * 100)}%</output>
+          <button
+            class="zoom-reset"
+            type="button"
+            title={$_('board.zoomReset')}
+            aria-label={$_('board.zoomReset')}
+            onclick={() => editor.setZoom(1)}
+          >
+            <span aria-hidden="true">↺</span>
+          </button>
         </div>
       </footer>
     {:else}
@@ -615,33 +617,25 @@
     cursor: pointer;
   }
 
-  .zoom-100-marker {
-    position: absolute;
-    z-index: 2;
-    top: 50%;
-    left: 14.2857%;
+  .zoom-reset {
     display: grid;
     place-items: center;
-    width: 14px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     padding: 0;
-    border: 0;
+    border: 1px solid var(--border);
+    border-radius: 2px;
     background: transparent;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1;
     cursor: pointer;
-    transform: translate(-50%, -50%);
   }
 
-  .zoom-100-marker::before {
-    width: 6px;
-    height: 6px;
-    border: 1px solid var(--text);
-    background: var(--surface);
-    content: "";
-  }
-
-  .zoom-100-marker:hover::before,
-  .zoom-100-marker:focus-visible::before {
-    background: var(--text);
+  .zoom-reset:hover {
+    border-color: var(--border-strong);
+    background: var(--hover);
+    color: var(--text);
   }
 
   .zoom-control output {
