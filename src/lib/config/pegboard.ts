@@ -10,6 +10,10 @@ export const DEFAULT_PEGBOARD: PegboardPreset = {
   height: 18
 };
 
+/**
+ * Pegboard size choices for scheme creation and image import.
+ * Add presets here instead of exposing free-form dimensions in the UI.
+ */
 export const PEGBOARD_PRESETS: PegboardPreset[] = [DEFAULT_PEGBOARD];
 
 /**

@@ -2,15 +2,29 @@
   import { onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { _ } from 'svelte-i18n';
+  import ImageCropFrame from '$lib/components/ImageCropFrame.svelte';
   import ProjectPreview from '$lib/components/ProjectPreview.svelte';
-  import { DEFAULT_PEGBOARD } from '$lib/config/pegboard';
+  import {
+    DEFAULT_PEGBOARD,
+    PEGBOARD_PRESETS,
+    type PegboardPreset
+  } from '$lib/config/pegboard';
   import { createStarterPalette } from '$domain/palette';
-  import { createProject, MAX_PROJECT_DIMENSION, type BeadProject } from '$domain/project';
+  import { createProject, type BeadProject } from '$domain/project';
+  import {
+    calculateAspectCrop,
+    cropCenter,
+    type CropCenter
+  } from '$modules/image-import/crop';
   import {
     convertImageToPattern,
     readImageDimensions
   } from '$modules/image-import/image-to-pattern';
   import { workspace } from '$modules/workspace/workspace.svelte';
+
+  const presetLabels: Record<string, string> = {
+    'default-24x18': 'new.preset.default'
+  };
 
   const palette = createStarterPalette();
   let fileInput: HTMLInputElement | undefined = $state();
@@ -18,13 +32,16 @@
   let sourceUrl = $state('');
   let sourceDimensions = $state({ width: 0, height: 0 });
   let schemeName = $state('');
-  let width = $state(DEFAULT_PEGBOARD.width);
-  let height = $state(DEFAULT_PEGBOARD.height);
-  let lockAspect = $state(true);
+  let selectedPegboard = $state<PegboardPreset>(DEFAULT_PEGBOARD);
+  let cropCenterX = $state(0.5);
+  let cropCenterY = $state(0.5);
   let previewProject = $state<BeadProject | null>(null);
   let usedColors = $state(0);
   let busy = $state(false);
   let error = $state('');
+  let sourceReadSequence = 0;
+  let conversionSequence = 0;
+  let scheduledPreview: ReturnType<typeof setTimeout> | undefined;
 
   function revokeSourceUrl(): void {
     if (sourceUrl) {
@@ -33,94 +50,143 @@
     }
   }
 
+  function clearScheduledPreview(): void {
+    if (scheduledPreview !== undefined) {
+      clearTimeout(scheduledPreview);
+      scheduledPreview = undefined;
+    }
+  }
+
+  function scheduleAutoPreview(delay = 180): void {
+    clearScheduledPreview();
+    scheduledPreview = setTimeout(() => {
+      scheduledPreview = undefined;
+      void generatePreview();
+    }, delay);
+  }
+
   async function selectSource(event: Event): Promise<void> {
     const file = (event.currentTarget as HTMLInputElement).files?.[0];
     if (!file) {
       return;
     }
 
+    const readSequence = ++sourceReadSequence;
+    conversionSequence += 1;
+    clearScheduledPreview();
     error = '';
     previewProject = null;
+    usedColors = 0;
     revokeSourceUrl();
     sourceFile = file;
     sourceUrl = URL.createObjectURL(file);
+    sourceDimensions = { width: 0, height: 0 };
+    cropCenterX = 0.5;
+    cropCenterY = 0.5;
     schemeName = file.name.replace(/\.[^.]+$/, '') || $_('import.defaultName');
+    busy = true;
 
     try {
-      sourceDimensions = await readImageDimensions(file);
-      height = Math.max(
-        1,
-        Math.min(
-          MAX_PROJECT_DIMENSION,
-          Math.round((width * sourceDimensions.height) / sourceDimensions.width)
-        )
-      );
+      const dimensions = await readImageDimensions(file);
+      if (readSequence !== sourceReadSequence || sourceFile !== file) {
+        return;
+      }
+
+      sourceDimensions = dimensions;
+      await generatePreview();
     } catch {
-      error = $_('import.readError');
+      if (readSequence === sourceReadSequence) {
+        error = $_('import.readError');
+        busy = false;
+      }
     }
   }
 
-  function updateWidth(event: Event): void {
-    width = Math.max(
-      1,
-      Math.min(MAX_PROJECT_DIMENSION, Number((event.currentTarget as HTMLInputElement).value))
+  function changePegboard(event: Event): void {
+    const preset = PEGBOARD_PRESETS.find(
+      (candidate) => candidate.id === (event.currentTarget as HTMLSelectElement).value
     );
-    if (lockAspect && sourceDimensions.width > 0) {
-      height = Math.max(
-        1,
-        Math.min(
-          MAX_PROJECT_DIMENSION,
-          Math.round((width * sourceDimensions.height) / sourceDimensions.width)
-        )
-      );
-    }
-  }
-
-  function updateHeight(event: Event): void {
-    height = Math.max(
-      1,
-      Math.min(MAX_PROJECT_DIMENSION, Number((event.currentTarget as HTMLInputElement).value))
-    );
-    if (lockAspect && sourceDimensions.height > 0) {
-      width = Math.max(
-        1,
-        Math.min(
-          MAX_PROJECT_DIMENSION,
-          Math.round((height * sourceDimensions.width) / sourceDimensions.height)
-        )
-      );
-    }
-  }
-
-  async function generatePreview(): Promise<void> {
-    if (!sourceFile) {
-      error = $_('import.noImage');
+    if (!preset || preset.id === selectedPegboard.id) {
       return;
     }
 
+    selectedPegboard = preset;
+    if (sourceDimensions.width > 0 && sourceDimensions.height > 0) {
+      const center = cropCenter(
+        calculateAspectCrop(
+          sourceDimensions.width,
+          sourceDimensions.height,
+          preset.width / preset.height,
+          cropCenterX,
+          cropCenterY
+        ),
+        sourceDimensions.width,
+        sourceDimensions.height
+      );
+      cropCenterX = center.x;
+      cropCenterY = center.y;
+    }
+    scheduleAutoPreview(0);
+  }
+
+  function changeCrop(center: CropCenter): void {
+    cropCenterX = center.x;
+    cropCenterY = center.y;
+    scheduleAutoPreview();
+  }
+
+  async function generatePreview(): Promise<void> {
+    const file = sourceFile;
+    if (
+      !file ||
+      sourceDimensions.width <= 0 ||
+      sourceDimensions.height <= 0
+    ) {
+      return;
+    }
+
+    clearScheduledPreview();
+    const requestSequence = ++conversionSequence;
+    const pegboard = selectedPegboard;
     busy = true;
     error = '';
     try {
+      const crop = calculateAspectCrop(
+        sourceDimensions.width,
+        sourceDimensions.height,
+        pegboard.width / pegboard.height,
+        cropCenterX,
+        cropCenterY
+      );
+      const converted = await convertImageToPattern(file, {
+        width: pegboard.width,
+        height: pegboard.height,
+        palette,
+        crop
+      });
+
+      if (requestSequence !== conversionSequence) {
+        return;
+      }
+
       const project = createProject({
         name: schemeName.trim() || $_('import.defaultName'),
-        width,
-        height,
+        width: pegboard.width,
+        height: pegboard.height,
         palette,
         gameVersion: '3.0'
       });
-      const converted = await convertImageToPattern(sourceFile, {
-        width: project.width,
-        height: project.height,
-        palette
-      });
-
       project.cells = converted.cells;
       previewProject = project;
       usedColors = converted.usedColors;
     } catch {
-      error = $_('import.convertError');
+      if (requestSequence === conversionSequence) {
+        error = $_('import.convertError');
+      }
     } finally {
-      busy = false;
+      if (requestSequence === conversionSequence) {
+        busy = false;
+      }
     }
   }
 
@@ -133,8 +199,10 @@
     error = '';
     try {
       await workspace.initialize();
-      previewProject.updatedAt = new Date().toISOString();
-      await workspace.create($state.snapshot(previewProject));
+      const project = $state.snapshot(previewProject);
+      project.name = schemeName.trim() || $_('import.defaultName');
+      project.updatedAt = new Date().toISOString();
+      await workspace.create(project);
       await goto('/');
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause);
@@ -142,7 +210,12 @@
     }
   }
 
-  onDestroy(revokeSourceUrl);
+  onDestroy(() => {
+    sourceReadSequence += 1;
+    conversionSequence += 1;
+    clearScheduledPreview();
+    revokeSourceUrl();
+  });
 </script>
 
 <svelte:head>
@@ -165,15 +238,28 @@
         <div class="settings-section">
           <span class="section-number">01</span>
           <div class="settings-content">
-            <button class="drop-zone" type="button" onclick={() => fileInput?.click()}>
-              {#if sourceUrl}
-                <img src={sourceUrl} alt={$_('import.preview')} />
-                <span class="replace-label">{$_('import.replace')}</span>
-              {:else}
-                <strong>{$_('import.noFile')}</strong>
-                <small>{$_('import.localHint')}</small>
-              {/if}
-            </button>
+            {#if sourceUrl && sourceDimensions.width > 0}
+              <ImageCropFrame
+                {sourceUrl}
+                sourceWidth={sourceDimensions.width}
+                sourceHeight={sourceDimensions.height}
+                aspectRatio={selectedPegboard.width / selectedPegboard.height}
+                centerX={cropCenterX}
+                centerY={cropCenterY}
+                onCropChange={changeCrop}
+                onReplace={() => fileInput?.click()}
+              />
+            {:else}
+              <button class="drop-zone" type="button" onclick={() => fileInput?.click()}>
+                {#if sourceUrl}
+                  <img src={sourceUrl} alt={$_('import.preview')} />
+                  <span class="replace-label">{$_('import.processing')}</span>
+                {:else}
+                  <strong>{$_('import.noFile')}</strong>
+                  <small>{$_('import.localHint')}</small>
+                {/if}
+              </button>
+            {/if}
             <input
               bind:this={fileInput}
               class="visually-hidden"
@@ -203,46 +289,18 @@
               />
             </label>
 
-            <div class="dimension-row">
-              <label class="field-label">
-                {$_('import.width')}
-                <input
-                  class="field"
-                  type="number"
-                  min="1"
-                  max={MAX_PROJECT_DIMENSION}
-                  value={width}
-                  oninput={updateWidth}
-                />
-              </label>
-              <button
-                class="ratio-button"
-                class:active={lockAspect}
-                type="button"
-                title={lockAspect ? $_('import.unlockRatio') : $_('import.lockRatio')}
-                aria-label={lockAspect ? $_('import.unlockRatio') : $_('import.lockRatio')}
-                onclick={() => { lockAspect = !lockAspect; }}
-              >
-                {lockAspect ? '锁' : '开'}
-              </button>
-              <label class="field-label">
-                {$_('import.height')}
-                <input
-                  class="field"
-                  type="number"
-                  min="1"
-                  max={MAX_PROJECT_DIMENSION}
-                  value={height}
-                  oninput={updateHeight}
-                />
-              </label>
-            </div>
+            <label class="field-label">
+              {$_('import.sizePreset')}
+              <select class="field" value={selectedPegboard.id} onchange={changePegboard}>
+                {#each PEGBOARD_PRESETS as preset}
+                  <option value={preset.id}>
+                    {$_(presetLabels[preset.id] ?? 'new.preset.default')}
+                    · {preset.width} × {preset.height}
+                  </option>
+                {/each}
+              </select>
+            </label>
 
-            <p class="dimension-note">
-              {$_('import.dimensions', {
-                values: { width, height, count: width * height }
-              })}
-            </p>
           </div>
         </div>
 
@@ -266,21 +324,23 @@
           <div>
             <h2>{$_('import.preview')}</h2>
             <p>
-              {#if previewProject}
+              {#if busy}
+                {$_('import.processing')}
+              {:else if previewProject}
                 {$_('import.usedColors', { values: { count: usedColors } })}
               {:else}
                 {$_('import.previewHint')}
               {/if}
             </p>
           </div>
-          <span>{width} × {height}</span>
+          <span>{selectedPegboard.width} × {selectedPegboard.height}</span>
         </div>
 
         {#if previewProject}
           <ProjectPreview project={previewProject} label={$_('import.preview')} />
         {:else}
           <div class="preview-empty">
-            <span>24 / 18</span>
+            <span>{selectedPegboard.width} / {selectedPegboard.height}</span>
             <p>{$_('import.emptyPreview')}</p>
           </div>
         {/if}
@@ -290,18 +350,6 @@
         {/if}
 
         <div class="preview-actions">
-          <button
-            class="button secondary"
-            type="button"
-            disabled={!sourceFile || busy}
-            onclick={generatePreview}
-          >
-            {busy
-              ? $_('import.processing')
-              : previewProject
-                ? $_('import.regenerate')
-                : $_('import.generate')}
-          </button>
           <button
             class="button primary"
             type="button"
@@ -442,28 +490,6 @@
     white-space: nowrap;
   }
 
-  .dimension-row {
-    display: grid;
-    grid-template-columns: 1fr 42px 1fr;
-    align-items: end;
-    gap: 8px;
-  }
-
-  .ratio-button {
-    width: 42px;
-    height: 42px;
-    border: 1px solid var(--border-strong);
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-  }
-
-  .ratio-button.active {
-    border-color: var(--text);
-    background: var(--text);
-    color: var(--surface);
-  }
-
   .dimension-note {
     margin: 0;
     color: var(--muted);
@@ -532,7 +558,7 @@
 
   .preview-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
 
@@ -583,8 +609,5 @@
       padding-right: 0;
     }
 
-    .dimension-row {
-      grid-template-columns: 1fr 42px 1fr;
-    }
   }
 </style>
