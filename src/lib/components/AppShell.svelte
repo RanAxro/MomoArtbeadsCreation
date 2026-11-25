@@ -123,12 +123,18 @@
     workspace.close();
   }
 
-  function showSchemeMenu(event: MouseEvent, target: SchemeTarget): void {
+  function showSchemeMenu(
+    event: MouseEvent,
+    target: SchemeTarget,
+    preservePopover = false
+  ): void {
     event.preventDefault();
     event.stopPropagation();
     fileOpen = false;
     settingsOpen = false;
-    schemePopoverOpen = false;
+    if (!preservePopover) {
+      schemePopoverOpen = false;
+    }
 
     const menuWidth = 176;
     const menuHeight = 130;
@@ -248,13 +254,22 @@
     void workspace.initialize();
 
     const closeFloatingMenus = (event: MouseEvent) => {
-      if (fileArea && !fileArea.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedSchemeMenu = Boolean(
+        schemeMenuElement && event.composedPath().includes(schemeMenuElement)
+      );
+
+      if (fileArea && !fileArea.contains(target)) {
         fileOpen = false;
       }
-      if (schemeMenuElement && !schemeMenuElement.contains(event.target as Node)) {
+      if (schemeMenuElement && !schemeMenuElement.contains(target)) {
         schemeMenu = null;
       }
-      if (schemePopoverArea && !schemePopoverArea.contains(event.target as Node)) {
+      if (
+        schemePopoverArea &&
+        !schemePopoverArea.contains(target) &&
+        !clickedSchemeMenu
+      ) {
         schemePopoverOpen = false;
       }
     };
@@ -453,7 +468,7 @@
                 type="button"
                 aria-current={workspace.activeId === scheme.id ? 'true' : undefined}
                 onclick={() => openScheme(scheme.id)}
-                oncontextmenu={(event) => showSchemeMenu(event, scheme)}
+                oncontextmenu={(event) => showSchemeMenu(event, scheme, true)}
               >
                 <span class="scheme-list-name">{scheme.name}</span>
                 <span class="scheme-list-time">
