@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   referenceImageSchema,
   referenceImagesForDrawing,
+  reorderReferenceImages,
   type ReferenceImage
 } from './reference-image.model';
 
@@ -47,5 +48,26 @@ describe('reference image model', () => {
         dataUrl: 'https://example.com/image.png'
       }).success
     ).toBe(false);
+  });
+
+  it('reorders reference images without mutating the source list', () => {
+    const references = [
+      createReference('newest', 3),
+      createReference('middle', 2),
+      createReference('oldest', 1)
+    ];
+
+    const reordered = reorderReferenceImages(references, 'oldest', 0);
+
+    expect(reordered.map((reference) => reference.id)).toEqual([
+      'oldest',
+      'newest',
+      'middle'
+    ]);
+    expect(references.map((reference) => reference.id)).toEqual([
+      'newest',
+      'middle',
+      'oldest'
+    ]);
   });
 });

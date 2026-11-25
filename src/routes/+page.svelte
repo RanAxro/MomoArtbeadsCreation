@@ -28,6 +28,10 @@
   const editor = workspace.editor;
   const MIN_SAVE_PROGRESS_MS = 500;
   const SAVE_SUCCESS_VISIBLE_MS = 2000;
+  const REFERENCE_REORDER_HOLD_MS = 280;
+  const REFERENCE_REORDER_CANCEL_DISTANCE = 8;
+  const REFERENCE_REORDER_SCROLL_EDGE = 28;
+  const REFERENCE_REORDER_SCROLL_STEP = 12;
 
   type SaveFeedback = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -41,6 +45,16 @@
   let referenceError = $state('');
   let referenceInput: HTMLInputElement | undefined = $state();
   let referenceArea: HTMLDivElement | undefined = $state();
+  let referenceList: HTMLDivElement | undefined = $state();
+  let referenceReorder = $state<{
+    pointerId: number;
+    referenceId: string;
+    startX: number;
+    startY: number;
+    active: boolean;
+  } | null>(null);
+  let referenceReorderTimer: ReturnType<typeof setTimeout> | undefined;
+  let referenceReorderElement: HTMLElement | null = null;
 
   let hasSelection = $derived(editor.selectedCells.size > 0);
   let clipboardAvailable = $derived(clipboardStore.entries.length > 0);
@@ -276,6 +290,7 @@
         rotation: 0
       };
       editor.addReferenceImage(reference);
+      cancelReferenceReorder();
       referenceOpen = false;
     } catch {
       referenceError = $_('reference.readError');
@@ -294,6 +309,7 @@
   }
 
   function selectReferenceImage(id: string): void {
+    cancelReferenceReorder();
     if (editor.selectReferenceImage(id)) {
       referenceOpen = false;
     }
@@ -301,6 +317,128 @@
 
   function removeReferenceImage(id: string): void {
     editor.removeReferenceImage(id);
+  }
+
+  function cancelReferenceReorder(): void {
+    if (referenceReorderTimer) {
+      clearTimeout(referenceReorderTimer);
+      referenceReorderTimer = undefined;
+    }
+    const reorder = referenceReorder;
+    const element = referenceReorderElement;
+    referenceReorder = null;
+    referenceReorderElement = null;
+    if (
+      element &&
+      reorder &&
+      element.hasPointerCapture(reorder.pointerId)
+    ) {
+      element.releasePointerCapture(reorder.pointerId);
+    }
+  }
+
+  function beginReferenceReorder(
+    event: PointerEvent,
+    referenceId: string
+  ): void {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    cancelReferenceReorder();
+    if (!referenceList) {
+      return;
+    }
+    referenceList.setPointerCapture(event.pointerId);
+    referenceReorderElement = referenceList;
+    referenceReorder = {
+      pointerId: event.pointerId,
+      referenceId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false
+    };
+    referenceReorderTimer = setTimeout(() => {
+      referenceReorderTimer = undefined;
+      if (
+        referenceReorder?.pointerId !== event.pointerId ||
+        referenceReorder.referenceId !== referenceId
+      ) {
+        return;
+      }
+      referenceReorder = {
+        ...referenceReorder,
+        active: true
+      };
+      editor.selectReferenceImage(referenceId);
+    }, REFERENCE_REORDER_HOLD_MS);
+  }
+
+  function updateReferenceReorder(event: PointerEvent): void {
+    const reorder = referenceReorder;
+    if (!reorder || reorder.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (!reorder.active) {
+      if (
+        Math.hypot(
+          event.clientX - reorder.startX,
+          event.clientY - reorder.startY
+        ) > REFERENCE_REORDER_CANCEL_DISTANCE
+      ) {
+        cancelReferenceReorder();
+      }
+      return;
+    }
+
+    event.preventDefault();
+    if (!referenceList) {
+      return;
+    }
+
+    const listRect = referenceList.getBoundingClientRect();
+    if (event.clientY < listRect.top + REFERENCE_REORDER_SCROLL_EDGE) {
+      referenceList.scrollTop -= REFERENCE_REORDER_SCROLL_STEP;
+    } else if (
+      event.clientY >
+      listRect.bottom - REFERENCE_REORDER_SCROLL_EDGE
+    ) {
+      referenceList.scrollTop += REFERENCE_REORDER_SCROLL_STEP;
+    }
+
+    const items = Array.from(
+      referenceList.querySelectorAll<HTMLElement>(
+        '.reference-item[data-reference-id]'
+      )
+    );
+    let insertionIndex = items.findIndex((item) => {
+      const rect = item.getBoundingClientRect();
+      return event.clientY < rect.top + rect.height / 2;
+    });
+    if (insertionIndex < 0) {
+      insertionIndex = items.length;
+    }
+
+    const currentIndex = editor.referenceImages.findIndex(
+      (reference) => reference.id === reorder.referenceId
+    );
+    if (currentIndex < 0) {
+      cancelReferenceReorder();
+      return;
+    }
+    const targetIndex =
+      insertionIndex > currentIndex ? insertionIndex - 1 : insertionIndex;
+    editor.moveReferenceImage(reorder.referenceId, targetIndex);
+  }
+
+  function finishReferenceReorder(event: PointerEvent): void {
+    if (referenceReorder?.pointerId !== event.pointerId) {
+      return;
+    }
+    updateReferenceReorder(event);
+    cancelReferenceReorder();
   }
 
   function onReferenceDrop(event: DragEvent): void {
@@ -353,6 +491,7 @@
       (candidate) => candidate.shortcut.toLowerCase() === event.key.toLowerCase()
     );
     if (tool) {
+      cancelReferenceReorder();
       referenceOpen = false;
       referenceError = '';
       editor.setTool(tool.id);
@@ -363,6 +502,7 @@
     editor.revision;
     editor.savedRevision;
     if (!editor.project) {
+      cancelReferenceReorder();
       referenceOpen = false;
     }
     if (editor.project && editor.revision !== editor.savedRevision) {
@@ -382,12 +522,14 @@
         referenceArea &&
         !referenceArea.contains(event.target as Node)
       ) {
+        cancelReferenceReorder();
         referenceOpen = false;
         referenceError = '';
       }
     };
     const closeReferenceOnEscape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape' && referenceOpen) {
+        cancelReferenceReorder();
         referenceOpen = false;
         referenceError = '';
         referenceDragActive = false;
@@ -398,6 +540,7 @@
     window.addEventListener('focus', refreshClipboardOnFocus);
     window.addEventListener('click', closeReferencePopover);
     return () => {
+      cancelReferenceReorder();
       window.removeEventListener('keydown', onKeydown);
       window.removeEventListener('keydown', closeReferenceOnEscape);
       window.removeEventListener('focus', refreshClipboardOnFocus);
@@ -501,6 +644,7 @@
                   !canMoveSelection
                 }
                 onclick={() => {
+                  cancelReferenceReorder();
                   referenceOpen = false;
                   referenceError = '';
                   editor.setTool(tool.id);
@@ -604,14 +748,29 @@
                     </p>
                   {/if}
 
-                  <div class="reference-list">
+                  <div
+                    class="reference-list"
+                    bind:this={referenceList}
+                    role="list"
+                    aria-label={$_('reference.title')}
+                    onpointermove={updateReferenceReorder}
+                    onpointerup={finishReferenceReorder}
+                    onpointercancel={cancelReferenceReorder}
+                    onlostpointercapture={cancelReferenceReorder}
+                  >
                     {#if editor.referenceImages.length === 0}
                       <p class="reference-empty">{$_('reference.empty')}</p>
                     {/if}
                     {#each editor.referenceImages as reference, index (reference.id)}
                       <div
                         class="reference-item"
+                        role="listitem"
                         class:active={editor.selectedReferenceImageId === reference.id}
+                        class:reordering={
+                          referenceReorder?.referenceId === reference.id &&
+                          referenceReorder.active
+                        }
+                        data-reference-id={reference.id}
                       >
                         <button
                           class="reference-select"
@@ -628,6 +787,19 @@
                               <small>{$_('reference.newest')}</small>
                             {/if}
                           </span>
+                        </button>
+                        <button
+                          class="reference-drag"
+                          type="button"
+                          title={$_('reference.reorder')}
+                          aria-label={$_('reference.reorderNamed', {
+                            values: { name: reference.name }
+                          })}
+                          onpointerdown={(event) =>
+                            beginReferenceReorder(event, reference.id)}
+                          oncontextmenu={(event) => event.preventDefault()}
+                        >
+                          <Icon name={IconName.Move} size={14} />
                         </button>
                         <button
                           class="reference-remove"
@@ -1150,9 +1322,13 @@
 
   .reference-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 30px;
+    grid-template-columns: minmax(0, 1fr) 30px 30px;
     align-items: stretch;
     border: 1px solid transparent;
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease,
+      transform 120ms ease;
   }
 
   .reference-item:hover {
@@ -1161,6 +1337,14 @@
 
   .reference-item.active {
     border-color: var(--text);
+  }
+
+  .reference-item.reordering {
+    z-index: 1;
+    border-color: var(--selection);
+    background: var(--selection-fill);
+    box-shadow: var(--shadow);
+    transform: scale(1.01);
   }
 
   .reference-select {
@@ -1227,6 +1411,7 @@
     text-transform: uppercase;
   }
 
+  .reference-drag,
   .reference-remove {
     display: grid;
     place-items: center;
@@ -1238,6 +1423,17 @@
     cursor: pointer;
   }
 
+  .reference-drag {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .reference-drag:active {
+    cursor: grabbing;
+  }
+
+  .reference-drag:hover,
   .reference-remove:hover {
     background: var(--hover);
     color: var(--text);

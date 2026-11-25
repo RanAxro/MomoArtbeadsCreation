@@ -28,3 +28,27 @@ export function referenceImagesForDrawing(
 ): ReferenceImage[] {
   return [...references].reverse();
 }
+
+export function reorderReferenceImages(
+  references: readonly ReferenceImage[],
+  id: string,
+  targetIndex: number
+): ReferenceImage[] {
+  const sourceIndex = references.findIndex((reference) => reference.id === id);
+  if (sourceIndex < 0 || references.length === 0) {
+    return [...references];
+  }
+
+  const nextIndex = Math.max(
+    0,
+    Math.min(references.length - 1, Math.round(targetIndex))
+  );
+  if (sourceIndex === nextIndex) {
+    return [...references];
+  }
+
+  const reordered = [...references];
+  const [reference] = reordered.splice(sourceIndex, 1);
+  reordered.splice(nextIndex, 0, reference);
+  return reordered;
+}

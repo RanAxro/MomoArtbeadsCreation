@@ -16,6 +16,7 @@ import {
 import {
   MAX_REFERENCE_IMAGE_SIZE,
   MIN_REFERENCE_IMAGE_SIZE,
+  reorderReferenceImages,
   type ReferenceImage,
   type ReferenceImagePatch
 } from '$model/reference-image.model';
@@ -298,6 +299,36 @@ export class EditorStore {
       this.selectedReferenceImageId = null;
     }
     this.markChanged();
+  }
+
+  moveReferenceImage(id: string, targetIndex: number): boolean {
+    if (!this.project) {
+      return false;
+    }
+
+    const editorState = this.ensureEditorState();
+    const currentIndex = editorState.referenceImages.findIndex(
+      (reference) => reference.id === id
+    );
+    if (currentIndex < 0) {
+      return false;
+    }
+
+    const nextIndex = Math.max(
+      0,
+      Math.min(editorState.referenceImages.length - 1, Math.round(targetIndex))
+    );
+    if (currentIndex === nextIndex) {
+      return false;
+    }
+
+    editorState.referenceImages = reorderReferenceImages(
+      editorState.referenceImages,
+      id,
+      nextIndex
+    );
+    this.markChanged();
+    return true;
   }
 
   setSelectedColor(index: number): void {
