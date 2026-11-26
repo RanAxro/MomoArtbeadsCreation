@@ -1,9 +1,12 @@
 import { createProject } from '$domain/project';
+import type { BoardTransferData } from '$modules/board/board-codec';
 import { decodeShareCode } from '$modules/board/board-codec';
+import type { BeadProject } from '$model/project.model';
 import { workspace } from '$modules/workspace/workspace.svelte';
 
-export async function importShareCodeToWorkspace(value: string): Promise<void> {
-  const data = await decodeShareCode(value);
+export async function createProjectFromShareCodeData(
+  data: BoardTransferData
+): Promise<BeadProject> {
   await workspace.initialize();
 
   const project = createProject({
@@ -12,15 +15,13 @@ export async function importShareCodeToWorkspace(value: string): Promise<void> {
     height: data.height,
     palette: data.palette
   });
-  project.cells = data.cells;
+  project.cells = [...data.cells];
   await workspace.create(project);
+  return project;
 }
 
-export async function importShareCodeFromClipboard(): Promise<void> {
-  if (!navigator.clipboard?.readText) {
-    throw new Error('Clipboard reading is unavailable.');
-  }
-
-  const shareCode = await navigator.clipboard.readText();
-  await importShareCodeToWorkspace(shareCode);
+export async function importShareCodeToWorkspace(
+  value: string
+): Promise<BeadProject> {
+  return createProjectFromShareCodeData(await decodeShareCode(value));
 }

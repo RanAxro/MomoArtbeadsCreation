@@ -5,6 +5,7 @@
   import BeadCanvas from '$lib/components/BeadCanvas.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SelectionModeOptions from '$lib/components/SelectionModeOptions.svelte';
+  import ShareCodeImportDialog from '$lib/components/ShareCodeImportDialog.svelte';
   import { ARTBEAD_COLORS } from '$model/pegboard.model';
   import {
     AUTO_SAVE_DELAY_MS,
@@ -33,7 +34,6 @@
   } from '$model/reference-image.model';
   import { encodeShareCode } from '$modules/board/board-codec';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
-  import { importShareCodeFromClipboard } from '$modules/workspace/share-code-import';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   const editor = workspace.editor;
@@ -66,7 +66,7 @@
   let shareCodeNotice = $state('');
   let shareCodeNoticeIsError = $state(false);
   let shareCodeNoticeTimer: ReturnType<typeof setTimeout> | undefined;
-  let importShareCodeBusy = $state(false);
+  let shareCodeDialogOpen = $state(false);
   let referenceReorder = $state<{
     pointerId: number;
     referenceId: string;
@@ -448,20 +448,9 @@
     }
   }
 
-  async function importShareCodeOnHome(): Promise<void> {
-    if (importShareCodeBusy) {
-      return;
-    }
-
-    importShareCodeBusy = true;
-    try {
-      await importShareCodeFromClipboard();
-      showShareCodeNotice($_('file.importShareCodeSuccess'));
-    } catch {
-      showShareCodeNotice($_('file.importShareCodeError'), true);
-    } finally {
-      importShareCodeBusy = false;
-    }
+  function handleShareCodeImported(): void {
+    shareCodeDialogOpen = false;
+    showShareCodeNotice($_('file.importShareCodeSuccess'));
   }
 
   function selectSelectionOperation(operation: SelectionOperation): void {
@@ -1423,14 +1412,10 @@
           <button
             class="button secondary"
             type="button"
-            disabled={importShareCodeBusy}
-            aria-busy={importShareCodeBusy}
-            onclick={() => void importShareCodeOnHome()}
+            onclick={() => { shareCodeDialogOpen = true; }}
           >
             <Icon name={IconName.Paste} size={17} />
-            {importShareCodeBusy
-              ? $_('home.importShareCodeBusy')
-              : $_('home.importShareCode')}
+            {$_('home.importShareCode')}
           </button>
         </div>
         {#if shareCodeNotice}
@@ -1446,6 +1431,12 @@
     {/if}
   </main>
 </div>
+
+<ShareCodeImportDialog
+  open={shareCodeDialogOpen}
+  onclose={() => { shareCodeDialogOpen = false; }}
+  onimported={handleShareCodeImported}
+/>
 
 <style>
   .workspace {

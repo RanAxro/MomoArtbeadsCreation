@@ -41,13 +41,30 @@
     "importShareCodeError": "无法从剪贴板读取有效的分享码方案。",
     "close": "关闭当前方案"
   },
+  "shareCode": {
+    "title": "导入分享码方案",
+    "close": "关闭分享码导入",
+    "inputLabel": "分享码",
+    "placeholder": "粘贴或输入 SchemeName=Base64 分享码",
+    "paste": "从系统剪贴板粘贴",
+    "parsing": "正在解析分享码…",
+    "parseError": "分享码格式无效或数据已损坏，请检查后重试。",
+    "pasteError": "无法读取系统剪贴板，请检查浏览器权限后重试。",
+    "empty": "输入分享码后会自动解析并显示方案预览。",
+    "preview": "方案预览",
+    "size": "格板尺寸",
+    "artbeads": "艺点点数量",
+    "colors": "使用颜色",
+    "confirm": "生成方案",
+    "creating": "正在生成…",
+    "createError": "无法生成方案，请重试。"
+  },
   "home": {
     "eyebrow": "Fuse Bead Workspace",
     "description": "新建空白拼绘方案，或将图片转换成可在 Pegboard 上逐格编辑的艺点点图纸。",
     "new": "新建空白方案",
     "import": "导入图片方案",
-    "importShareCode": "导入分享码方案",
-    "importShareCodeBusy": "正在导入…"
+    "importShareCode": "导入分享码方案"
   },
   "tray": {
     "title": "艺点点",

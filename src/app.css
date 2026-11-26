@@ -19,6 +19,7 @@
   --selected-text: #ffffff;
   --selection: #2f6fed;
   --selection-fill: rgba(47, 111, 237, 0.3);
+  --danger: #b42318;
   --board: #ffffff;
   --board-line: rgba(0, 0, 0, 0.12);
   --board-checker-light: #f4f4f1;
@@ -44,6 +45,7 @@
   --selected-text: #111111;
   --selection: #6c9cff;
   --selection-fill: rgba(64, 125, 255, 0.34);
+  --danger: #ff8f8f;
   --board: #1c1c1b;
   --board-line: rgba(255, 255, 255, 0.13);
   --board-checker-light: #292928;
@@ -86,7 +88,8 @@ a {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: 2px;
 }

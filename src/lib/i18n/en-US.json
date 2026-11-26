@@ -41,13 +41,30 @@
     "importShareCodeError": "The clipboard does not contain a valid share-code scheme.",
     "close": "Close current scheme"
   },
+  "shareCode": {
+    "title": "Import share-code scheme",
+    "close": "Close share-code import",
+    "inputLabel": "Share code",
+    "placeholder": "Paste or enter a SchemeName=Base64 share code",
+    "paste": "Paste from system clipboard",
+    "parsing": "Parsing share code…",
+    "parseError": "The share code is invalid or the data is damaged. Check it and try again.",
+    "pasteError": "The system clipboard could not be read. Check browser permissions and try again.",
+    "empty": "Enter a share code to parse it and show a scheme preview.",
+    "preview": "Scheme preview",
+    "size": "Pegboard size",
+    "artbeads": "Artbead count",
+    "colors": "Colors used",
+    "confirm": "Create scheme",
+    "creating": "Creating…",
+    "createError": "The scheme could not be created. Try again."
+  },
   "home": {
     "eyebrow": "Fuse Bead Workspace",
     "description": "Create a blank Fuse Bead scheme or turn an image into an editable Artbead pattern.",
     "new": "New blank scheme",
     "import": "Import image scheme",
-    "importShareCode": "Import share-code scheme",
-    "importShareCodeBusy": "Importing…"
+    "importShareCode": "Import share-code scheme"
   },
   "tray": {
     "title": "Artbeads",

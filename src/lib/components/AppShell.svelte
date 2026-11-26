@@ -28,11 +28,11 @@
   import { countFilledCells } from '$domain/project';
   import ClipboardPreview from '$lib/components/ClipboardPreview.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ShareCodeImportDialog from '$lib/components/ShareCodeImportDialog.svelte';
   import { setAppLocale } from '$lib/i18n';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { viewStore } from '$modules/view/view-store.svelte';
-  import { importShareCodeFromClipboard } from '$modules/workspace/share-code-import';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   interface Props {
@@ -62,7 +62,7 @@
   let deleteTarget = $state<SchemeTarget | null>(null);
   let deleting = $state(false);
   let deleteError = $state('');
-  let importShareCodeBusy = $state(false);
+  let shareCodeDialogOpen = $state(false);
   let topNotice = $state('');
   let topNoticeIsError = $state(false);
   let topNoticeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -323,28 +323,19 @@
     }, 2600);
   }
 
-  async function importShareCodeScheme(): Promise<void> {
-    if (importShareCodeBusy) {
-      return;
-    }
+  function openShareCodeDialog(): void {
     fileOpen = false;
-    if (!navigator.clipboard?.readText) {
-      showTopNotice($_('file.importShareCodeError'), true);
-      return;
-    }
+    shareCodeDialogOpen = true;
+  }
 
-    importShareCodeBusy = true;
-    try {
-      await importShareCodeFromClipboard();
+  function handleShareCodeImported(): void {
+    shareCodeDialogOpen = false;
+    void (async () => {
       if (page.url.pathname !== '/') {
         await goto('/');
       }
       showTopNotice($_('file.importShareCodeSuccess'));
-    } catch {
-      showTopNotice($_('file.importShareCodeError'), true);
-    } finally {
-      importShareCodeBusy = false;
-    }
+    })();
   }
 
   onMount(() => {
@@ -467,8 +458,7 @@
             <button
               type="button"
               role="menuitem"
-              disabled={importShareCodeBusy}
-              onclick={() => void importShareCodeScheme()}
+              onclick={openShareCodeDialog}
             >
               <span><Icon name={IconName.Paste} size={16} /></span>
               {$_('file.importShareCode')}
@@ -1054,6 +1044,12 @@
     </form>
   </div>
 {/if}
+
+<ShareCodeImportDialog
+  open={shareCodeDialogOpen}
+  onclose={() => { shareCodeDialogOpen = false; }}
+  onimported={handleShareCodeImported}
+/>
 
 <style>
   .topbar {
