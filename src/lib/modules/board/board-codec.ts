@@ -1063,3 +1063,45 @@ export async function decodeBoardBase64(
 ): Promise<BoardTransferData> {
   return decodeBoardData(base64ToBytes(value));
 }
+
+export async function encodeShareCode(
+  data: BoardTransferData
+): Promise<string> {
+  return `${data.name}=${await encodeBoardBase64(data)}`;
+}
+
+export function extractShareCodeBase64(value: string): string {
+  const shareCode = value.trim();
+  if (!shareCode) {
+    throw new BoardCodecError('invalid-base64', 'Share code is empty.');
+  }
+
+  let contentEnd = shareCode.length;
+  while (contentEnd > 0 && shareCode[contentEnd - 1] === '=') {
+    contentEnd -= 1;
+  }
+  const padding = shareCode.slice(contentEnd);
+
+  let separatorIndex = contentEnd - 1;
+  while (separatorIndex >= 0 && shareCode[separatorIndex] !== '=') {
+    separatorIndex -= 1;
+  }
+  if (separatorIndex < 0) {
+    throw new BoardCodecError(
+      'invalid-base64',
+      'Share code is missing its scheme name separator.'
+    );
+  }
+
+  const encoded = shareCode.slice(separatorIndex + 1, contentEnd);
+  if (!encoded) {
+    throw new BoardCodecError('invalid-base64', 'Share code has no Base64 data.');
+  }
+  return `${encoded}${padding}`;
+}
+
+export async function decodeShareCode(
+  value: string
+): Promise<BoardTransferData> {
+  return decodeBoardBase64(extractShareCodeBase64(value));
+}

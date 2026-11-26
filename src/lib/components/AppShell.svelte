@@ -25,14 +25,14 @@
     type SchemeTarget
   } from '$model/workspace.model';
   import { _, locale } from 'svelte-i18n';
-  import { countFilledCells, createProject } from '$domain/project';
+  import { countFilledCells } from '$domain/project';
   import ClipboardPreview from '$lib/components/ClipboardPreview.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { setAppLocale } from '$lib/i18n';
-  import { decodeBoardBase64 } from '$modules/board/board-codec';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { viewStore } from '$modules/view/view-store.svelte';
+  import { importShareCodeFromClipboard } from '$modules/workspace/share-code-import';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   interface Props {
@@ -62,7 +62,7 @@
   let deleteTarget = $state<SchemeTarget | null>(null);
   let deleting = $state(false);
   let deleteError = $state('');
-  let importBase64Busy = $state(false);
+  let importShareCodeBusy = $state(false);
   let topNotice = $state('');
   let topNoticeIsError = $state(false);
   let topNoticeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -323,37 +323,27 @@
     }, 2600);
   }
 
-  async function importBase64Scheme(): Promise<void> {
-    if (importBase64Busy) {
+  async function importShareCodeScheme(): Promise<void> {
+    if (importShareCodeBusy) {
       return;
     }
     fileOpen = false;
     if (!navigator.clipboard?.readText) {
-      showTopNotice($_('file.importBase64Error'), true);
+      showTopNotice($_('file.importShareCodeError'), true);
       return;
     }
 
-    importBase64Busy = true;
+    importShareCodeBusy = true;
     try {
-      const encoded = await navigator.clipboard.readText();
-      const data = await decodeBoardBase64(encoded);
-      await workspace.initialize();
-      const project = createProject({
-        name: data.name,
-        width: data.width,
-        height: data.height,
-        palette: data.palette
-      });
-      project.cells = data.cells;
-      await workspace.create(project);
+      await importShareCodeFromClipboard();
       if (page.url.pathname !== '/') {
         await goto('/');
       }
-      showTopNotice($_('file.importBase64Success'));
+      showTopNotice($_('file.importShareCodeSuccess'));
     } catch {
-      showTopNotice($_('file.importBase64Error'), true);
+      showTopNotice($_('file.importShareCodeError'), true);
     } finally {
-      importBase64Busy = false;
+      importShareCodeBusy = false;
     }
   }
 
@@ -477,11 +467,11 @@
             <button
               type="button"
               role="menuitem"
-              disabled={importBase64Busy}
-              onclick={() => void importBase64Scheme()}
+              disabled={importShareCodeBusy}
+              onclick={() => void importShareCodeScheme()}
             >
               <span><Icon name={IconName.Paste} size={16} /></span>
-              {$_('file.importBase64')}
+              {$_('file.importShareCode')}
             </button>
             {#if workspace.activeId}
               <button

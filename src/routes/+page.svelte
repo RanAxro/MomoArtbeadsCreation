@@ -31,8 +31,9 @@
     REFERENCE_IMAGE_MAX_FILE_BYTES,
     type ReferenceImage
   } from '$model/reference-image.model';
-  import { encodeBoardBase64 } from '$modules/board/board-codec';
+  import { encodeShareCode } from '$modules/board/board-codec';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
+  import { importShareCodeFromClipboard } from '$modules/workspace/share-code-import';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   const editor = workspace.editor;
@@ -62,9 +63,10 @@
   let colorPickerArea: HTMLDivElement | undefined = $state();
   let moreOpen = $state(false);
   let moreArea: HTMLDivElement | undefined = $state();
-  let base64Notice = $state('');
-  let base64NoticeIsError = $state(false);
-  let base64NoticeTimer: ReturnType<typeof setTimeout> | undefined;
+  let shareCodeNotice = $state('');
+  let shareCodeNoticeIsError = $state(false);
+  let shareCodeNoticeTimer: ReturnType<typeof setTimeout> | undefined;
+  let importShareCodeBusy = $state(false);
   let referenceReorder = $state<{
     pointerId: number;
     referenceId: string;
@@ -394,19 +396,19 @@
     await goto('/assemble');
   }
 
-  function showBase64Notice(message: string, isError = false): void {
-    if (base64NoticeTimer) {
-      clearTimeout(base64NoticeTimer);
+  function showShareCodeNotice(message: string, isError = false): void {
+    if (shareCodeNoticeTimer) {
+      clearTimeout(shareCodeNoticeTimer);
     }
-    base64Notice = message;
-    base64NoticeIsError = isError;
-    base64NoticeTimer = setTimeout(() => {
-      base64Notice = '';
-      base64NoticeTimer = undefined;
+    shareCodeNotice = message;
+    shareCodeNoticeIsError = isError;
+    shareCodeNoticeTimer = setTimeout(() => {
+      shareCodeNotice = '';
+      shareCodeNoticeTimer = undefined;
     }, 2600);
   }
 
-  async function exportBase64(): Promise<void> {
+  async function exportShareCode(): Promise<void> {
     const project = editor.project;
     if (!project) {
       return;
@@ -417,7 +419,7 @@
       if (!navigator.clipboard) {
         throw new Error('Clipboard API unavailable.');
       }
-      const encoded = encodeBoardBase64({
+      const encoded = encodeShareCode({
         name: project.name,
         width: project.width,
         height: project.height,
@@ -440,9 +442,25 @@
       } else {
         throw new Error('Clipboard writing is unavailable.');
       }
-      showBase64Notice($_('board.exportBase64Success'));
+      showShareCodeNotice($_('board.exportShareCodeSuccess'));
     } catch {
-      showBase64Notice($_('board.exportBase64Error'), true);
+      showShareCodeNotice($_('board.exportShareCodeError'), true);
+    }
+  }
+
+  async function importShareCodeOnHome(): Promise<void> {
+    if (importShareCodeBusy) {
+      return;
+    }
+
+    importShareCodeBusy = true;
+    try {
+      await importShareCodeFromClipboard();
+      showShareCodeNotice($_('file.importShareCodeSuccess'));
+    } catch {
+      showShareCodeNotice($_('file.importShareCodeError'), true);
+    } finally {
+      importShareCodeBusy = false;
     }
   }
 
@@ -751,8 +769,8 @@
       if (saveFeedbackTimer) {
         clearTimeout(saveFeedbackTimer);
       }
-      if (base64NoticeTimer) {
-        clearTimeout(base64NoticeTimer);
+      if (shareCodeNoticeTimer) {
+        clearTimeout(shareCodeNoticeTimer);
       }
     };
   });
@@ -1232,13 +1250,13 @@
           </div>
 
           <div class="save-state">
-            {#if base64Notice}
+            {#if shareCodeNotice}
               <span
-                class="base64-notice"
-                class:error={base64NoticeIsError}
-                role={base64NoticeIsError ? 'alert' : 'status'}
+                class="share-code-notice"
+                class:error={shareCodeNoticeIsError}
+                role={shareCodeNoticeIsError ? 'alert' : 'status'}
               >
-                {base64Notice}
+                {shareCodeNotice}
               </span>
             {/if}
             <span class="visually-hidden" aria-live="polite">
@@ -1310,13 +1328,13 @@
                     class="more-menu-item"
                     type="button"
                     role="menuitem"
-                    onclick={() => void exportBase64()}
+                    onclick={() => void exportShareCode()}
                   >
                     <span class="more-menu-icon">
                       <Icon name={IconName.Copy} size={18} />
                     </span>
                     <span>
-                      <strong>{$_('board.exportBase64')}</strong>
+                      <strong>{$_('board.exportShareCode')}</strong>
                     </span>
                   </button>
                 </div>
@@ -1402,7 +1420,28 @@
             <Icon name={IconName.Image} size={17} />
             {$_('home.import')}
           </a>
+          <button
+            class="button secondary"
+            type="button"
+            disabled={importShareCodeBusy}
+            aria-busy={importShareCodeBusy}
+            onclick={() => void importShareCodeOnHome()}
+          >
+            <Icon name={IconName.Paste} size={17} />
+            {importShareCodeBusy
+              ? $_('home.importShareCodeBusy')
+              : $_('home.importShareCode')}
+          </button>
         </div>
+        {#if shareCodeNotice}
+          <div
+            class="share-code-notice"
+            class:error={shareCodeNoticeIsError}
+            role={shareCodeNoticeIsError ? 'alert' : 'status'}
+          >
+            {shareCodeNotice}
+          </div>
+        {/if}
       </section>
     {/if}
   </main>
@@ -2022,7 +2061,7 @@
     gap: 8px;
   }
 
-  .base64-notice {
+  .share-code-notice {
     max-width: 190px;
     color: var(--muted);
     font-size: 0.7rem;
@@ -2030,7 +2069,7 @@
     text-align: right;
   }
 
-  .base64-notice.error {
+  .share-code-notice.error {
     color: var(--text);
     font-weight: 700;
   }
@@ -2265,6 +2304,12 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
+  }
+
+  .workspace-home .share-code-notice {
+    max-width: 420px;
+    margin-top: 12px;
+    text-align: center;
   }
 
   @media (max-width: 900px) {

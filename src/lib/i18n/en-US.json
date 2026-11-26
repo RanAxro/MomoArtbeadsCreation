@@ -36,16 +36,18 @@
   "file": {
     "new": "New blank scheme",
     "import": "Import image scheme",
-    "importBase64": "Import base64",
-    "importBase64Success": "Scheme imported from the clipboard.",
-    "importBase64Error": "The clipboard does not contain valid scheme data.",
+    "importShareCode": "Import share-code scheme",
+    "importShareCodeSuccess": "Share-code scheme imported from the clipboard.",
+    "importShareCodeError": "The clipboard does not contain a valid share-code scheme.",
     "close": "Close current scheme"
   },
   "home": {
     "eyebrow": "Fuse Bead Workspace",
     "description": "Create a blank Fuse Bead scheme or turn an image into an editable Artbead pattern.",
     "new": "New blank scheme",
-    "import": "Import image scheme"
+    "import": "Import image scheme",
+    "importShareCode": "Import share-code scheme",
+    "importShareCodeBusy": "Importing…"
   },
   "tray": {
     "title": "Artbeads",
@@ -122,9 +124,9 @@
     "error": "Save failed",
     "save": "Save",
     "more": "More",
-    "exportBase64": "Export base64",
-    "exportBase64Success": "Scheme data copied to the clipboard.",
-    "exportBase64Error": "The scheme data could not be generated or copied.",
+    "exportShareCode": "Export share code",
+    "exportShareCodeSuccess": "Share code copied to the clipboard.",
+    "exportShareCodeError": "The share code could not be generated or copied.",
     "startAssembly": "Start assembling",
     "undo": "Undo",
     "redo": "Redo",

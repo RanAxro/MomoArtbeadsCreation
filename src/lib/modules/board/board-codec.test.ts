@@ -6,8 +6,11 @@ import {
   bytesToBase64,
   decodeBoardBase64,
   decodeBoardData,
+  decodeShareCode,
   encodeBoardBase64,
   encodeBoardData,
+  encodeShareCode,
+  extractShareCodeBase64,
   type BoardTransferData
 } from './board-codec';
 import type { BeadPalette } from '$model/palette.model';
@@ -198,6 +201,28 @@ describe('board binary codec', () => {
       height: 2,
       cells: data.cells
     });
+  });
+
+  it('round trips a share code whose scheme name contains equals signs', async () => {
+    const data = {
+      ...createTransferData(2, 2, [0, 1, 2, 3]),
+      name: '拼绘=分享=方案'
+    };
+    const shareCode = await encodeShareCode(data);
+
+    expect(shareCode.startsWith(`${data.name}=`)).toBe(true);
+    expect(await decodeShareCode(shareCode)).toMatchObject({
+      name: data.name,
+      width: 2,
+      height: 2,
+      cells: data.cells
+    });
+  });
+
+  it('extracts Base64 data while preserving trailing padding', () => {
+    expect(extractShareCodeBase64('方案=YWJjZA==')).toBe('YWJjZA==');
+    expect(extractShareCodeBase64('A=B=YWJjZA==')).toBe('YWJjZA==');
+    expect(extractShareCodeBase64('方案=YWJjZA')).toBe('YWJjZA');
   });
 
   it('rejects corrupted binary data using the checksum', async () => {
