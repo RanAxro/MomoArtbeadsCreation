@@ -406,6 +406,29 @@
     $locale;
     void updateVisibleSchemeCount();
   });
+
+  $effect(() => {
+    const pathname = page.url.pathname.replace(/\/+$/, '') || '/';
+    const appName = $_('app.name');
+    let title = `${appName} · ${$_('app.englishName')}`;
+
+    switch (pathname) {
+      case '/settings':
+        title = `${$_('settings.title')} · ${appName}`;
+        break;
+      case '/new':
+        title = `${$_('new.title')} · ${appName}`;
+        break;
+      case '/import':
+        title = `${$_('import.title')} · ${appName}`;
+        break;
+      case '/assemble':
+        title = `${workspace.editor.project?.name ?? $_('assembly.title')} · ${appName}`;
+        break;
+    }
+
+    document.title = title;
+  });
 </script>
 
 <svelte:head>
