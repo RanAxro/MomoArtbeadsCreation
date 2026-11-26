@@ -21,18 +21,47 @@
   import { workspace } from '$modules/workspace/workspace.svelte';
 
   type ToastKind = 'success' | 'error';
+  type StorageEstimateWithDetails = StorageEstimate & {
+    usageDetails?: {
+      indexedDB?: number;
+    };
+  };
+  interface StorageUsage {
+    indexedDbBytes: number;
+    usageBytes: number;
+    quotaBytes: number;
+    hasIndexedDbDetail: boolean;
+  }
 
   let fileInput: HTMLInputElement | undefined = $state();
   let exporting = $state(false);
   let importing = $state(false);
   let importProgress = $state('');
+  let storageUsage = $state<StorageUsage | null>(null);
+  let storageUsageLoading = $state(true);
+  let storageUsageUnavailable = $state(false);
   let toastMessage = $state('');
   let toastKind = $state<ToastKind>('success');
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
+  let storageUsagePercent = $derived.by(() => {
+    if (!storageUsage || storageUsage.quotaBytes <= 0) {
+      return 0;
+    }
+    return Math.min(
+      100,
+      (storageUsage.indexedDbBytes / storageUsage.quotaBytes) * 100
+    );
+  });
+  let storageAvailableBytes = $derived(
+    storageUsage
+      ? Math.max(0, storageUsage.quotaBytes - storageUsage.usageBytes)
+      : 0
+  );
 
   onMount(() => {
     void workspace.initialize();
     void clipboardStore.initialize();
+    void refreshStorageUsage();
   });
 
   onDestroy(() => {
@@ -55,6 +84,55 @@
 
   function changeLocale(nextLocale: AppLocale): void {
     setAppLocale(nextLocale);
+  }
+
+  async function refreshStorageUsage(): Promise<void> {
+    storageUsageLoading = true;
+    try {
+      if (!navigator.storage?.estimate) {
+        storageUsage = null;
+        storageUsageUnavailable = true;
+        return;
+      }
+
+      const estimate =
+        (await navigator.storage.estimate()) as StorageEstimateWithDetails;
+      const usageBytes = estimate.usage ?? 0;
+      const quotaBytes = estimate.quota ?? 0;
+      const indexedDbBytes =
+        estimate.usageDetails?.indexedDB ?? usageBytes;
+
+      storageUsage = {
+        indexedDbBytes,
+        usageBytes,
+        quotaBytes,
+        hasIndexedDbDetail:
+          typeof estimate.usageDetails?.indexedDB === 'number'
+      };
+      storageUsageUnavailable = quotaBytes <= 0;
+    } catch {
+      storageUsage = null;
+      storageUsageUnavailable = true;
+    } finally {
+      storageUsageLoading = false;
+    }
+  }
+
+  function formatBytes(bytes: number): string {
+    if (!Number.isFinite(bytes) || bytes <= 0) {
+      return '0 B';
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const unitIndex = Math.min(
+      units.length - 1,
+      Math.floor(Math.log(bytes) / Math.log(1024))
+    );
+    const value = bytes / 1024 ** unitIndex;
+    const maximumFractionDigits = value >= 100 ? 0 : value >= 10 ? 1 : 2;
+    return `${value.toLocaleString($locale ?? AppLocale.ZhCN, {
+      maximumFractionDigits
+    })} ${units[unitIndex]}`;
   }
 
   async function exportData(): Promise<void> {
@@ -112,6 +190,7 @@
       await workspace.refresh();
       await workspace.reloadActiveScheme();
       await clipboardStore.refresh();
+      await refreshStorageUsage();
       showToast(
         $_('settings.importSuccess', {
           values: {
@@ -242,6 +321,60 @@
         <div class="card-content">
           <h2>{$_('settings.backup')}</h2>
           <p>{$_('settings.backupDescription')}</p>
+          <div class="storage-usage">
+            <div class="storage-usage-heading">
+              <span>{$_('settings.storageUsage')}</span>
+              {#if storageUsageLoading}
+                <strong>{$_('settings.storageUsageLoading')}</strong>
+              {:else if storageUsage}
+                <strong>{formatBytes(storageUsage.indexedDbBytes)}</strong>
+              {:else}
+                <strong>{$_('settings.storageUsageUnavailable')}</strong>
+              {/if}
+            </div>
+
+            {#if storageUsage && !storageUsageLoading}
+              <div
+                class="storage-meter"
+                role="progressbar"
+                aria-label={$_('settings.storageUsage')}
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow={storageUsagePercent}
+                aria-valuetext={`${storageUsagePercent.toFixed(1)}%`}
+              >
+                <span style:width={`${storageUsagePercent}%`}></span>
+              </div>
+              <div class="storage-usage-meta">
+                <span>
+                  {$_('settings.storageUsed', {
+                    values: {
+                      used: `${formatBytes(storageUsage.indexedDbBytes)} (${storageUsagePercent.toFixed(1)}%)`
+                    }
+                  })}
+                </span>
+                <span>
+                  {$_('settings.storageAvailable', {
+                    values: { available: formatBytes(storageAvailableBytes) }
+                  })}
+                </span>
+                <span>
+                  {$_('settings.storageQuota', {
+                    values: { quota: formatBytes(storageUsage.quotaBytes) }
+                  })}
+                </span>
+              </div>
+              {#if !storageUsage.hasIndexedDbDetail}
+                <p class="storage-usage-note">
+                  {$_('settings.storageUsageApprox')}
+                </p>
+              {/if}
+            {:else if storageUsageUnavailable && !storageUsageLoading}
+              <p class="storage-usage-note">
+                {$_('settings.storageUsageUnavailable')}
+              </p>
+            {/if}
+          </div>
           <div class="backup-actions">
             <button
               class="button primary"
@@ -408,6 +541,61 @@
 
   .backup-card {
     border-bottom-color: var(--text);
+  }
+
+  .storage-usage {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .storage-usage-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 0.76rem;
+  }
+
+  .storage-usage-heading span {
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .storage-usage-heading strong {
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .storage-meter {
+    height: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    background: var(--hover);
+  }
+
+  .storage-meter > span {
+    display: block;
+    height: 100%;
+    min-width: 1px;
+    background: var(--text);
+    transition: width 180ms ease;
+  }
+
+  .storage-usage-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .storage-usage-note {
+    font-size: 0.68rem;
   }
 
   .backup-actions {
