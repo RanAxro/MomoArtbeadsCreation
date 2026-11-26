@@ -5,7 +5,10 @@
   import Icon from '$lib/components/Icon.svelte';
   import ProjectPreview from '$lib/components/ProjectPreview.svelte';
   import { IconName } from '$model/icon.model';
-  import type { BeadProject } from '$model/project.model';
+  import {
+    MAX_PROJECT_NAME_LENGTH,
+    type BeadProject
+  } from '$model/project.model';
   import {
     decodeShareCode,
     type BoardTransferData
@@ -26,6 +29,7 @@
   let parseError = $state('');
   let pasteError = $state('');
   let confirmError = $state('');
+  let schemeName = $state('');
   let parsing = $state(false);
   let pasting = $state(false);
   let creating = $state(false);
@@ -61,6 +65,7 @@
     parseError = '';
     pasteError = '';
     confirmError = '';
+    schemeName = '';
     parsing = false;
     pasting = false;
     creating = false;
@@ -74,6 +79,7 @@
     parseError = '';
     pasteError = '';
     confirmError = '';
+    schemeName = '';
 
     if (!inputValue.trim()) {
       parsing = false;
@@ -94,6 +100,7 @@
         return;
       }
       parsedData = data;
+      schemeName = data.name;
     } catch {
       if (request !== parseRequest) {
         return;
@@ -132,7 +139,13 @@
   }
 
   async function confirmImport(): Promise<void> {
-    if (!parsedData || parsing || pasting || creating) {
+    if (
+      !parsedData ||
+      parsing ||
+      pasting ||
+      creating ||
+      !schemeName.trim()
+    ) {
       return;
     }
 
@@ -140,7 +153,10 @@
     confirmError = '';
     try {
       const project = await createProjectFromShareCodeData(
-        $state.snapshot(parsedData)
+        {
+          ...$state.snapshot(parsedData),
+          name: schemeName.trim()
+        }
       );
       onimported(project);
       onclose();
@@ -262,8 +278,26 @@
               />
             </div>
             <div class="scheme-summary">
-              <span class="eyebrow">{$_('shareCode.preview')}</span>
-              <h3>{parsedData.name}</h3>
+              <label class="scheme-name-field">
+                <span>{$_('shareCode.name')}</span>
+                <input
+                  class="scheme-name-input"
+                  bind:value={schemeName}
+                  type="text"
+                  maxlength={MAX_PROJECT_NAME_LENGTH}
+                  autocomplete="off"
+                  aria-invalid={!schemeName.trim()}
+                  disabled={creating}
+                  oninput={() => {
+                    confirmError = '';
+                  }}
+                />
+              </label>
+              {#if !schemeName.trim()}
+                <p class="name-error" role="alert">
+                  {$_('nav.renameRequired')}
+                </p>
+              {/if}
               <dl>
                 <div>
                   <dt>{$_('shareCode.size')}</dt>
@@ -299,7 +333,11 @@
         <button
           class="button primary"
           type="submit"
-          disabled={!parsedData || parsing || pasting || creating}
+          disabled={!parsedData ||
+            parsing ||
+            pasting ||
+            creating ||
+            !schemeName.trim()}
         >
           {creating ? $_('shareCode.creating') : $_('shareCode.confirm')}
         </button>
@@ -492,15 +530,43 @@
     min-width: 0;
   }
 
-  .scheme-summary .eyebrow {
-    margin-bottom: 7px;
+  .scheme-name-field {
+    display: grid;
+    gap: 7px;
+    margin-bottom: 14px;
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
   }
 
-  .scheme-summary h3 {
-    margin: 0 0 18px;
-    overflow-wrap: anywhere;
-    font-size: 1.25rem;
+  .scheme-name-input {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 11px;
+    border: 1px solid var(--border-strong);
+    border-radius: 2px;
+    outline: none;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1.05rem;
     font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .scheme-name-input:focus {
+    border-color: var(--text);
+  }
+
+  .scheme-name-input[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+
+  .name-error {
+    margin: -6px 0 12px;
+    color: var(--danger);
+    font-size: 0.72rem;
+    font-weight: 700;
   }
 
   dl {

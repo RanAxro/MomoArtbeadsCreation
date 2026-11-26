@@ -50,6 +50,7 @@
     "parseError": "The share code is invalid or the data is damaged. Check it and try again.",
     "pasteError": "The system clipboard could not be read. Check browser permissions and try again.",
     "preview": "Scheme preview",
+    "name": "Scheme name",
     "size": "Pegboard size",
     "artbeads": "Artbead count",
     "colors": "Colors used",
