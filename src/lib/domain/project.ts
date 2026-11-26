@@ -124,52 +124,30 @@ export function resizeProject(
   });
 }
 
-export function floodFill(
+export function fillProjectRegion(
   project: BeadProject,
-  startIndex: number,
+  selectionCells: ReadonlySet<number>,
+  clickedIndex: number,
   replacementColor: number
 ): BeadProject {
-  if (startIndex < 0 || startIndex >= project.cells.length) {
-    return project;
-  }
-
-  const targetColor = project.cells[startIndex];
-  if (targetColor === replacementColor) {
+  if (clickedIndex < 0 || clickedIndex >= project.cells.length) {
     return project;
   }
 
   const cells = [...project.cells];
-  const visited = new Uint8Array(cells.length);
-  const queue = [startIndex];
-  visited[startIndex] = 1;
+  const hasSelection = selectionCells.size > 0;
+  const fillSelection = hasSelection && selectionCells.has(clickedIndex);
+  let changed = false;
 
-  while (queue.length > 0) {
-    const currentIndex = queue.pop()!;
-    if (cells[currentIndex] !== targetColor) {
-      continue;
-    }
-
-    cells[currentIndex] = replacementColor;
-    const x = currentIndex % project.width;
-    const y = Math.floor(currentIndex / project.width);
-    const neighbours = [
-      x > 0 ? currentIndex - 1 : -1,
-      x < project.width - 1 ? currentIndex + 1 : -1,
-      y > 0 ? currentIndex - project.width : -1,
-      y < project.height - 1 ? currentIndex + project.width : -1
-    ];
-
-    for (const neighbour of neighbours) {
-      if (
-        neighbour >= 0 &&
-        visited[neighbour] === 0 &&
-        cells[neighbour] === targetColor
-      ) {
-        visited[neighbour] = 1;
-        queue.push(neighbour);
-      }
+  for (let index = 0; index < cells.length; index += 1) {
+    const shouldFill = hasSelection
+      ? fillSelection === selectionCells.has(index)
+      : true;
+    if (shouldFill && cells[index] !== replacementColor) {
+      cells[index] = replacementColor;
+      changed = true;
     }
   }
 
-  return touchProject({ ...project, cells });
+  return changed ? touchProject({ ...project, cells }) : project;
 }

@@ -29,7 +29,7 @@ import {
   MIN_MAGIC_WAND_THRESHOLD
 } from '$model/selection.model';
 import { clonePalette, createEmptyBeadColor } from '$domain/palette';
-import { floodFill, touchProject } from '$domain/project';
+import { fillProjectRegion, touchProject } from '$domain/project';
 import { clampBoardZoom } from './board-layout';
 import { eraseSelectedCells } from './selection';
 import {
@@ -584,7 +584,12 @@ export class EditorStore {
     }
 
     const snapshot = createEditorSnapshot(this.project);
-    const filled = floodFill(this.project, index, this.selectedColorIndex);
+    const filled = fillProjectRegion(
+      this.project,
+      this.selectedCells,
+      index,
+      this.selectedColorIndex
+    );
     if (filled === this.project) {
       return;
     }

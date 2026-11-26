@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   countBeads,
   createProject,
-  floodFill,
+  fillProjectRegion,
   normalizeProjectName,
   resizeProject
 } from './project';
@@ -33,7 +33,7 @@ describe('project domain', () => {
     );
   });
 
-  it('flood fills connected cells without crossing grid edges', () => {
+  it('fills the whole board when there is no selection', () => {
     const project = createProject({
       name: '填充测试',
       width: 4,
@@ -44,10 +44,54 @@ describe('project domain', () => {
     project.cells[4] = 1;
     project.cells[5] = 1;
 
-    const filled = floodFill(project, 2, 3);
+    const filled = fillProjectRegion(project, new Set(), 7, 3);
 
-    expect(filled.cells).toEqual([0, 1, 3, 3, 1, 1, 3, 3, 3, 3, 3, 3]);
-    expect(countBeads(filled)).toBe(11);
+    expect(filled.cells).toEqual(Array.from({ length: 12 }, () => 3));
+    expect(countBeads(filled)).toBe(12);
+  });
+
+  it('fills only the selection when clicking inside it', () => {
+    const project = createProject({
+      name: '选区内填充测试',
+      width: 4,
+      height: 3,
+      gameVersion: GameVersion.V3
+    });
+    project.cells[0] = 1;
+    project.cells[5] = 2;
+    project.cells[6] = 1;
+    project.cells[9] = 2;
+    const selection = new Set([5, 6, 9]);
+
+    const filled = fillProjectRegion(project, selection, 6, 4);
+
+    expect(filled.cells).toEqual([
+      1, 0, 0, 0,
+      0, 4, 4, 0,
+      0, 4, 0, 0
+    ]);
+  });
+
+  it('fills the complement when clicking outside the selection', () => {
+    const project = createProject({
+      name: '选区外填充测试',
+      width: 4,
+      height: 3,
+      gameVersion: GameVersion.V3
+    });
+    project.cells[0] = 1;
+    project.cells[1] = 2;
+    project.cells[5] = 3;
+    project.cells[6] = 4;
+    const selection = new Set([1, 5, 6]);
+
+    const filled = fillProjectRegion(project, selection, 0, 7);
+
+    expect(filled.cells).toEqual([
+      7, 2, 7, 7,
+      7, 3, 4, 7,
+      7, 7, 7, 7
+    ]);
   });
 
   it('preserves existing cells when resizing a project', () => {

@@ -1158,7 +1158,9 @@
                     ? editor.colorPickerMode === ColorPickerMode.Reference
                       ? $_('board.colorPickerReferenceHint')
                       : $_('board.colorPickerArtbeadHint')
-                    : $_('board.hint')}
+                    : editor.tool === EditorTool.Fill
+                      ? $_('board.fillHint')
+                      : $_('board.hint')}
         </span>
         <div class="zoom-control">
           <label for="board-zoom">{$_('board.zoom')}</label>
