@@ -1,4 +1,5 @@
 import { createProject } from '$domain/project';
+import { clonePalette } from '$domain/palette';
 import type { BoardTransferData } from '$modules/board/board-codec';
 import { decodeShareCode } from '$modules/board/board-codec';
 import type { BeadProject } from '$model/project.model';
@@ -13,7 +14,7 @@ export async function createProjectFromShareCodeData(
     name: data.name,
     width: data.width,
     height: data.height,
-    palette: data.palette
+    palette: clonePalette(data.palette)
   });
   project.cells = [...data.cells];
   await workspace.create(project);

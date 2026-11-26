@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { hexToRgb, rgbToHex } from './color';
-import { createColorIndex, createStarterPalette, nearestPaletteIndex } from './palette';
+import {
+  clonePalette,
+  createColorIndex,
+  createStarterPalette,
+  nearestPaletteIndex
+} from './palette';
 
 describe('palette domain', () => {
   it('converts hex colors to rgb and back', () => {
@@ -12,5 +17,22 @@ describe('palette domain', () => {
     const index = createColorIndex(palette);
 
     expect(nearestPaletteIndex(index, { r: 249, g: 238, b: 223 })).toBe(6);
+  });
+
+  it('clones reactive palette proxies into storage-safe plain data', () => {
+    const palette = createStarterPalette();
+    const reactivePalette = new Proxy(
+      {
+        ...palette,
+        colors: new Proxy(
+          palette.colors.map((color) => new Proxy(color, {})),
+          {}
+        )
+      },
+      {}
+    );
+
+    expect(() => structuredClone(reactivePalette)).toThrow();
+    expect(() => structuredClone(clonePalette(reactivePalette))).not.toThrow();
   });
 });

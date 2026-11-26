@@ -139,10 +139,13 @@
     creating = true;
     confirmError = '';
     try {
-      const project = await createProjectFromShareCodeData(parsedData);
+      const project = await createProjectFromShareCodeData(
+        $state.snapshot(parsedData)
+      );
       onimported(project);
       onclose();
-    } catch {
+    } catch (error) {
+      console.error('Failed to create a scheme from the share code.', error);
       confirmError = $_('shareCode.createError');
     } finally {
       creating = false;
