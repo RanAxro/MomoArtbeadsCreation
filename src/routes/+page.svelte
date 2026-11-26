@@ -474,21 +474,6 @@
     selectionModeOpenFor = null;
   }
 
-  function selectionOperationLabel(): string {
-    switch (editor.selectionOperation) {
-      case SelectionOperation.Union:
-        return $_('board.selectionModeUnion');
-      case SelectionOperation.Subtract:
-        return $_('board.selectionModeSubtract');
-      case SelectionOperation.Xor:
-        return $_('board.selectionModeXor');
-      case SelectionOperation.Intersect:
-        return $_('board.selectionModeIntersect');
-      default:
-        return $_('board.selectionModeReplace');
-    }
-  }
-
   function removeReferenceImage(id: string): void {
     editor.removeReferenceImage(id);
   }
@@ -840,14 +825,6 @@
       <header class="board-header">
         <div class="board-title">
           <h1>{editor.project.name}</h1>
-          <div class="board-meta">
-            <span>
-              {$_('board.size', {
-                values: { width: editor.project.width, height: editor.project.height }
-              })}
-            </span>
-            <span>{$_('board.artbeads', { values: { count: beadCount } })}</span>
-          </div>
         </div>
 
         <div class="board-actions">
@@ -1361,29 +1338,14 @@
       </div>
 
       <footer class="board-footer">
-        <span>
-          {editor.tool === EditorTool.ColorSelect
-            ? $_('board.colorSelectionHint', {
-                values: { mode: selectionOperationLabel() }
-              })
-            : editor.tool === EditorTool.MagicWand
-              ? $_('board.magicWandHint', {
-                  values: { mode: selectionOperationLabel() }
-                })
-              : editor.tool === EditorTool.Select
-                ? $_('board.selectionHint', {
-                    values: { mode: selectionOperationLabel() }
-                  })
-                : editor.tool === EditorTool.Move
-                  ? $_('board.moveHint')
-                  : editor.tool === EditorTool.ColorPicker
-                    ? editor.colorPickerMode === ColorPickerMode.Reference
-                      ? $_('board.colorPickerReferenceHint')
-                      : $_('board.colorPickerArtbeadHint')
-                    : editor.tool === EditorTool.Fill
-                      ? $_('board.fillHint')
-                      : $_('board.hint')}
-        </span>
+        <div class="board-summary">
+          <span>
+            {$_('board.size', {
+              values: { width: editor.project.width, height: editor.project.height }
+            })}
+          </span>
+          <span>{$_('board.artbeads', { values: { count: beadCount } })}</span>
+        </div>
         <div class="zoom-control">
           <label for="board-zoom">{$_('board.zoom')}</label>
           <div class="zoom-slider">
@@ -1611,6 +1573,7 @@
 
   .board-area {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
     min-width: 0;
     min-height: 0;
@@ -1630,7 +1593,6 @@
   .board-title {
     display: flex;
     align-items: center;
-    gap: 24px;
     min-width: 0;
   }
 
@@ -1641,14 +1603,6 @@
     font-size: 1.2rem;
     font-weight: 600;
     text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .board-meta {
-    display: flex;
-    gap: 14px;
-    color: var(--muted);
-    font-size: 0.72rem;
     white-space: nowrap;
   }
 
@@ -2234,10 +2188,16 @@
     font-size: 0.64rem;
   }
 
-  .board-footer > span {
+  .board-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .board-summary span {
     white-space: nowrap;
   }
 
@@ -2359,10 +2319,6 @@
       grid-template-columns: 200px minmax(0, 1fr);
     }
 
-    .board-meta {
-      display: none;
-    }
-
   }
 
   @media (max-width: 680px) {
@@ -2416,7 +2372,18 @@
 
     .board-actions {
       width: 100%;
+      flex-wrap: wrap;
       justify-content: space-between;
+      gap: 8px;
+    }
+
+    .tools {
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .save-state {
+      margin-left: auto;
     }
 
     .reference-popover {
@@ -2442,12 +2409,14 @@
     }
 
     .board-footer {
-      gap: 8px;
+      flex-wrap: wrap;
+      gap: 6px 12px;
       padding: 8px 10px;
     }
 
-    .board-footer > span {
-      display: none;
+    .board-summary {
+      width: 100%;
+      gap: 10px;
     }
 
     .zoom-control {
