@@ -27,6 +27,46 @@ function maximumPaletteDistance(colors: readonly LabColor[]): number {
   return maximum;
 }
 
+function addContiguousRegion(
+  selection: Set<number>,
+  cells: readonly number[],
+  width: number,
+  height: number,
+  cellCount: number,
+  startIndex: number,
+  matches: (index: number) => boolean
+): void {
+  const visited = new Uint8Array(cellCount);
+  const queue = [startIndex];
+  visited[startIndex] = 1;
+
+  while (queue.length > 0) {
+    const currentIndex = queue.pop()!;
+    selection.add(currentIndex);
+
+    const x = currentIndex % width;
+    const y = Math.floor(currentIndex / width);
+    const neighbours = [
+      x > 0 ? currentIndex - 1 : -1,
+      x < width - 1 ? currentIndex + 1 : -1,
+      y > 0 ? currentIndex - width : -1,
+      y < height - 1 ? currentIndex + width : -1
+    ];
+
+    for (const neighbour of neighbours) {
+      if (
+        neighbour >= 0 &&
+        neighbour < cellCount &&
+        visited[neighbour] === 0 &&
+        matches(neighbour)
+      ) {
+        visited[neighbour] = 1;
+        queue.push(neighbour);
+      }
+    }
+  }
+}
+
 export function createMagicWandSelection(
   cells: readonly number[],
   colors: readonly { hex: string }[],
@@ -49,6 +89,15 @@ export function createMagicWandSelection(
 
   const startColorIndex = cells[startIndex];
   if (startColorIndex === EMPTY_CELL_COLOR_INDEX) {
+    addContiguousRegion(
+      selection,
+      cells,
+      width,
+      height,
+      cellCount,
+      startIndex,
+      (index) => cells[index] === EMPTY_CELL_COLOR_INDEX
+    );
     return selection;
   }
 
@@ -109,35 +158,15 @@ export function createMagicWandSelection(
     return selection;
   }
 
-  const visited = new Uint8Array(cellCount);
-  const queue = [startIndex];
-  visited[startIndex] = 1;
-
-  while (queue.length > 0) {
-    const currentIndex = queue.pop()!;
-    selection.add(currentIndex);
-
-    const x = currentIndex % width;
-    const y = Math.floor(currentIndex / width);
-    const neighbours = [
-      x > 0 ? currentIndex - 1 : -1,
-      x < width - 1 ? currentIndex + 1 : -1,
-      y > 0 ? currentIndex - width : -1,
-      y < height - 1 ? currentIndex + width : -1
-    ];
-
-    for (const neighbour of neighbours) {
-      if (
-        neighbour >= 0 &&
-        neighbour < cellCount &&
-        visited[neighbour] === 0 &&
-        matchesColor(neighbour)
-      ) {
-        visited[neighbour] = 1;
-        queue.push(neighbour);
-      }
-    }
-  }
+  addContiguousRegion(
+    selection,
+    cells,
+    width,
+    height,
+    cellCount,
+    startIndex,
+    matchesColor
+  );
 
   return selection;
 }

@@ -61,17 +61,26 @@ describe('magic wand selection', () => {
     ]);
   });
 
-  it('does not select when the clicked cell is empty', () => {
-    const cells = [1, 0, 1];
-    const selection = createMagicWandSelection(
-      cells,
-      colors,
-      3,
-      1,
-      1,
-      100
-    );
+  it('selects contiguous empty cells regardless of threshold', () => {
+    const cells = [
+      1, 1, 2, 1, 1,
+      0, 1, 2, 2, 1,
+      0, 0, 2, 0, 0
+    ];
 
-    expect(selection.size).toBe(0);
+    for (const threshold of [0, 100]) {
+      const selection = createMagicWandSelection(
+        cells,
+        colors,
+        5,
+        3,
+        5,
+        threshold
+      );
+
+      expect([...selection].sort((first, second) => first - second)).toEqual([
+        5, 10, 11
+      ]);
+    }
   });
 });
