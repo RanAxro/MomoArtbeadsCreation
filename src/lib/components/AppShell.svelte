@@ -416,6 +416,9 @@
       case '/settings':
         title = `${$_('settings.title')} · ${appName}`;
         break;
+      case '/docs':
+        title = `${$_('docs.title')} · ${appName}`;
+        break;
       case '/new':
         title = `${$_('new.title')} · ${appName}`;
         break;
@@ -506,6 +509,23 @@
         }}
       >
         {$_('nav.view')}
+      </button>
+
+      <button
+        class="nav-button"
+        class:active={page.url.pathname === '/docs'}
+        type="button"
+        aria-current={page.url.pathname === '/docs' ? 'page' : undefined}
+        onclick={() => {
+          fileOpen = false;
+          clipboardOpen = false;
+          viewOpen = false;
+          schemeMenu = null;
+          schemePopoverOpen = false;
+          void goto('/docs');
+        }}
+      >
+        {$_('nav.docs')}
       </button>
 
       {#if workspace.activeId}

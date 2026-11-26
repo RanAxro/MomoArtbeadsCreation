@@ -7,6 +7,7 @@
   "nav": {
     "file": "File",
     "view": "View",
+    "docs": "Docs",
     "clipboard": "Clipboard",
     "settings": "Settings",
     "schemes": "Schemes",
@@ -257,6 +258,111 @@
     "readError": "This image cannot be read. Try PNG, JPEG, or WebP.",
     "convertError": "Image conversion failed. Try another image.",
     "back": "Back to workspace"
+  },
+  "docs": {
+    "title": "Documentation",
+    "toc": "On this page",
+    "tocBoard": "Pegboard & workflow",
+    "tocTools": "Toolbar tools",
+    "tocSelection": "Selection & actions",
+    "tocShortcuts": "Shortcuts",
+    "workflowTitle": "Using the Pegboard",
+    "workflowDescription": "Each cell represents one Artbead. Create a scheme, choose a color from the tray, then draw cell by cell.",
+    "steps": {
+      "create": {
+        "title": "Create a scheme",
+        "body": "Use File to create a blank scheme, import an image, or paste a share code. Set the Pegboard size when creating a blank scheme; imported images use the closest available Artbead colors."
+      },
+      "chooseColor": {
+        "title": "Choose a color",
+        "body": "After a scheme opens, click an Artbead in the tray on the left. The current color, code, and usage count appear below the palette."
+      },
+      "draw": {
+        "title": "Edit cell by cell",
+        "body": "Choose Pencil, Eraser, Fill, or a selection tool. Edits save automatically; you can also click Save or press Ctrl / ⌘ + S."
+      },
+      "assemble": {
+        "title": "Review and assemble",
+        "body": "Use View to toggle rulers, the grid, the coarse grid, and the Pegboard background. When finished, choose Start assembling from More for a read-only pickup list."
+      }
+    },
+    "boardNoteTitle": "Orientation and navigation",
+    "boardNote": "Rulers show row and column numbers; the bottom zoom control resets to 100%. Wheel to pan, Shift + wheel to pan sideways, and Ctrl / ⌘ + wheel to zoom. Middle-drag or Space + left-drag also pans.",
+    "toolsTitle": "Toolbar tools",
+    "toolsDescription": "The first eight buttons are for drawing and selecting. Each tooltip also shows the matching shortcut.",
+    "tools": {
+      "colorSelect": "Click any cell to select every cell with the same color across the Pegboard, including empty cells. Click the active tool again to open the selection-mode menu.",
+      "magicWand": "Click a colored Artbead to select a contiguous region of similar colors. Adjust the match threshold in the tool menu. Clicking an empty cell selects contiguous empty cells and ignores the threshold.",
+      "select": "Drag with the left button to create a rectangular selection. Hold Shift while dragging for a square; click the active tool again to open the selection-mode menu.",
+      "move": "Available when there is a selection or temporary paste layer. Drag the selection to move its contents; switching tools or continuing other edits merges the temporary layer.",
+      "colorPicker": "Open the picker menu, choose Artbead picker or Background picker, then click a cell. The first reads an existing Artbead; the second samples a reference image and matches the nearest Artbead.",
+      "pencil": "Hold the left button and drag to paint the selected Artbead color into each visited cell.",
+      "eraser": "Hold the left button and drag to clear Artbeads from each visited cell.",
+      "fill": "With no selection, click to fill the whole Pegboard. With a selection, click inside to fill the selection or outside to fill everything except the selection."
+    },
+    "actionsTitle": "Supporting actions",
+    "actionsDescription": "The rest of the toolbar provides reference images, selection clipboard history, undo history, and more actions.",
+    "actionDescriptions": {
+      "reference": "Open the reference-image list to import, select, remove, or press-and-hold to reorder images. With an image selected, drag to move, drag a corner to resize, or drag the top handle to rotate. Hold Shift to lock proportions or rotate in 15° steps.",
+      "copy": "Copy the Artbeads and full palette inside the current selection to the recent clipboard.",
+      "paste": "Paste the most recent selection into the visible center of the current Pegboard and enter the movable state.",
+      "undo": "Undo the most recent Pegboard or reference-image edit.",
+      "redo": "Restore the most recently undone edit.",
+      "save": "Save the current scheme immediately. Normal edits also save automatically.",
+      "more": "Start assembling saves the scheme first and opens the read-only assembly view. Export share code copies the current Pegboard data to the system clipboard."
+    },
+    "selectionTitle": "Selection modes",
+    "selectionDescription": "Color Select, Magic Wand, and Rectangle Select share the same selection modes. Click a selection tool; clicking the active tool again opens its mode menu.",
+    "selectionModes": {
+      "replace": "The new selection replaces the old one. This is the default mode.",
+      "union": "Add the new selection to the existing selection.",
+      "subtract": "Remove the new selection from the existing selection.",
+      "xor": "Keep cells that belong to only one selection and remove the overlap.",
+      "intersect": "Keep only the overlap between the new and existing selections."
+    },
+    "shortcutsTitle": "Shortcuts",
+    "shortcutsDescription": "These shortcuts work while the Pegboard has focus. When the cursor is in an input, select box, or editable text, the keys are used for text entry instead.",
+    "shortcutGroups": {
+      "tools": "Switch tools",
+      "editing": "Editing & history",
+      "navigation": "View navigation",
+      "selection": "Selection modifiers"
+    },
+    "shortcutLabels": {
+      "copySelection": "Copy selection",
+      "pasteSelection": "Paste selection",
+      "deleteSelection": "Delete selection or temporary layer",
+      "undo": "Undo",
+      "redo": "Redo",
+      "redoAlternate": "Redo (alternate)",
+      "save": "Save scheme",
+      "closeOrCancel": "Close popover / cancel current drag / clear reference selection",
+      "panVertical": "Pan vertically",
+      "panHorizontal": "Pan horizontally",
+      "zoom": "Zoom the Pegboard",
+      "panDrag": "Drag the canvas to pan",
+      "touchPan": "Drag to pan; pinch to zoom",
+      "add": "Temporarily add to selection",
+      "subtract": "Temporarily subtract from selection",
+      "opposite": "Temporarily select the opposite region",
+      "intersect": "Temporarily intersect with selection",
+      "square": "Lock rectangle selection to 1:1",
+      "clear": "Clear the current selection"
+    },
+    "shortcutValues": {
+      "panVertical": "Wheel",
+      "panHorizontal": "Shift + Wheel",
+      "zoom": "Ctrl / ⌘ + Wheel",
+      "panDrag": "Middle drag / Space + left drag",
+      "touchPan": "Drag / pinch",
+      "add": "Ctrl / ⌘ + Left click",
+      "subtract": "Alt + Left click",
+      "opposite": "Ctrl / ⌘ + Right click",
+      "intersect": "Alt + Right click",
+      "square": "Shift + drag",
+      "clear": "Right click"
+    },
+    "shortcutTip": "On macOS, use ⌘ instead of Ctrl. Some browsers or operating systems may reserve individual combinations; click the Pegboard first if a shortcut does not respond."
   },
   "common": {
     "loading": "Loading local data…",
