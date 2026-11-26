@@ -42,6 +42,23 @@ class WorkspaceStore {
     }
   }
 
+  async reloadActiveScheme(): Promise<void> {
+    if (!this.activeId) {
+      return;
+    }
+
+    const activeId = this.activeId;
+    const project = await projectRepository.get(activeId);
+    if (!project) {
+      this.activeId = null;
+      this.editor.close();
+      window.localStorage.removeItem(ACTIVE_SCHEME_STORAGE_KEY);
+      return;
+    }
+
+    this.editor.load(project);
+  }
+
   async select(id: string): Promise<boolean> {
     if (this.activeId === id && this.editor.project) {
       return true;

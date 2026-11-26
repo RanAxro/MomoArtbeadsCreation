@@ -46,11 +46,11 @@ function compareClipboardRecency(
   first: SelectionClipboard,
   second: SelectionClipboard
 ): number {
-  const firstTime = first.lastUsedAt ?? first.copiedAt;
-  const secondTime = second.lastUsedAt ?? second.copiedAt;
+  const firstTime = Date.parse(first.lastUsedAt ?? first.copiedAt);
+  const secondTime = Date.parse(second.lastUsedAt ?? second.copiedAt);
   return (
-    secondTime.localeCompare(firstTime) ||
-    second.copiedAt.localeCompare(first.copiedAt) ||
+    secondTime - firstTime ||
+    Date.parse(second.copiedAt) - Date.parse(first.copiedAt) ||
     second.id.localeCompare(first.id)
   );
 }

@@ -5,12 +5,8 @@
   import { page } from '$app/state';
   import { MAX_PROJECT_NAME_LENGTH } from '$model/project.model';
   import { IconName } from '$model/icon.model';
-  import { AppLocale, ThemeMode } from '$model/settings.model';
-  import {
-    MAX_CLIPBOARD_HISTORY_LIMIT,
-    MIN_CLIPBOARD_HISTORY_LIMIT,
-    type SelectionClipboard
-  } from '$model/selection-clipboard.model';
+  import { AppLocale } from '$model/settings.model';
+  import type { SelectionClipboard } from '$model/selection-clipboard.model';
   import { KeyboardKey } from '$model/ui.model';
   import {
     BoardBackground,
@@ -29,7 +25,6 @@
   import ClipboardPreview from '$lib/components/ClipboardPreview.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ShareCodeImportDialog from '$lib/components/ShareCodeImportDialog.svelte';
-  import { setAppLocale } from '$lib/i18n';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { viewStore } from '$modules/view/view-store.svelte';
@@ -43,7 +38,6 @@
   let fileOpen = $state(false);
   let clipboardOpen = $state(false);
   let viewOpen = $state(false);
-  let settingsOpen = $state(false);
   let fileArea: HTMLDivElement | undefined = $state();
   let clipboardArea: HTMLDivElement | undefined = $state();
   let schemeAreaElement: HTMLDivElement | undefined = $state();
@@ -151,7 +145,6 @@
     event.stopPropagation();
     fileOpen = false;
     viewOpen = false;
-    settingsOpen = false;
     schemeMenu = null;
     clipboardOpen = !clipboardOpen;
     if (clipboardOpen) {
@@ -179,7 +172,6 @@
     fileOpen = false;
     clipboardOpen = false;
     viewOpen = false;
-    settingsOpen = false;
     if (!preservePopover) {
       schemePopoverOpen = false;
     }
@@ -307,10 +299,6 @@
     }
   }
 
-  function changeLocale(nextLocale: AppLocale): void {
-    setAppLocale(nextLocale);
-  }
-
   function showTopNotice(message: string, isError = false): void {
     if (topNoticeTimer) {
       clearTimeout(topNoticeTimer);
@@ -371,7 +359,6 @@
         fileOpen = false;
         clipboardOpen = false;
         viewOpen = false;
-        settingsOpen = false;
         schemeMenu = null;
         schemePopoverOpen = false;
         if (!deleting) {
@@ -491,7 +478,6 @@
           event.stopPropagation();
           fileOpen = false;
           clipboardOpen = false;
-          settingsOpen = false;
           schemeMenu = null;
           viewOpen = true;
         }}
@@ -562,13 +548,10 @@
 
       <button
         class="nav-button"
+        class:active={page.url.pathname === '/settings'}
         type="button"
-        onclick={() => {
-          schemeMenu = null;
-          clipboardOpen = false;
-          viewOpen = false;
-          settingsOpen = true;
-        }}
+        aria-current={page.url.pathname === '/settings' ? 'page' : undefined}
+        onclick={() => void goto('/settings')}
       >
         {$_('nav.settings')}
       </button>
@@ -837,98 +820,6 @@
         </select>
       </label>
     </form>
-  </div>
-{/if}
-
-{#if settingsOpen}
-  <button
-    class="dialog-backdrop"
-    type="button"
-    aria-label={$_('settings.close')}
-    onclick={() => { settingsOpen = false; }}
-  ></button>
-  <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-    <div class="dialog-heading">
-      <div>
-        <span class="dialog-index">01</span>
-        <h2 id="settings-title">{$_('settings.title')}</h2>
-      </div>
-      <button
-        class="icon-button"
-        type="button"
-        aria-label={$_('settings.close')}
-        onclick={() => { settingsOpen = false; }}
-      >
-        <Icon name={IconName.Close} size={18} />
-      </button>
-    </div>
-
-    <div class="setting-group">
-      <h3>{$_('settings.appearance')}</h3>
-      <p>{$_('settings.theme')}</p>
-      <div class="segmented">
-        <button
-          class:active={themeStore.mode === ThemeMode.Light}
-          type="button"
-          onclick={() => themeStore.set(ThemeMode.Light)}
-        >
-          <Icon name={IconName.Sun} size={16} />
-          {$_('settings.light')}
-        </button>
-        <button
-          class:active={themeStore.mode === ThemeMode.Dark}
-          type="button"
-          onclick={() => themeStore.set(ThemeMode.Dark)}
-        >
-          <Icon name={IconName.Moon} size={16} />
-          {$_('settings.dark')}
-        </button>
-      </div>
-    </div>
-
-    <div class="setting-group">
-      <h3>{$_('settings.language')}</h3>
-      <div class="segmented">
-        <button
-          class:active={$locale === AppLocale.ZhCN}
-          type="button"
-          onclick={() => changeLocale(AppLocale.ZhCN)}
-        >
-          {$_('settings.zh')}
-        </button>
-        <button
-          class:active={$locale === AppLocale.EnUS}
-          type="button"
-          onclick={() => changeLocale(AppLocale.EnUS)}
-        >
-          {$_('settings.en')}
-        </button>
-      </div>
-    </div>
-
-    <div class="setting-group">
-      <h3>{$_('settings.clipboard')}</h3>
-      <p>{$_('settings.clipboardLimitHint')}</p>
-      <label class="clipboard-limit-field">
-        <span>{$_('settings.clipboardLimit')}</span>
-        <input
-          class="field"
-          type="number"
-          min={MIN_CLIPBOARD_HISTORY_LIMIT}
-          max={MAX_CLIPBOARD_HISTORY_LIMIT}
-          value={clipboardStore.limit}
-          onchange={(event) =>
-            void clipboardStore.setLimit(
-              Number((event.currentTarget as HTMLInputElement).value)
-            )}
-        />
-      </label>
-    </div>
-
-    <div class="storage-note">
-      <h3>{$_('settings.storage')}</h3>
-      <p>{$_('settings.storageCopy')}</p>
-    </div>
   </div>
 {/if}
 
@@ -1647,21 +1538,12 @@
     gap: 10px;
   }
 
-  .setting-group h3,
-  .storage-note h3 {
+  .setting-group h3 {
     margin: 0;
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-
-  .setting-group p,
-  .storage-note p {
-    margin: 0;
-    color: var(--muted);
-    font-size: 0.82rem;
-    line-height: 1.65;
   }
 
   .view-switch {
@@ -1734,56 +1616,6 @@
 
   .view-dialog .field {
     cursor: pointer;
-  }
-
-  .clipboard-limit-field {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 92px;
-    align-items: center;
-    gap: 12px;
-    color: var(--muted);
-    font-size: 0.78rem;
-    font-weight: 600;
-  }
-
-  .clipboard-limit-field .field {
-    min-height: 36px;
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-  }
-
-  .segmented {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    border: 1px solid var(--border-strong);
-  }
-
-  .segmented button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 40px;
-    border: 0;
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-  }
-
-  .segmented button + button {
-    border-left: 1px solid var(--border-strong);
-  }
-
-  .segmented button.active {
-    background: var(--text);
-    color: var(--surface);
-  }
-
-  .storage-note {
-    display: grid;
-    gap: 8px;
-    padding-top: 22px;
-    border-top: 1px solid var(--border);
   }
 
   @media (max-width: 760px) {
