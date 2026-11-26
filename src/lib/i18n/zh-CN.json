@@ -188,7 +188,6 @@
     "en": "English",
     "backup": "数据备份",
     "backupDescription": "将方案、剪贴板历史及其编辑状态导出为一个 JSON 文件；导入时会与当前浏览器中的数据合并。",
-    "mergeDescription": "同一方案保留 updatedAt 较新的版本；剪贴板按 lastUsedAt 保留最新记录，并遵循上方保存数量设置。",
     "exportData": "导出数据",
     "importData": "导入数据",
     "exporting": "正在导出…",

@@ -188,7 +188,6 @@
     "en": "English",
     "backup": "Data backup",
     "backupDescription": "Export schemes, clipboard history, and editor state to one JSON file. Importing merges the file with data in this browser.",
-    "mergeDescription": "For matching schemes, the newest updatedAt wins. Clipboard entries keep the newest lastUsedAt values up to the history size above.",
     "exportData": "Export data",
     "importData": "Import data",
     "exporting": "Exporting…",

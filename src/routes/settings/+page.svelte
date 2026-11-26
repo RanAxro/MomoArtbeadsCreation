@@ -242,7 +242,6 @@
         <div class="card-content">
           <h2>{$_('settings.backup')}</h2>
           <p>{$_('settings.backupDescription')}</p>
-          <p class="merge-note">{$_('settings.mergeDescription')}</p>
           <div class="backup-actions">
             <button
               class="button primary"
@@ -409,11 +408,6 @@
 
   .backup-card {
     border-bottom-color: var(--text);
-  }
-
-  .merge-note {
-    padding-left: 12px;
-    border-left: 2px solid var(--border-strong);
   }
 
   .backup-actions {
