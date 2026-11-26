@@ -164,6 +164,10 @@
       titleKey: 'docs.shortcutGroups.selection',
       items: [
         {
+          labelKey: 'docs.shortcutLabels.openSelectionMenu',
+          keysKey: 'docs.shortcutValues.openSelectionMenu'
+        },
+        {
           labelKey: 'docs.shortcutLabels.add',
           keysKey: 'docs.shortcutValues.add'
         },

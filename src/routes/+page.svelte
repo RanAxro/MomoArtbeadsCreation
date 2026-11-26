@@ -367,9 +367,28 @@
     referenceOpen = false;
     colorPickerOpen = false;
     referenceError = '';
+    if (!alreadyActive) {
+      editor.setTool(tool);
+      selectionModeOpenFor = null;
+      return;
+    }
+
     editor.setTool(tool);
-    selectionModeOpenFor =
-      alreadyActive && selectionModeOpenFor === tool ? null : tool;
+    selectionModeOpenFor = selectionModeOpenFor === tool ? null : tool;
+  }
+
+  function openSelectionToolMenu(
+    event: MouseEvent,
+    tool: EditorTool
+  ): void {
+    event.preventDefault();
+    event.stopPropagation();
+    cancelReferenceReorder();
+    referenceOpen = false;
+    colorPickerOpen = false;
+    moreOpen = false;
+    referenceError = '';
+    selectionModeOpenFor = tool;
   }
 
   function toggleMore(event: MouseEvent): void {
@@ -469,7 +488,11 @@
     showShareCodeNotice($_('file.importShareCodeSuccess'));
   }
 
-  function selectSelectionOperation(operation: SelectionOperation): void {
+  function selectSelectionOperation(
+    operation: SelectionOperation,
+    tool: EditorTool
+  ): void {
+    editor.setTool(tool);
     editor.setSelectionOperation(operation);
     selectionModeOpenFor = null;
   }
@@ -854,6 +877,8 @@
                       !editor.selectedReferenceImageId
                     }
                     onclick={() => toggleSelectionTool(tool.id)}
+                    oncontextmenu={(event) =>
+                      openSelectionToolMenu(event, tool.id)}
                   >
                     <Icon name={tool.icon} size={18} />
                   </button>
@@ -873,7 +898,8 @@
                       </strong>
                       <SelectionModeOptions
                         value={editor.selectionOperation}
-                        onselect={selectSelectionOperation}
+                        onselect={(operation) =>
+                          selectSelectionOperation(operation, tool.id)}
                       />
 
                       {#if tool.id === EditorTool.MagicWand}
