@@ -25,10 +25,11 @@
     type SchemeTarget
   } from '$model/workspace.model';
   import { _, locale } from 'svelte-i18n';
-  import { countFilledCells } from '$domain/project';
+  import { countFilledCells, createProject } from '$domain/project';
   import ClipboardPreview from '$lib/components/ClipboardPreview.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { setAppLocale } from '$lib/i18n';
+  import { decodeBoardBase64 } from '$modules/board/board-codec';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { viewStore } from '$modules/view/view-store.svelte';
@@ -61,6 +62,10 @@
   let deleteTarget = $state<SchemeTarget | null>(null);
   let deleting = $state(false);
   let deleteError = $state('');
+  let importBase64Busy = $state(false);
+  let topNotice = $state('');
+  let topNoticeIsError = $state(false);
+  let topNoticeTimer: ReturnType<typeof setTimeout> | undefined;
 
   let orderedSchemes = $derived.by(() =>
     [...workspace.projects].sort((first, second) =>
@@ -306,6 +311,52 @@
     setAppLocale(nextLocale);
   }
 
+  function showTopNotice(message: string, isError = false): void {
+    if (topNoticeTimer) {
+      clearTimeout(topNoticeTimer);
+    }
+    topNotice = message;
+    topNoticeIsError = isError;
+    topNoticeTimer = setTimeout(() => {
+      topNotice = '';
+      topNoticeTimer = undefined;
+    }, 2600);
+  }
+
+  async function importBase64Scheme(): Promise<void> {
+    if (importBase64Busy) {
+      return;
+    }
+    fileOpen = false;
+    if (!navigator.clipboard?.readText) {
+      showTopNotice($_('file.importBase64Error'), true);
+      return;
+    }
+
+    importBase64Busy = true;
+    try {
+      const encoded = await navigator.clipboard.readText();
+      const data = await decodeBoardBase64(encoded);
+      await workspace.initialize();
+      const project = createProject({
+        name: data.name,
+        width: data.width,
+        height: data.height,
+        palette: data.palette
+      });
+      project.cells = data.cells;
+      await workspace.create(project);
+      if (page.url.pathname !== '/') {
+        await goto('/');
+      }
+      showTopNotice($_('file.importBase64Success'));
+    } catch {
+      showTopNotice($_('file.importBase64Error'), true);
+    } finally {
+      importBase64Busy = false;
+    }
+  }
+
   onMount(() => {
     themeStore.initialize();
     void workspace.initialize();
@@ -372,6 +423,9 @@
       window.removeEventListener('keydown', closeOnEscape);
       window.removeEventListener('focus', refreshClipboardOnFocus);
       resizeObserver.disconnect();
+      if (topNoticeTimer) {
+        clearTimeout(topNoticeTimer);
+      }
     };
   });
 
@@ -420,6 +474,15 @@
               <span><Icon name={IconName.Image} size={16} /></span>
               {$_('file.import')}
             </a>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={importBase64Busy}
+              onclick={() => void importBase64Scheme()}
+            >
+              <span><Icon name={IconName.Paste} size={16} /></span>
+              {$_('file.importBase64')}
+            </button>
             {#if workspace.activeId}
               <button
                 type="button"
@@ -635,6 +698,16 @@
     </div>
   </div>
 </header>
+
+{#if topNotice}
+  <div
+    class="top-notice"
+    class:error={topNoticeIsError}
+    role={topNoticeIsError ? 'alert' : 'status'}
+  >
+    {topNotice}
+  </div>
+{/if}
 
 {#if schemeMenu}
   <div
@@ -1100,6 +1173,11 @@
     background: var(--hover);
   }
 
+  .file-menu button:disabled {
+    cursor: wait;
+    opacity: 0.55;
+  }
+
   .file-menu span {
     display: grid;
     place-items: center;
@@ -1442,6 +1520,25 @@
   .shell-body {
     height: calc(100vh - 62px);
     min-height: 480px;
+  }
+
+  .top-notice {
+    position: fixed;
+    z-index: 50;
+    top: 72px;
+    left: 50%;
+    max-width: calc(100vw - 32px);
+    padding: 10px 14px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow);
+    font-size: 0.8rem;
+    transform: translateX(-50%);
+  }
+
+  .top-notice.error {
+    font-weight: 700;
   }
 
   .icon-button {

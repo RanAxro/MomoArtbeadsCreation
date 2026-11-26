@@ -36,6 +36,9 @@
   "file": {
     "new": "新建空白方案",
     "import": "导入图片方案",
+    "importBase64": "导入base64",
+    "importBase64Success": "已从剪贴板导入方案。",
+    "importBase64Error": "无法从剪贴板读取有效的方案数据。",
     "close": "关闭当前方案"
   },
   "home": {
@@ -119,6 +122,9 @@
     "error": "保存失败",
     "save": "保存",
     "more": "其他功能",
+    "exportBase64": "导出base64",
+    "exportBase64Success": "方案数据已复制到剪贴板。",
+    "exportBase64Error": "无法生成或复制方案数据。",
     "startAssembly": "开始拼绘",
     "undo": "撤销",
     "redo": "重做",

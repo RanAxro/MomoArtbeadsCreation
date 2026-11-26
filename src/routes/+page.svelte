@@ -31,6 +31,7 @@
     REFERENCE_IMAGE_MAX_FILE_BYTES,
     type ReferenceImage
   } from '$model/reference-image.model';
+  import { encodeBoardBase64 } from '$modules/board/board-codec';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
@@ -61,6 +62,9 @@
   let colorPickerArea: HTMLDivElement | undefined = $state();
   let moreOpen = $state(false);
   let moreArea: HTMLDivElement | undefined = $state();
+  let base64Notice = $state('');
+  let base64NoticeIsError = $state(false);
+  let base64NoticeTimer: ReturnType<typeof setTimeout> | undefined;
   let referenceReorder = $state<{
     pointerId: number;
     referenceId: string;
@@ -390,6 +394,58 @@
     await goto('/assemble');
   }
 
+  function showBase64Notice(message: string, isError = false): void {
+    if (base64NoticeTimer) {
+      clearTimeout(base64NoticeTimer);
+    }
+    base64Notice = message;
+    base64NoticeIsError = isError;
+    base64NoticeTimer = setTimeout(() => {
+      base64Notice = '';
+      base64NoticeTimer = undefined;
+    }, 2600);
+  }
+
+  async function exportBase64(): Promise<void> {
+    const project = editor.project;
+    if (!project) {
+      return;
+    }
+    moreOpen = false;
+
+    try {
+      if (!navigator.clipboard) {
+        throw new Error('Clipboard API unavailable.');
+      }
+      const encoded = encodeBoardBase64({
+        name: project.name,
+        width: project.width,
+        height: project.height,
+        cells: project.cells,
+        palette: project.palette
+      });
+      if (
+        typeof ClipboardItem !== 'undefined' &&
+        navigator.clipboard.write
+      ) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/plain': encoded.then(
+              (value) => new Blob([value], { type: 'text/plain' })
+            )
+          })
+        ]);
+      } else if (navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(await encoded);
+      } else {
+        throw new Error('Clipboard writing is unavailable.');
+      }
+      showBase64Notice($_('board.exportBase64Success'));
+    } catch {
+      showBase64Notice($_('board.exportBase64Error'), true);
+    }
+  }
+
   function selectSelectionOperation(operation: SelectionOperation): void {
     editor.setSelectionOperation(operation);
     selectionModeOpenFor = null;
@@ -694,6 +750,9 @@
       }
       if (saveFeedbackTimer) {
         clearTimeout(saveFeedbackTimer);
+      }
+      if (base64NoticeTimer) {
+        clearTimeout(base64NoticeTimer);
       }
     };
   });
@@ -1173,6 +1232,15 @@
           </div>
 
           <div class="save-state">
+            {#if base64Notice}
+              <span
+                class="base64-notice"
+                class:error={base64NoticeIsError}
+                role={base64NoticeIsError ? 'alert' : 'status'}
+              >
+                {base64Notice}
+              </span>
+            {/if}
             <span class="visually-hidden" aria-live="polite">
               {#if saveFeedback === 'saving'}
                 {$_('board.saving')}
@@ -1236,6 +1304,19 @@
                     </span>
                     <span>
                       <strong>{$_('board.startAssembly')}</strong>
+                    </span>
+                  </button>
+                  <button
+                    class="more-menu-item"
+                    type="button"
+                    role="menuitem"
+                    onclick={() => void exportBase64()}
+                  >
+                    <span class="more-menu-icon">
+                      <Icon name={IconName.Copy} size={18} />
+                    </span>
+                    <span>
+                      <strong>{$_('board.exportBase64')}</strong>
                     </span>
                   </button>
                 </div>
@@ -1939,6 +2020,19 @@
   .save-state {
     flex: 0 0 auto;
     gap: 8px;
+  }
+
+  .base64-notice {
+    max-width: 190px;
+    color: var(--muted);
+    font-size: 0.7rem;
+    line-height: 1.35;
+    text-align: right;
+  }
+
+  .base64-notice.error {
+    color: var(--text);
+    font-weight: 700;
   }
 
   .more-area {
