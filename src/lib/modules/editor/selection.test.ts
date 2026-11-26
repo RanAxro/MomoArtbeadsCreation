@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   combineSelections,
-  createSelectionRectangle
+  createSelectionRectangle,
+  getSameColorSelection
 } from './selection';
 import { SelectionOperation } from '$model/selection.model';
 
@@ -68,5 +69,34 @@ describe('rectangular selection', () => {
     expect([
       ...combineSelections(previous, rectangle, SelectionOperation.Intersect)
     ]).toEqual([3]);
+  });
+});
+
+describe('same-color selection', () => {
+  it('selects every cell whose palette color matches the clicked bead', () => {
+    const cells = [1, 2, 1, 3, 0, 2];
+    const colors = [
+      { hex: '#111111' },
+      { hex: '#111111' },
+      { hex: '#222222' }
+    ];
+
+    expect([
+      ...getSameColorSelection(cells, colors, cells[1])
+    ]).toEqual([0, 1, 2, 5]);
+  });
+
+  it('selects every empty cell when an empty cell is clicked', () => {
+    const cells = [1, 0, 1, 0, 0];
+    const colors = [{ hex: '#111111' }];
+
+    expect([...getSameColorSelection(cells, colors, 0)]).toEqual([1, 3, 4]);
+  });
+
+  it('returns no matches for an invalid color index', () => {
+    const cells = [1, 0, 1];
+    const colors = [{ hex: '#111111' }];
+
+    expect([...getSameColorSelection(cells, colors, 2)]).toEqual([]);
   });
 });

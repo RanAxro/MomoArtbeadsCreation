@@ -503,6 +503,7 @@ export class EditorStore {
   paint(index: number): void {
     if (
       !this.project ||
+      this.tool === EditorTool.ColorSelect ||
       this.tool === EditorTool.Select ||
       this.tool === EditorTool.Move ||
       this.activePasteLayer ||

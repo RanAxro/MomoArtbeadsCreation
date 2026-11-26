@@ -915,11 +915,13 @@
 
       <footer class="board-footer">
         <span>
-          {editor.tool === EditorTool.Select
-            ? $_('board.selectionHint')
-            : editor.tool === EditorTool.Move
-              ? $_('board.moveHint')
-              : $_('board.hint')}
+          {editor.tool === EditorTool.ColorSelect
+            ? $_('board.colorSelectionHint')
+            : editor.tool === EditorTool.Select
+              ? $_('board.selectionHint')
+              : editor.tool === EditorTool.Move
+                ? $_('board.moveHint')
+                : $_('board.hint')}
         </span>
         <div class="zoom-control">
           <label for="board-zoom">{$_('board.zoom')}</label>

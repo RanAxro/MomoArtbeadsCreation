@@ -1,4 +1,5 @@
 import type { BoardCell } from '$model/editor.model';
+import { EMPTY_CELL_COLOR_INDEX } from '$model/project.model';
 import {
   SelectionOperation,
   type SelectionBounds,
@@ -115,6 +116,47 @@ export function createSelectionRectangle(
     height: maxY - minY + 1,
     cells
   };
+}
+
+export function getSameColorSelection(
+  cells: readonly number[],
+  colors: readonly { hex: string }[],
+  colorIndex: number
+): ReadonlySet<number> {
+  const selection = new Set<number>();
+  if (colorIndex === EMPTY_CELL_COLOR_INDEX) {
+    for (let index = 0; index < cells.length; index += 1) {
+      if (cells[index] === EMPTY_CELL_COLOR_INDEX) {
+        selection.add(index);
+      }
+    }
+    return selection;
+  }
+
+  const selectedColor =
+    colorIndex > 0 ? colors[colorIndex - 1] : undefined;
+
+  if (!selectedColor) {
+    return selection;
+  }
+
+  const normalizedHex = selectedColor.hex.trim().toLowerCase();
+  for (let index = 0; index < cells.length; index += 1) {
+    const candidateColorIndex = cells[index];
+    if (candidateColorIndex === EMPTY_CELL_COLOR_INDEX) {
+      continue;
+    }
+
+    const candidateColor = colors[candidateColorIndex - 1];
+    if (
+      candidateColor &&
+      candidateColor.hex.trim().toLowerCase() === normalizedHex
+    ) {
+      selection.add(index);
+    }
+  }
+
+  return selection;
 }
 
 export function combineSelections(

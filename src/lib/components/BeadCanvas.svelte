@@ -21,7 +21,8 @@
   } from '$modules/editor/board-layout';
   import {
     combineSelections,
-    createSelectionRectangle
+    createSelectionRectangle,
+    getSameColorSelection
   } from '$modules/editor/selection';
   import {
     DEFAULT_SELECTION_COLOR,
@@ -62,6 +63,7 @@
   let pinching = $state(false);
   let selectionDrag = $state<{
     pointerId: number;
+    mode: 'color' | 'rectangle';
     operation: SelectionOperation;
     previous: ReadonlySet<number>;
     rectangle: SelectionRectangle;
@@ -725,7 +727,7 @@
       );
     }
 
-    if (selectionDrag) {
+    if (selectionDrag?.mode === 'rectangle') {
       const { minX, minY, width, height } = selectionDrag.rectangle;
       context.save();
       context.strokeStyle = selectionColor;
@@ -1119,11 +1121,22 @@
       project.height,
       event.shiftKey
     );
+    const mode =
+      editor.tool === EditorTool.ColorSelect ? 'color' : 'rectangle';
+    const selectedCells =
+      mode === 'color'
+        ? getSameColorSelection(
+            project.cells,
+            project.palette.colors,
+            project.cells[start.index]
+          )
+        : rectangle.cells;
     editor.setSelection(
-      combineSelections(previous, rectangle.cells, operation)
+      combineSelections(previous, selectedCells, operation)
     );
     selectionDrag = {
       pointerId: event.pointerId,
+      mode,
       operation,
       previous,
       rectangle
@@ -1137,6 +1150,9 @@
     const project = editor.project;
     const end = clampedCellFromPointer(event);
     if (!project || !end || selectionDrag?.pointerId !== event.pointerId) {
+      return;
+    }
+    if (selectionDrag.mode !== 'rectangle') {
       return;
     }
 
@@ -1786,7 +1802,10 @@
       }
       if (editor.tool === EditorTool.Move) {
         beginMove(event);
-      } else if (editor.tool === EditorTool.Select) {
+      } else if (
+        editor.tool === EditorTool.ColorSelect ||
+        editor.tool === EditorTool.Select
+      ) {
         beginSelectionDrag(event, SelectionOperation.Replace);
       } else {
         updateHoveredCell(null);
@@ -1862,7 +1881,10 @@
       return;
     }
 
-    if (editor.tool === EditorTool.Select) {
+    if (
+      editor.tool === EditorTool.ColorSelect ||
+      editor.tool === EditorTool.Select
+    ) {
       if (selectionDrag?.pointerId === event.pointerId) {
         updateSelectionDrag(event);
         updateHoveredCell(cellFromPoint(point));
@@ -1974,7 +1996,10 @@
       return;
     }
 
-    if (editor.tool === EditorTool.Select) {
+    if (
+      editor.tool === EditorTool.ColorSelect ||
+      editor.tool === EditorTool.Select
+    ) {
       const operation = selectionOperationForPointer(event);
       if (operation === 'clear') {
         cancelSelectionDrag();
