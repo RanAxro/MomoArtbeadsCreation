@@ -50,6 +50,8 @@
   let referenceInput: HTMLInputElement | undefined = $state();
   let referenceArea: HTMLDivElement | undefined = $state();
   let referenceList: HTMLDivElement | undefined = $state();
+  let magicWandOpen = $state(false);
+  let magicWandArea: HTMLDivElement | undefined = $state();
   let referenceReorder = $state<{
     pointerId: number;
     referenceId: string;
@@ -296,6 +298,7 @@
       editor.addReferenceImage(reference);
       cancelReferenceReorder();
       referenceOpen = false;
+      magicWandOpen = false;
     } catch {
       referenceError = $_('reference.readError');
     } finally {
@@ -316,6 +319,7 @@
     cancelReferenceReorder();
     if (editor.selectReferenceImage(id)) {
       referenceOpen = false;
+      magicWandOpen = false;
     }
   }
 
@@ -497,6 +501,7 @@
     if (tool) {
       cancelReferenceReorder();
       referenceOpen = false;
+      magicWandOpen = false;
       referenceError = '';
       editor.setTool(tool.id);
     }
@@ -508,6 +513,7 @@
     if (!editor.project) {
       cancelReferenceReorder();
       referenceOpen = false;
+      magicWandOpen = false;
     }
     if (editor.project && editor.revision !== editor.savedRevision) {
       scheduleSave();
@@ -520,35 +526,46 @@
     const refreshClipboardOnFocus = (): void => {
       void refreshClipboardState();
     };
-    const closeReferencePopover = (event: MouseEvent): void => {
+    const closePopovers = (event: MouseEvent): void => {
+      const target = event.target as Node;
       if (
         referenceOpen &&
         referenceArea &&
-        !referenceArea.contains(event.target as Node)
+        !referenceArea.contains(target)
       ) {
         cancelReferenceReorder();
         referenceOpen = false;
         referenceError = '';
       }
+      if (
+        magicWandOpen &&
+        magicWandArea &&
+        !magicWandArea.contains(target)
+      ) {
+        magicWandOpen = false;
+      }
     };
-    const closeReferenceOnEscape = (event: KeyboardEvent): void => {
+    const closePopoversOnEscape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape' && referenceOpen) {
         cancelReferenceReorder();
         referenceOpen = false;
         referenceError = '';
         referenceDragActive = false;
       }
+      if (event.key === 'Escape' && magicWandOpen) {
+        magicWandOpen = false;
+      }
     };
     window.addEventListener('keydown', onKeydown);
-    window.addEventListener('keydown', closeReferenceOnEscape);
+    window.addEventListener('keydown', closePopoversOnEscape);
     window.addEventListener('focus', refreshClipboardOnFocus);
-    window.addEventListener('click', closeReferencePopover);
+    window.addEventListener('click', closePopovers);
     return () => {
       cancelReferenceReorder();
       window.removeEventListener('keydown', onKeydown);
-      window.removeEventListener('keydown', closeReferenceOnEscape);
+      window.removeEventListener('keydown', closePopoversOnEscape);
       window.removeEventListener('focus', refreshClipboardOnFocus);
-      window.removeEventListener('click', closeReferencePopover);
+      window.removeEventListener('click', closePopovers);
       if (saveTimer) {
         clearTimeout(saveTimer);
       }
@@ -595,42 +612,18 @@
       {/each}
     </div>
 
-    <div class="tray-footer">
-      {#if selectedTrayColor}
-        <div class="selected-color">
-          <span class="selected-swatch" style:--color={selectedTrayColor.hex}></span>
-          <div class="selected-color-info">
-            <small>{$_('tray.selected')}</small>
-            <strong>{selectedTrayColor.code} · {selectedTrayColor.hex}</strong>
-          </div>
-          <span class="selected-usage">{usage[editor.selectedColorIndex] ?? 0}</span>
+    {#if selectedTrayColor}
+      <div class="selected-color">
+        <span class="selected-swatch" style:--color={selectedTrayColor.hex}></span>
+        <div class="selected-color-info">
+          <small>{$_('tray.selected')}</small>
+          <strong>{selectedTrayColor.code} · {selectedTrayColor.hex}</strong>
         </div>
-      {:else}
-        <p class="tray-empty">{$_('tray.empty')}</p>
-      {/if}
-      {#if editor.tool === EditorTool.MagicWand}
-        <div class="magic-wand-threshold">
-          <div class="magic-wand-threshold-heading">
-            <label for="magic-wand-threshold">{$_('board.magicWandThreshold')}</label>
-            <output for="magic-wand-threshold">{editor.magicWandThreshold}%</output>
-          </div>
-          <input
-            id="magic-wand-threshold"
-            type="range"
-            min={MIN_MAGIC_WAND_THRESHOLD}
-            max={MAX_MAGIC_WAND_THRESHOLD}
-            step="1"
-            value={editor.magicWandThreshold}
-            aria-label={$_('board.magicWandThreshold')}
-            oninput={(event) =>
-              editor.setMagicWandThreshold(
-                Number((event.currentTarget as HTMLInputElement).value)
-              )}
-          />
-          <small>{$_('board.magicWandThresholdHint')}</small>
-        </div>
-      {/if}
-    </div>
+        <span class="selected-usage">{usage[editor.selectedColorIndex] ?? 0}</span>
+      </div>
+    {:else}
+      <p class="tray-empty">{$_('tray.empty')}</p>
+    {/if}
     </aside>
   {/if}
 
@@ -652,34 +645,120 @@
         <div class="board-actions">
           <div class="tools">
             {#each EDITOR_TOOL_DEFINITIONS as tool}
-              <button
-                class="tool"
-                class:active={
-                  editor.tool === tool.id &&
-                  !referenceOpen &&
-                  !editor.selectedReferenceImageId
-                }
-                type="button"
-                title={`${$_(tool.labelKey)} (${tool.shortcut})`}
-                aria-label={$_(tool.labelKey)}
-                aria-pressed={
-                  editor.tool === tool.id &&
-                  !referenceOpen &&
-                  !editor.selectedReferenceImageId
-                }
-                disabled={
-                  tool.id === EditorTool.Move &&
-                  !canMoveSelection
-                }
-                onclick={() => {
-                  cancelReferenceReorder();
-                  referenceOpen = false;
-                  referenceError = '';
-                  editor.setTool(tool.id);
-                }}
-              >
-                <Icon name={tool.icon} size={18} />
-              </button>
+              {#if tool.id === EditorTool.MagicWand}
+                <div
+                  class="magic-wand-area"
+                  bind:this={magicWandArea}
+                  role="group"
+                  aria-label={$_('board.magicWand')}
+                >
+                  <button
+                    class="tool magic-wand-tool"
+                    class:active={
+                      editor.tool === tool.id &&
+                      !referenceOpen &&
+                      !editor.selectedReferenceImageId
+                    }
+                    type="button"
+                    title={`${$_(tool.labelKey)} (${tool.shortcut})`}
+                    aria-label={$_(tool.labelKey)}
+                    aria-pressed={
+                      editor.tool === tool.id &&
+                      !referenceOpen &&
+                      !editor.selectedReferenceImageId
+                    }
+                    onclick={() => {
+                      cancelReferenceReorder();
+                      referenceOpen = false;
+                      magicWandOpen = false;
+                      referenceError = '';
+                      editor.setTool(tool.id);
+                    }}
+                  >
+                    <Icon name={tool.icon} size={18} />
+                  </button>
+                  <button
+                    class="tool magic-wand-dropdown"
+                    class:active={magicWandOpen}
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-controls="magic-wand-popover"
+                    aria-expanded={magicWandOpen}
+                    aria-label={$_('board.magicWandSettings')}
+                    title={$_('board.magicWandSettings')}
+                    onclick={() => {
+                      cancelReferenceReorder();
+                      referenceOpen = false;
+                      referenceError = '';
+                      magicWandOpen = !magicWandOpen;
+                    }}
+                  >
+                    <Icon name={IconName.ChevronDown} size={11} />
+                  </button>
+
+                  {#if magicWandOpen}
+                    <div
+                      id="magic-wand-popover"
+                      class="magic-wand-popover"
+                      role="dialog"
+                      aria-labelledby="magic-wand-popover-title"
+                    >
+                      <div class="magic-wand-popover-heading">
+                        <strong id="magic-wand-popover-title">
+                          {$_('board.magicWandThreshold')}
+                        </strong>
+                        <output for="magic-wand-threshold">
+                          {editor.magicWandThreshold}%
+                        </output>
+                      </div>
+                      <input
+                        id="magic-wand-threshold"
+                        type="range"
+                        min={MIN_MAGIC_WAND_THRESHOLD}
+                        max={MAX_MAGIC_WAND_THRESHOLD}
+                        step="1"
+                        value={editor.magicWandThreshold}
+                        aria-label={$_('board.magicWandThreshold')}
+                        oninput={(event) =>
+                          editor.setMagicWandThreshold(
+                            Number((event.currentTarget as HTMLInputElement).value)
+                          )}
+                      />
+                      <small>{$_('board.magicWandThresholdHint')}</small>
+                    </div>
+                  {/if}
+                </div>
+              {:else}
+                <button
+                  class="tool"
+                  class:active={
+                    editor.tool === tool.id &&
+                    !referenceOpen &&
+                    !editor.selectedReferenceImageId
+                  }
+                  type="button"
+                  title={`${$_(tool.labelKey)} (${tool.shortcut})`}
+                  aria-label={$_(tool.labelKey)}
+                  aria-pressed={
+                    editor.tool === tool.id &&
+                    !referenceOpen &&
+                    !editor.selectedReferenceImageId
+                  }
+                  disabled={
+                    tool.id === EditorTool.Move &&
+                    !canMoveSelection
+                  }
+                  onclick={() => {
+                    cancelReferenceReorder();
+                    referenceOpen = false;
+                    magicWandOpen = false;
+                    referenceError = '';
+                    editor.setTool(tool.id);
+                  }}
+                >
+                  <Icon name={tool.icon} size={18} />
+                </button>
+              {/if}
             {/each}
             <div
               class="reference-area"
@@ -716,6 +795,7 @@
                 title={$_('reference.hint')}
                 onclick={() => {
                   referenceOpen = !referenceOpen;
+                  magicWandOpen = false;
                   referenceError = '';
                 }}
               >
@@ -1105,11 +1185,6 @@
     border-top: 1px solid var(--border);
   }
 
-  .tray-footer {
-    display: grid;
-    gap: 14px;
-  }
-
   .selected-swatch {
     width: 42px;
     height: 42px;
@@ -1138,46 +1213,6 @@
   .selected-usage {
     color: var(--muted);
     font-size: 0.72rem;
-  }
-
-  .magic-wand-threshold {
-    display: grid;
-    gap: 8px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-  }
-
-  .magic-wand-threshold-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .magic-wand-threshold-heading label {
-    color: var(--text);
-    font-size: 0.7rem;
-    font-weight: 600;
-  }
-
-  .magic-wand-threshold-heading output {
-    color: var(--muted);
-    font-size: 0.7rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .magic-wand-threshold input {
-    width: 100%;
-    height: 18px;
-    margin: 0;
-    accent-color: var(--text);
-    cursor: pointer;
-  }
-
-  .magic-wand-threshold small {
-    color: var(--muted);
-    font-size: 0.64rem;
-    line-height: 1.5;
   }
 
   .tray-empty {
@@ -1250,6 +1285,75 @@
   .reference-area {
     position: relative;
     display: flex;
+  }
+
+  .magic-wand-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .tool.magic-wand-tool {
+    flex: 0 0 32px;
+    width: 32px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .tool.magic-wand-dropdown {
+    flex: 0 0 10px;
+    width: 10px;
+    min-width: 0;
+    padding: 0;
+    border-left-color: var(--border);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .magic-wand-popover {
+    position: absolute;
+    z-index: 26;
+    top: calc(100% + 9px);
+    left: 0;
+    display: grid;
+    gap: 10px;
+    width: min(280px, calc(100vw - 20px));
+    padding: 12px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .magic-wand-popover-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .magic-wand-popover-heading strong {
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+
+  .magic-wand-popover-heading output {
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .magic-wand-popover input {
+    width: 100%;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--text);
+    cursor: pointer;
+  }
+
+  .magic-wand-popover small {
+    color: var(--muted);
+    font-size: 0.66rem;
+    line-height: 1.5;
   }
 
   .tool {
@@ -1740,10 +1844,6 @@
       overflow-x: auto;
     }
 
-    .tray-footer {
-      margin-top: 10px;
-    }
-
     .artbead {
       flex: 0 0 38px;
       width: 38px;
@@ -1771,6 +1871,13 @@
       top: 116px;
       right: 10px;
       width: min(330px, calc(100vw - 20px));
+    }
+
+    .magic-wand-popover {
+      position: fixed;
+      top: 116px;
+      left: 10px;
+      width: min(280px, calc(100vw - 20px));
     }
 
     .board-title h1 {

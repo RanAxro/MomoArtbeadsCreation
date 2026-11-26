@@ -96,6 +96,7 @@
     "hint": "滚轮上下移动 · Shift + 滚轮左右移动 · Ctrl + 滚轮缩放 · 中键或空格 + 左键拖拽",
     "colorSelectionHint": "单击格子选择全部同色格（包括空格） · Ctrl + 左键并集 · Alt + 左键差集 · Ctrl + 右键异或 · Alt + 右键交集 · 右键清除 · Ctrl+C 复制 · Ctrl+V 粘贴",
     "magicWandHint": "单击艺点点选择附近连续的相近颜色 · 阈值 0% 只选完全相同颜色，100% 选中全部艺点点 · 右键清除",
+    "magicWandSettings": "魔法棒设置",
     "magicWandThreshold": "魔法棒阈值",
     "magicWandThresholdHint": "0% 只选完全相同的颜色；100% 选中全部艺点点",
     "selectionHint": "左键拖拽替换框选 · Ctrl + 左键并集 · Alt + 左键差集 · Ctrl + 右键异或 · Alt + 右键交集 · 右键清除 · Shift 锁定 1:1 · Ctrl+C 复制 · Ctrl+V 粘贴",

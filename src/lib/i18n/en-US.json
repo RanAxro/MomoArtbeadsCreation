@@ -96,6 +96,7 @@
     "hint": "Wheel to pan · Shift + wheel to pan sideways · Ctrl + wheel to zoom · Middle mouse or Space + left drag",
     "colorSelectionHint": "Click a cell to select all matching colors (including empty cells) · Ctrl + left: union · Alt + left: subtract · Ctrl + right: XOR · Alt + right: intersect · Right click: clear · Ctrl+C copy · Ctrl+V paste",
     "magicWandHint": "Click an Artbead to select nearby contiguous similar colors · 0% exact color, 100% all Artbeads · Right click: clear",
+    "magicWandSettings": "Magic wand settings",
     "magicWandThreshold": "Magic wand threshold",
     "magicWandThresholdHint": "0% selects exact colors only; 100% selects every Artbead",
     "selectionHint": "Left drag: replace · Ctrl + left: union · Alt + left: subtract · Ctrl + right: XOR · Alt + right: intersect · Right click: clear · Shift: lock 1:1 · Ctrl+C copy · Ctrl+V paste",
