@@ -806,7 +806,7 @@
       }
     }
 
-    const hovered = isAssembly ? null : hoveredCell;
+    const hovered = hoveredCell;
     if (hovered) {
       const colorIndex = project.cells[hovered.index];
       const bead = colorIndex > 0 ? project.palette.colors[colorIndex - 1] : undefined;
@@ -1781,13 +1781,6 @@
   }
 
   function updateHoveredCell(cell: BoardCell | null): void {
-    if (isAssembly) {
-      if (hoveredCell !== null) {
-        hoveredCell = null;
-      }
-      return;
-    }
-
     if (hoveredCell?.index === cell?.index) {
       return;
     }
@@ -2133,6 +2126,9 @@
     if (canvas?.hasPointerCapture(event.pointerId)) {
       canvas.releasePointerCapture(event.pointerId);
     }
+    if (isAssembly) {
+      updateHoveredCell(cellFromPointer(event));
+    }
   }
 
   function onPointerDown(event: PointerEvent): void {
@@ -2160,7 +2156,7 @@
     }
 
     if (isAssembly) {
-      updateHoveredCell(null);
+      updateHoveredCell(cellFromPointer(event));
       return;
     }
 
@@ -2250,7 +2246,7 @@
     }
 
     if (isAssembly) {
-      updateHoveredCell(null);
+      updateHoveredCell(cellFromPointer(event));
       return;
     }
 

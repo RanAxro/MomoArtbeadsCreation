@@ -1216,10 +1216,10 @@
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={moreOpen}
+                aria-label={$_('board.more')}
                 title={$_('board.more')}
                 onclick={toggleMore}
               >
-                <span class="more-label">{$_('board.more')}</span>
                 <Icon name={IconName.MoreHorizontal} size={16} />
               </button>
 
@@ -1947,7 +1947,9 @@
   }
 
   .more-button {
-    padding: 0 10px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
   }
 
   .more-menu {
@@ -2229,15 +2231,6 @@
     .board-actions {
       width: 100%;
       justify-content: space-between;
-    }
-
-    .more-label {
-      display: none;
-    }
-
-    .more-button {
-      width: 34px;
-      padding: 0;
     }
 
     .reference-popover {

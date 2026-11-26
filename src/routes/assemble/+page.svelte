@@ -105,7 +105,6 @@
     <main class="assembly-board-area">
       <header class="assembly-header">
         <div class="assembly-title">
-          <p class="eyebrow">{$_('assembly.readOnly')}</p>
           <h1>{editor.project.name}</h1>
         </div>
         <div class="assembly-meta">
@@ -306,7 +305,7 @@
     display: flex;
     align-items: center;
     gap: 22px;
-    min-height: 62px;
+    min-height: 54px;
     padding: 8px 20px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
@@ -314,11 +313,6 @@
 
   .assembly-title {
     min-width: 0;
-  }
-
-  .assembly-title .eyebrow {
-    margin-bottom: 4px;
-    font-size: 0.58rem;
   }
 
   .assembly-title h1 {
