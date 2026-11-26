@@ -29,6 +29,9 @@ export interface SelectionBounds {
 
 export const DEFAULT_SELECTION_COLOR = '#2f6fed';
 export const DEFAULT_SELECTION_FILL = 'rgba(47, 111, 237, 0.32)';
+export const MIN_MAGIC_WAND_THRESHOLD = 0;
+export const MAX_MAGIC_WAND_THRESHOLD = 100;
+export const DEFAULT_MAGIC_WAND_THRESHOLD = 0;
 export const SELECTION_OUTLINE_STYLE = {
   minWidth: 1,
   maxWidth: 2,

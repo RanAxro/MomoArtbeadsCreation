@@ -18,6 +18,10 @@
     MIN_BOARD_ZOOM
   } from '$model/editor.model';
   import {
+    MAX_MAGIC_WAND_THRESHOLD,
+    MIN_MAGIC_WAND_THRESHOLD
+  } from '$model/selection.model';
+  import {
     DEFAULT_REFERENCE_IMAGE_COVERAGE,
     REFERENCE_IMAGE_MAX_FILE_BYTES,
     type ReferenceImage
@@ -591,18 +595,42 @@
       {/each}
     </div>
 
-    {#if selectedTrayColor}
-      <div class="selected-color">
-        <span class="selected-swatch" style:--color={selectedTrayColor.hex}></span>
-        <div>
-          <small>{$_('tray.selected')}</small>
-          <strong>{selectedTrayColor.code} · {selectedTrayColor.hex}</strong>
+    <div class="tray-footer">
+      {#if selectedTrayColor}
+        <div class="selected-color">
+          <span class="selected-swatch" style:--color={selectedTrayColor.hex}></span>
+          <div class="selected-color-info">
+            <small>{$_('tray.selected')}</small>
+            <strong>{selectedTrayColor.code} · {selectedTrayColor.hex}</strong>
+          </div>
+          <span class="selected-usage">{usage[editor.selectedColorIndex] ?? 0}</span>
         </div>
-        <span>{usage[editor.selectedColorIndex] ?? 0}</span>
-      </div>
-    {:else}
-      <p class="tray-empty">{$_('tray.empty')}</p>
-    {/if}
+      {:else}
+        <p class="tray-empty">{$_('tray.empty')}</p>
+      {/if}
+      {#if editor.tool === EditorTool.MagicWand}
+        <div class="magic-wand-threshold">
+          <div class="magic-wand-threshold-heading">
+            <label for="magic-wand-threshold">{$_('board.magicWandThreshold')}</label>
+            <output for="magic-wand-threshold">{editor.magicWandThreshold}%</output>
+          </div>
+          <input
+            id="magic-wand-threshold"
+            type="range"
+            min={MIN_MAGIC_WAND_THRESHOLD}
+            max={MAX_MAGIC_WAND_THRESHOLD}
+            step="1"
+            value={editor.magicWandThreshold}
+            aria-label={$_('board.magicWandThreshold')}
+            oninput={(event) =>
+              editor.setMagicWandThreshold(
+                Number((event.currentTarget as HTMLInputElement).value)
+              )}
+          />
+          <small>{$_('board.magicWandThresholdHint')}</small>
+        </div>
+      {/if}
+    </div>
     </aside>
   {/if}
 
@@ -917,11 +945,13 @@
         <span>
           {editor.tool === EditorTool.ColorSelect
             ? $_('board.colorSelectionHint')
-            : editor.tool === EditorTool.Select
-              ? $_('board.selectionHint')
-              : editor.tool === EditorTool.Move
-                ? $_('board.moveHint')
-                : $_('board.hint')}
+            : editor.tool === EditorTool.MagicWand
+              ? $_('board.magicWandHint')
+              : editor.tool === EditorTool.Select
+                ? $_('board.selectionHint')
+                : editor.tool === EditorTool.Move
+                  ? $_('board.moveHint')
+                  : $_('board.hint')}
         </span>
         <div class="zoom-control">
           <label for="board-zoom">{$_('board.zoom')}</label>
@@ -1075,6 +1105,11 @@
     border-top: 1px solid var(--border);
   }
 
+  .tray-footer {
+    display: grid;
+    gap: 14px;
+  }
+
   .selected-swatch {
     width: 42px;
     height: 42px;
@@ -1082,7 +1117,7 @@
     background: var(--color);
   }
 
-  .selected-color div {
+  .selected-color-info {
     display: grid;
     gap: 4px;
     min-width: 0;
@@ -1100,9 +1135,49 @@
     white-space: nowrap;
   }
 
-  .selected-color > span:last-child {
+  .selected-usage {
     color: var(--muted);
     font-size: 0.72rem;
+  }
+
+  .magic-wand-threshold {
+    display: grid;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .magic-wand-threshold-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .magic-wand-threshold-heading label {
+    color: var(--text);
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .magic-wand-threshold-heading output {
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .magic-wand-threshold input {
+    width: 100%;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--text);
+    cursor: pointer;
+  }
+
+  .magic-wand-threshold small {
+    color: var(--muted);
+    font-size: 0.64rem;
+    line-height: 1.5;
   }
 
   .tray-empty {
@@ -1663,6 +1738,10 @@
       display: flex;
       gap: 4px;
       overflow-x: auto;
+    }
+
+    .tray-footer {
+      margin-top: 10px;
     }
 
     .artbead {

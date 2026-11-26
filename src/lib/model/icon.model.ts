@@ -1,5 +1,6 @@
 export enum IconName {
   ColorSelect = 'color-select',
+  MagicWand = 'magic-wand',
   Select = 'select',
   Move = 'move',
   Pencil = 'pencil',

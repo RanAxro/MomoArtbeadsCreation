@@ -22,6 +22,11 @@ import {
 } from '$model/reference-image.model';
 import type { SelectionClipboard } from '$model/selection-clipboard.model';
 import type { SelectionLayer } from '$model/selection-layer.model';
+import {
+  DEFAULT_MAGIC_WAND_THRESHOLD,
+  MAX_MAGIC_WAND_THRESHOLD,
+  MIN_MAGIC_WAND_THRESHOLD
+} from '$model/selection.model';
 import { clonePalette, createEmptyBeadColor } from '$domain/palette';
 import { floodFill, touchProject } from '$domain/project';
 import { clampBoardZoom } from './board-layout';
@@ -50,6 +55,7 @@ function createEditorSnapshot(project: BeadProject): EditorSnapshot {
 export class EditorStore {
   project = $state<BeadProject | null>(null);
   selectedColorIndex = $state(DEFAULT_SELECTED_PALETTE_INDEX);
+  magicWandThreshold = $state(DEFAULT_MAGIC_WAND_THRESHOLD);
   tool = $state<EditorTool>(DEFAULT_EDITOR_TOOL);
   selectedCells = $state<ReadonlySet<number>>(new Set());
   revision = $state(0);
@@ -335,6 +341,13 @@ export class EditorStore {
     this.selectedColorIndex = index;
   }
 
+  setMagicWandThreshold(threshold: number): void {
+    this.magicWandThreshold = Math.max(
+      MIN_MAGIC_WAND_THRESHOLD,
+      Math.min(MAX_MAGIC_WAND_THRESHOLD, Math.round(threshold))
+    );
+  }
+
   setZoom(zoom: number): void {
     this.zoom = clampBoardZoom(zoom);
   }
@@ -504,6 +517,7 @@ export class EditorStore {
     if (
       !this.project ||
       this.tool === EditorTool.ColorSelect ||
+      this.tool === EditorTool.MagicWand ||
       this.tool === EditorTool.Select ||
       this.tool === EditorTool.Move ||
       this.activePasteLayer ||

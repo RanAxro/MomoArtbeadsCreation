@@ -24,6 +24,7 @@
     createSelectionRectangle,
     getSameColorSelection
   } from '$modules/editor/selection';
+  import { createMagicWandSelection } from '$modules/editor/magic-wand';
   import {
     DEFAULT_SELECTION_COLOR,
     DEFAULT_SELECTION_FILL,
@@ -63,7 +64,7 @@
   let pinching = $state(false);
   let selectionDrag = $state<{
     pointerId: number;
-    mode: 'color' | 'rectangle';
+    mode: 'color' | 'magic-wand' | 'rectangle';
     operation: SelectionOperation;
     previous: ReadonlySet<number>;
     rectangle: SelectionRectangle;
@@ -1122,7 +1123,11 @@
       event.shiftKey
     );
     const mode =
-      editor.tool === EditorTool.ColorSelect ? 'color' : 'rectangle';
+      editor.tool === EditorTool.ColorSelect
+        ? 'color'
+        : editor.tool === EditorTool.MagicWand
+          ? 'magic-wand'
+          : 'rectangle';
     const selectedCells =
       mode === 'color'
         ? getSameColorSelection(
@@ -1130,7 +1135,16 @@
             project.palette.colors,
             project.cells[start.index]
           )
-        : rectangle.cells;
+        : mode === 'magic-wand'
+          ? createMagicWandSelection(
+              project.cells,
+              project.palette.colors,
+              project.width,
+              project.height,
+              start.index,
+              editor.magicWandThreshold
+            )
+          : rectangle.cells;
     editor.setSelection(
       combineSelections(previous, selectedCells, operation)
     );
@@ -1804,6 +1818,7 @@
         beginMove(event);
       } else if (
         editor.tool === EditorTool.ColorSelect ||
+        editor.tool === EditorTool.MagicWand ||
         editor.tool === EditorTool.Select
       ) {
         beginSelectionDrag(event, SelectionOperation.Replace);
@@ -1883,6 +1898,7 @@
 
     if (
       editor.tool === EditorTool.ColorSelect ||
+      editor.tool === EditorTool.MagicWand ||
       editor.tool === EditorTool.Select
     ) {
       if (selectionDrag?.pointerId === event.pointerId) {
@@ -1998,6 +2014,7 @@
 
     if (
       editor.tool === EditorTool.ColorSelect ||
+      editor.tool === EditorTool.MagicWand ||
       editor.tool === EditorTool.Select
     ) {
       const operation = selectionOperationForPointer(event);

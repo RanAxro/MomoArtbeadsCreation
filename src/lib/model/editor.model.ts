@@ -2,6 +2,7 @@ import { IconName } from './icon.model';
 
 export enum EditorTool {
   ColorSelect = 'color-select',
+  MagicWand = 'magic-wand',
   Select = 'select',
   Move = 'move',
   Pencil = 'pencil',
@@ -10,7 +11,8 @@ export enum EditorTool {
 }
 
 export enum EditorToolShortcut {
-  ColorSelect = 'W',
+  ColorSelect = 'C',
+  MagicWand = 'W',
   Select = 'M',
   Move = 'V',
   Pencil = 'B',
@@ -20,6 +22,7 @@ export enum EditorToolShortcut {
 
 export enum EditorToolLabelKey {
   ColorSelect = 'board.colorSelect',
+  MagicWand = 'board.magicWand',
   Select = 'board.select',
   Move = 'board.move',
   Pencil = 'board.pencil',
@@ -74,6 +77,12 @@ export const EDITOR_TOOL_DEFINITIONS: readonly EditorToolDefinition[] = [
     icon: IconName.ColorSelect,
     labelKey: EditorToolLabelKey.ColorSelect,
     shortcut: EditorToolShortcut.ColorSelect
+  },
+  {
+    id: EditorTool.MagicWand,
+    icon: IconName.MagicWand,
+    labelKey: EditorToolLabelKey.MagicWand,
+    shortcut: EditorToolShortcut.MagicWand
   },
   {
     id: EditorTool.Select,
