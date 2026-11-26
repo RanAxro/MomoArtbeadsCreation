@@ -5,6 +5,7 @@ export enum EditorTool {
   MagicWand = 'magic-wand',
   Select = 'select',
   Move = 'move',
+  ColorPicker = 'color-picker',
   Pencil = 'pencil',
   Eraser = 'eraser',
   Fill = 'fill'
@@ -15,6 +16,7 @@ export enum EditorToolShortcut {
   MagicWand = 'W',
   Select = 'M',
   Move = 'V',
+  ColorPicker = 'I',
   Pencil = 'B',
   Eraser = 'E',
   Fill = 'G'
@@ -25,9 +27,15 @@ export enum EditorToolLabelKey {
   MagicWand = 'board.magicWand',
   Select = 'board.select',
   Move = 'board.move',
+  ColorPicker = 'board.colorPicker',
   Pencil = 'board.pencil',
   Eraser = 'board.eraser',
   Fill = 'board.fill'
+}
+
+export enum ColorPickerMode {
+  Artbead = 'artbead',
+  Reference = 'reference'
 }
 
 export enum EditorCommandKey {
@@ -95,6 +103,12 @@ export const EDITOR_TOOL_DEFINITIONS: readonly EditorToolDefinition[] = [
     icon: IconName.Move,
     labelKey: EditorToolLabelKey.Move,
     shortcut: EditorToolShortcut.Move
+  },
+  {
+    id: EditorTool.ColorPicker,
+    icon: IconName.ColorPicker,
+    labelKey: EditorToolLabelKey.ColorPicker,
+    shortcut: EditorToolShortcut.ColorPicker
   },
   {
     id: EditorTool.Pencil,

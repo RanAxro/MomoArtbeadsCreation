@@ -6,6 +6,7 @@
   import { ARTBEAD_COLORS } from '$model/pegboard.model';
   import {
     AUTO_SAVE_DELAY_MS,
+    ColorPickerMode,
     EditorCommandKey,
     EDITOR_TOOL_DEFINITIONS,
     EditorTool
@@ -53,6 +54,8 @@
   let referenceList: HTMLDivElement | undefined = $state();
   let magicWandOpen = $state(false);
   let magicWandArea: HTMLDivElement | undefined = $state();
+  let colorPickerOpen = $state(false);
+  let colorPickerArea: HTMLDivElement | undefined = $state();
   let referenceReorder = $state<{
     pointerId: number;
     referenceId: string;
@@ -300,6 +303,7 @@
       cancelReferenceReorder();
       referenceOpen = false;
       magicWandOpen = false;
+      colorPickerOpen = false;
     } catch {
       referenceError = $_('reference.readError');
     } finally {
@@ -321,7 +325,26 @@
     if (editor.selectReferenceImage(id)) {
       referenceOpen = false;
       magicWandOpen = false;
+      colorPickerOpen = false;
     }
+  }
+
+  function toggleColorPicker(): void {
+    cancelReferenceReorder();
+    referenceOpen = false;
+    magicWandOpen = false;
+    referenceError = '';
+    editor.clearReferenceImageSelection();
+    colorPickerOpen = !colorPickerOpen;
+  }
+
+  function activateColorPicker(mode: ColorPickerMode): void {
+    cancelReferenceReorder();
+    referenceOpen = false;
+    magicWandOpen = false;
+    colorPickerOpen = false;
+    referenceError = '';
+    editor.setColorPickerMode(mode);
   }
 
   function removeReferenceImage(id: string): void {
@@ -515,6 +538,7 @@
       cancelReferenceReorder();
       referenceOpen = false;
       magicWandOpen = false;
+      colorPickerOpen = false;
       referenceError = '';
       editor.setTool(tool.id);
     }
@@ -527,6 +551,7 @@
       cancelReferenceReorder();
       referenceOpen = false;
       magicWandOpen = false;
+      colorPickerOpen = false;
     }
     if (editor.project && editor.revision !== editor.savedRevision) {
       scheduleSave();
@@ -557,6 +582,13 @@
       ) {
         magicWandOpen = false;
       }
+      if (
+        colorPickerOpen &&
+        colorPickerArea &&
+        !colorPickerArea.contains(target)
+      ) {
+        colorPickerOpen = false;
+      }
     };
     const closePopoversOnEscape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape' && referenceOpen) {
@@ -567,6 +599,9 @@
       }
       if (event.key === 'Escape' && magicWandOpen) {
         magicWandOpen = false;
+      }
+      if (event.key === 'Escape' && colorPickerOpen) {
+        colorPickerOpen = false;
       }
     };
     window.addEventListener('keydown', onKeydown);
@@ -658,7 +693,94 @@
         <div class="board-actions">
           <div class="tools">
             {#each EDITOR_TOOL_DEFINITIONS as tool}
-              {#if tool.id === EditorTool.MagicWand}
+              {#if tool.id === EditorTool.ColorPicker}
+                <div
+                  class="color-picker-area"
+                  bind:this={colorPickerArea}
+                  role="group"
+                  aria-label={$_('board.colorPicker')}
+                >
+                  <button
+                    class="tool"
+                    class:active={editor.tool === EditorTool.ColorPicker}
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-controls="color-picker-popover"
+                    aria-expanded={colorPickerOpen}
+                    aria-label={$_('board.colorPicker')}
+                    title={`${$_(tool.labelKey)} (${tool.shortcut})`}
+                    onclick={toggleColorPicker}
+                  >
+                    <Icon name={tool.icon} size={18} />
+                  </button>
+
+                  {#if colorPickerOpen}
+                    <div
+                      id="color-picker-popover"
+                      class="color-picker-popover"
+                      role="dialog"
+                      aria-labelledby="color-picker-popover-title"
+                    >
+                      <strong
+                        id="color-picker-popover-title"
+                        class="color-picker-popover-title"
+                      >
+                        {$_('board.colorPicker')}
+                      </strong>
+                      <button
+                        class="color-picker-option"
+                        class:active={
+                          editor.tool === EditorTool.ColorPicker &&
+                          editor.colorPickerMode === ColorPickerMode.Artbead
+                        }
+                        type="button"
+                        aria-pressed={
+                          editor.tool === EditorTool.ColorPicker &&
+                          editor.colorPickerMode === ColorPickerMode.Artbead
+                        }
+                        onclick={() =>
+                          activateColorPicker(ColorPickerMode.Artbead)}
+                      >
+                        <span class="color-picker-option-icon">
+                          <Icon name={IconName.ColorPicker} size={18} />
+                        </span>
+                        <span>
+                          <strong>{$_('board.colorPickerArtbead')}</strong>
+                          <small>
+                            {$_('board.colorPickerArtbeadHint')}
+                          </small>
+                        </span>
+                      </button>
+                      <button
+                        class="color-picker-option"
+                        class:active={
+                          editor.tool === EditorTool.ColorPicker &&
+                          editor.colorPickerMode === ColorPickerMode.Reference
+                        }
+                        type="button"
+                        aria-pressed={
+                          editor.tool === EditorTool.ColorPicker &&
+                          editor.colorPickerMode === ColorPickerMode.Reference
+                        }
+                        onclick={() =>
+                          activateColorPicker(ColorPickerMode.Reference)}
+                      >
+                        <span class="color-picker-option-icon">
+                          <Icon name={IconName.Image} size={18} />
+                        </span>
+                        <span>
+                          <strong>{$_('board.colorPickerReference')}</strong>
+                          <small>
+                            {editor.referenceImages.length > 0
+                              ? $_('board.colorPickerReferenceHint')
+                              : $_('board.colorPickerNoReference')}
+                          </small>
+                        </span>
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+              {:else if tool.id === EditorTool.MagicWand}
                 <div
                   class="magic-wand-area"
                   bind:this={magicWandArea}
@@ -684,6 +806,7 @@
                       cancelReferenceReorder();
                       referenceOpen = false;
                       magicWandOpen = false;
+                      colorPickerOpen = false;
                       referenceError = '';
                       editor.setTool(tool.id);
                     }}
@@ -702,6 +825,7 @@
                     onclick={() => {
                       cancelReferenceReorder();
                       referenceOpen = false;
+                      colorPickerOpen = false;
                       referenceError = '';
                       magicWandOpen = !magicWandOpen;
                     }}
@@ -765,6 +889,7 @@
                     cancelReferenceReorder();
                     referenceOpen = false;
                     magicWandOpen = false;
+                    colorPickerOpen = false;
                     referenceError = '';
                     editor.setTool(tool.id);
                   }}
@@ -809,6 +934,7 @@
                 onclick={() => {
                   referenceOpen = !referenceOpen;
                   magicWandOpen = false;
+                  colorPickerOpen = false;
                   referenceError = '';
                 }}
               >
@@ -1044,7 +1170,11 @@
                 ? $_('board.selectionHint')
                 : editor.tool === EditorTool.Move
                   ? $_('board.moveHint')
-                  : $_('board.hint')}
+                  : editor.tool === EditorTool.ColorPicker
+                    ? editor.colorPickerMode === ColorPickerMode.Reference
+                      ? $_('board.colorPickerReferenceHint')
+                      : $_('board.colorPickerArtbeadHint')
+                    : $_('board.hint')}
         </span>
         <div class="zoom-control">
           <label for="board-zoom">{$_('board.zoom')}</label>
@@ -1306,6 +1436,12 @@
     align-items: center;
   }
 
+  .color-picker-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
   .tool.magic-wand-tool {
     flex: 0 0 32px;
     width: 32px;
@@ -1367,6 +1503,74 @@
     color: var(--muted);
     font-size: 0.66rem;
     line-height: 1.5;
+  }
+
+  .color-picker-popover {
+    position: absolute;
+    z-index: 27;
+    top: calc(100% + 9px);
+    left: 0;
+    display: grid;
+    gap: 5px;
+    width: min(310px, calc(100vw - 20px));
+    padding: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .color-picker-popover-title {
+    padding: 4px 6px 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .color-picker-option {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    padding: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .color-picker-option:hover {
+    border-color: var(--border);
+    background: var(--hover);
+  }
+
+  .color-picker-option.active {
+    border-color: var(--text);
+  }
+
+  .color-picker-option-icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-strong);
+  }
+
+  .color-picker-option > span:last-child {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .color-picker-option strong {
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .color-picker-option small {
+    color: var(--muted);
+    font-size: 0.66rem;
+    line-height: 1.45;
   }
 
   .tool {

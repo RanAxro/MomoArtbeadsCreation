@@ -6,6 +6,7 @@ import {
   DEFAULT_EDITOR_TOOL,
   DEFAULT_EDITOR_ZOOM,
   EDITOR_HISTORY_LIMIT,
+  ColorPickerMode,
   type BoardViewCenter,
   EditorTool
 } from '$model/editor.model';
@@ -57,6 +58,7 @@ export class EditorStore {
   project = $state<BeadProject | null>(null);
   selectedColorIndex = $state(DEFAULT_SELECTED_PALETTE_INDEX);
   magicWandThreshold = $state(DEFAULT_MAGIC_WAND_THRESHOLD);
+  colorPickerMode = $state<ColorPickerMode>(ColorPickerMode.Artbead);
   tool = $state<EditorTool>(DEFAULT_EDITOR_TOOL);
   selectedCells = $state<ReadonlySet<number>>(new Set());
   revision = $state(0);
@@ -121,6 +123,7 @@ export class EditorStore {
     this.visibleBoardCenter = { x: 0, y: 0 };
     this.activePasteLayer = restoredLayer;
     this.tool = this.project.editorState?.tool ?? DEFAULT_EDITOR_TOOL;
+    this.colorPickerMode = ColorPickerMode.Artbead;
     this.selectedReferenceImageId = null;
     this.previewRevision += 1;
     this.refreshHistoryState();
@@ -138,6 +141,7 @@ export class EditorStore {
     this.visibleBoardCenter = { x: 0, y: 0 };
     this.activePasteLayer = null;
     this.selectedReferenceImageId = null;
+    this.colorPickerMode = ColorPickerMode.Artbead;
     this.previewRevision += 1;
     this.canUndo = false;
     this.canRedo = false;
@@ -193,6 +197,11 @@ export class EditorStore {
     if (previousTool !== tool) {
       this.markChanged();
     }
+  }
+
+  setColorPickerMode(mode: ColorPickerMode): void {
+    this.colorPickerMode = mode;
+    this.setTool(EditorTool.ColorPicker);
   }
 
   get referenceImages(): readonly ReferenceImage[] {
@@ -548,6 +557,7 @@ export class EditorStore {
       this.tool === EditorTool.MagicWand ||
       this.tool === EditorTool.Select ||
       this.tool === EditorTool.Move ||
+      this.tool === EditorTool.ColorPicker ||
       this.activePasteLayer ||
       index < 0 ||
       index >= this.project.cells.length

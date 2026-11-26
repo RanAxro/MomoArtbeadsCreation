@@ -32,4 +32,18 @@ describe('editor tool definitions', () => {
       rectangleSelect?.icon
     ]).size).toBe(3);
   });
+
+  it('exposes the color picker as a toolbar tool with its own shortcut', () => {
+    const colorPicker = EDITOR_TOOL_DEFINITIONS.find(
+      (tool) => tool.id === EditorTool.ColorPicker
+    );
+
+    expect(colorPicker?.shortcut).toBe(EditorToolShortcut.ColorPicker);
+    expect(colorPicker?.shortcut).not.toBe(EditorToolShortcut.Pencil);
+    expect(colorPicker?.icon).not.toBe(
+      EDITOR_TOOL_DEFINITIONS.find(
+        (tool) => tool.id === EditorTool.Pencil
+      )?.icon
+    );
+  });
 });

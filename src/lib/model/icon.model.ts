@@ -3,6 +3,7 @@ export enum IconName {
   MagicWand = 'magic-wand',
   Select = 'select',
   Move = 'move',
+  ColorPicker = 'color-picker',
   Pencil = 'pencil',
   Eraser = 'eraser',
   Fill = 'fill',

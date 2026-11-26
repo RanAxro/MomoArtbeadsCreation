@@ -8,6 +8,7 @@
   } from '$model/editor.model';
   import {
     DEFAULT_BOARD_LAYOUT,
+    ColorPickerMode,
     EditorTool
   } from '$model/editor.model';
   import { BoardBackground } from '$model/view.model';
@@ -40,6 +41,15 @@
     referenceImagesForDrawing,
     type ReferenceImage
   } from '$model/reference-image.model';
+  import {
+    createColorIndex,
+    nearestPaletteIndex
+  } from '$domain/palette';
+  import type { RgbColor } from '$model/color.model';
+  import {
+    cellCenterPoint,
+    referencePixelAtPoint
+  } from '$modules/editor/color-picker';
   import { KeyboardKey } from '$model/ui.model';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { viewStore } from '$modules/view/view-store.svelte';
@@ -109,6 +119,7 @@
   const touchPoints = new Map<number, { x: number; y: number }>();
   const referenceImageElements = new Map<string, HTMLImageElement>();
   const pendingReferenceImages = new Set<string>();
+  let colorSamplingCanvas: HTMLCanvasElement | null = null;
   const REFERENCE_ROTATION_HANDLE_DISTANCE = 30;
   const REFERENCE_HANDLE_SIZE = 12;
   const REFERENCE_HANDLE_HIT_RADIUS = 12;
@@ -1047,6 +1058,152 @@
     return point ? cellFromPoint(point) : null;
   }
 
+  function paletteIndexForHex(hex: string): number | null {
+    const project = editor.project;
+    if (!project) {
+      return null;
+    }
+
+    const normalized = hex.toLowerCase();
+    const index = project.palette.colors.findIndex(
+      (color) => color.hex.toLowerCase() === normalized
+    );
+    return index >= 0 ? index + 1 : null;
+  }
+
+  function visibleColorHexAtCell(cell: BoardCell): string | null {
+    const project = editor.project;
+    if (!project) {
+      return null;
+    }
+
+    const layer = editor.activePasteLayer;
+    if (layer) {
+      const layerX = cell.x - layer.x;
+      const layerY = cell.y - layer.y;
+      const layerIndex = layerY * layer.width + layerX;
+      if (
+        layerX >= 0 &&
+        layerY >= 0 &&
+        layerX < layer.width &&
+        layerY < layer.height &&
+        layer.selectionCells.includes(layerIndex)
+      ) {
+        const colorIndex = layer.cells[layerIndex];
+        return colorIndex > 0
+          ? (layer.palette.colors[colorIndex - 1]?.hex ?? null)
+          : null;
+      }
+    }
+
+    const colorIndex = project.cells[cell.index];
+    return colorIndex > 0
+      ? (project.palette.colors[colorIndex - 1]?.hex ?? null)
+      : null;
+  }
+
+  function readReferenceRgb(
+    image: HTMLImageElement,
+    pixel: { x: number; y: number }
+  ): RgbColor | null {
+    if (!colorSamplingCanvas) {
+      colorSamplingCanvas = document.createElement('canvas');
+      colorSamplingCanvas.width = 1;
+      colorSamplingCanvas.height = 1;
+    }
+
+    const context = colorSamplingCanvas.getContext('2d', {
+      willReadFrequently: true
+    });
+    if (!context) {
+      return null;
+    }
+
+    context.clearRect(0, 0, 1, 1);
+    context.imageSmoothingEnabled = false;
+    context.drawImage(
+      image,
+      pixel.x,
+      pixel.y,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1
+    );
+    const data = context.getImageData(0, 0, 1, 1).data;
+    if (data[3] === 0) {
+      return null;
+    }
+
+    return {
+      r: data[0],
+      g: data[1],
+      b: data[2]
+    };
+  }
+
+  function referenceRgbAtCellCenter(cell: BoardCell): RgbColor | null {
+    const point = cellCenterPoint(layout, cell);
+    for (const reference of editor.referenceImages) {
+      const image = referenceImageElements.get(reference.id);
+      if (!image) {
+        continue;
+      }
+
+      const pixel = referencePixelAtPoint(
+        reference,
+        point,
+        layout,
+        image.naturalWidth,
+        image.naturalHeight
+      );
+      if (!pixel) {
+        continue;
+      }
+
+      try {
+        const rgb = readReferenceRgb(image, pixel);
+        if (rgb) {
+          return rgb;
+        }
+      } catch {
+        // A failed image read should not interrupt picking lower references.
+      }
+    }
+
+    return null;
+  }
+
+  function pickColorAtCell(cell: BoardCell): boolean {
+    const project = editor.project;
+    if (!project || editor.tool !== EditorTool.ColorPicker) {
+      return false;
+    }
+
+    if (editor.colorPickerMode === ColorPickerMode.Artbead) {
+      const hex = visibleColorHexAtCell(cell);
+      const colorIndex = hex ? paletteIndexForHex(hex) : null;
+      if (colorIndex === null) {
+        return false;
+      }
+      editor.selectedColorIndex = colorIndex;
+      return true;
+    }
+
+    const rgb = referenceRgbAtCellCenter(cell);
+    if (!rgb) {
+      return false;
+    }
+    const colorIndex = nearestPaletteIndex(
+      createColorIndex(project.palette),
+      rgb
+    );
+    editor.selectedColorIndex = colorIndex;
+    return true;
+  }
+
   function clampedCellFromPointer(event: PointerEvent): BoardCell | null {
     const project = editor.project;
     const point = pointFromPointer(event);
@@ -1814,6 +1971,14 @@
         updateHoveredCell(null);
         return;
       }
+      if (editor.tool === EditorTool.ColorPicker) {
+        const cell = cellFromPointer(event);
+        if (cell) {
+          pickColorAtCell(cell);
+        }
+        updateHoveredCell(cell);
+        return;
+      }
       if (editor.tool === EditorTool.Move) {
         beginMove(event);
       } else if (
@@ -1888,6 +2053,11 @@
     if (referenceMode) {
       updateHoveredCell(null);
       updateReferenceCursor(event);
+      return;
+    }
+
+    if (editor.tool === EditorTool.ColorPicker) {
+      updateHoveredCell(cellFromPoint(point));
       return;
     }
 
@@ -1998,6 +2168,15 @@
       return;
     }
 
+    if (editor.tool === EditorTool.ColorPicker) {
+      const cell = cellFromPointer(event);
+      updateHoveredCell(cell);
+      if (cell && event.button === 0) {
+        pickColorAtCell(cell);
+      }
+      return;
+    }
+
     if (editor.tool === EditorTool.Move) {
       if (event.button === 2) {
         cancelActiveMove();
@@ -2069,6 +2248,11 @@
     if (referenceMode) {
       updateHoveredCell(null);
       updateReferenceCursor(event);
+      return;
+    }
+
+    if (editor.tool === EditorTool.ColorPicker) {
+      updateHoveredCell(cellFromPointer(event));
       return;
     }
 
@@ -2224,6 +2408,7 @@
     editor.zoom;
     editor.selectedCells;
     editor.activePasteLayer;
+    editor.colorPickerMode;
     editor.selectedReferenceImageId;
     viewStore.showRulers;
     viewStore.showGrid;
@@ -2266,6 +2451,7 @@
     class:pan-ready={spacePressed && panPointerId === null}
     class:panning={panPointerId !== null || pinching}
     class:reference-tool-mode={referenceMode}
+    class:color-picker-tool={editor.tool === EditorTool.ColorPicker}
     aria-hidden="true"
     onpointerdown={onPointerDown}
     onpointermove={onPointerMove}
@@ -2317,6 +2503,10 @@
 
   canvas.reference-tool-mode {
     cursor: default;
+  }
+
+  canvas.color-picker-tool {
+    cursor: crosshair;
   }
 
   canvas.reference-tool-mode.pan-ready {
