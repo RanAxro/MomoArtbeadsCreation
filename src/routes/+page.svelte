@@ -67,6 +67,9 @@
   let shareCodeNoticeIsError = $state(false);
   let shareCodeNoticeTimer: ReturnType<typeof setTimeout> | undefined;
   let shareCodeDialogOpen = $state(false);
+  let exportToastMessage = $state('');
+  let exportToastIsError = $state(false);
+  let exportToastTimer: ReturnType<typeof setTimeout> | undefined;
   let referenceReorder = $state<{
     pointerId: number;
     referenceId: string;
@@ -408,6 +411,19 @@
     }, 2600);
   }
 
+  function showExportToast(message: string, isError = false): void {
+    if (exportToastTimer) {
+      clearTimeout(exportToastTimer);
+    }
+    exportToastMessage = message;
+    exportToastIsError = isError;
+    exportToastTimer = setTimeout(() => {
+      exportToastMessage = '';
+      exportToastIsError = false;
+      exportToastTimer = undefined;
+    }, 2600);
+  }
+
   async function exportShareCode(): Promise<void> {
     const project = editor.project;
     if (!project) {
@@ -442,9 +458,9 @@
       } else {
         throw new Error('Clipboard writing is unavailable.');
       }
-      showShareCodeNotice($_('board.exportShareCodeSuccess'));
+      showExportToast($_('board.exportShareCodeSuccess'));
     } catch {
-      showShareCodeNotice($_('board.exportShareCodeError'), true);
+      showExportToast($_('board.exportShareCodeError'), true);
     }
   }
 
@@ -760,6 +776,9 @@
       }
       if (shareCodeNoticeTimer) {
         clearTimeout(shareCodeNoticeTimer);
+      }
+      if (exportToastTimer) {
+        clearTimeout(exportToastTimer);
       }
     };
   });
@@ -1438,6 +1457,17 @@
   onimported={handleShareCodeImported}
 />
 
+{#if exportToastMessage}
+  <div
+    class="export-toast"
+    class:error={exportToastIsError}
+    role={exportToastIsError ? 'alert' : 'status'}
+    aria-live="polite"
+  >
+    {exportToastMessage}
+  </div>
+{/if}
+
 <style>
   .workspace {
     display: grid;
@@ -2065,6 +2095,27 @@
     font-weight: 700;
   }
 
+  .export-toast {
+    position: fixed;
+    z-index: 70;
+    right: 24px;
+    bottom: 24px;
+    max-width: min(360px, calc(100vw - 32px));
+    padding: 12px 16px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .export-toast.error {
+    border-color: var(--danger);
+    color: var(--danger);
+    font-weight: 700;
+  }
+
   .more-area {
     position: relative;
     display: flex;
@@ -2315,6 +2366,11 @@
   }
 
   @media (max-width: 680px) {
+    .export-toast {
+      right: 16px;
+      bottom: 16px;
+    }
+
     .workspace {
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto minmax(0, 1fr);
