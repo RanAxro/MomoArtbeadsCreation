@@ -784,17 +784,18 @@
                 <div
                   class="magic-wand-area"
                   bind:this={magicWandArea}
-                  role="group"
-                  aria-label={$_('board.magicWand')}
                 >
                   <button
-                    class="tool magic-wand-tool"
+                    class="tool"
                     class:active={
                       editor.tool === tool.id &&
                       !referenceOpen &&
                       !editor.selectedReferenceImageId
                     }
                     type="button"
+                    aria-haspopup="dialog"
+                    aria-controls="magic-wand-popover"
+                    aria-expanded={magicWandOpen}
                     title={`${$_(tool.labelKey)} (${tool.shortcut})`}
                     aria-label={$_(tool.labelKey)}
                     aria-pressed={
@@ -803,34 +804,18 @@
                       !editor.selectedReferenceImageId
                     }
                     onclick={() => {
+                      const alreadyActive = editor.tool === tool.id;
                       cancelReferenceReorder();
                       referenceOpen = false;
-                      magicWandOpen = false;
                       colorPickerOpen = false;
                       referenceError = '';
                       editor.setTool(tool.id);
+                      magicWandOpen = alreadyActive
+                        ? !magicWandOpen
+                        : true;
                     }}
                   >
                     <Icon name={tool.icon} size={18} />
-                  </button>
-                  <button
-                    class="tool magic-wand-dropdown"
-                    class:active={magicWandOpen}
-                    type="button"
-                    aria-haspopup="dialog"
-                    aria-controls="magic-wand-popover"
-                    aria-expanded={magicWandOpen}
-                    aria-label={$_('board.magicWandSettings')}
-                    title={$_('board.magicWandSettings')}
-                    onclick={() => {
-                      cancelReferenceReorder();
-                      referenceOpen = false;
-                      colorPickerOpen = false;
-                      referenceError = '';
-                      magicWandOpen = !magicWandOpen;
-                    }}
-                  >
-                    <Icon name={IconName.ChevronDown} size={11} />
                   </button>
 
                   {#if magicWandOpen}
@@ -861,7 +846,6 @@
                             Number((event.currentTarget as HTMLInputElement).value)
                           )}
                       />
-                      <small>{$_('board.magicWandThresholdHint')}</small>
                     </div>
                   {/if}
                 </div>
@@ -1442,23 +1426,6 @@
     align-items: center;
   }
 
-  .tool.magic-wand-tool {
-    flex: 0 0 32px;
-    width: 32px;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-
-  .tool.magic-wand-dropdown {
-    flex: 0 0 10px;
-    width: 10px;
-    min-width: 0;
-    padding: 0;
-    border-left-color: var(--border);
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-  }
-
   .magic-wand-popover {
     position: absolute;
     z-index: 26;
@@ -1497,12 +1464,6 @@
     margin: 0;
     accent-color: var(--text);
     cursor: pointer;
-  }
-
-  .magic-wand-popover small {
-    color: var(--muted);
-    font-size: 0.66rem;
-    line-height: 1.5;
   }
 
   .color-picker-popover {
