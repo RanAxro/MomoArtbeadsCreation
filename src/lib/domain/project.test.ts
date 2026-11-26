@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  beadProjectSchema,
   countBeads,
   createProject,
   fillProjectRegion,
@@ -9,7 +10,8 @@ import {
 } from './project';
 import {
   GameVersion,
-  MAX_PROJECT_NAME_LENGTH
+  MAX_PROJECT_NAME_LENGTH,
+  PROJECT_SCHEMA_VERSION
 } from '$model/project.model';
 
 describe('project domain', () => {
@@ -24,7 +26,38 @@ describe('project domain', () => {
     expect(project.cells).toHaveLength(96);
     expect(project.cells.every((cell) => cell === 0)).toBe(true);
     expect(project.gameVersion).toBe(GameVersion.V3);
-    expect(project.editorState?.referenceImages).toEqual([]);
+    expect(project.schemaVersion).toBe(1);
+    expect(project.editorState.referenceImages).toEqual([]);
+  });
+
+  it('accepts only the current version-1 project shape', () => {
+    const project = createProject({
+      name: '严格结构测试',
+      width: 2,
+      height: 2,
+      gameVersion: GameVersion.V3
+    });
+    const { editorState, ...projectWithoutEditorState } = project;
+    const editorStateWithoutReferences = {
+      tool: editorState.tool,
+      selectionCells: editorState.selectionCells,
+      temporaryLayer: editorState.temporaryLayer
+    };
+
+    expect(PROJECT_SCHEMA_VERSION).toBe(1);
+    expect(beadProjectSchema.safeParse(project).success).toBe(true);
+    expect(beadProjectSchema.safeParse(projectWithoutEditorState).success).toBe(
+      false
+    );
+    expect(
+      beadProjectSchema.safeParse({
+        ...project,
+        editorState: editorStateWithoutReferences
+      }).success
+    ).toBe(false);
+    expect(
+      beadProjectSchema.safeParse({ ...project, schemaVersion: 3 }).success
+    ).toBe(false);
   });
 
   it('normalizes project names and enforces the maximum length', () => {

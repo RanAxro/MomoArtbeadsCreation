@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { selectionClipboardSchema } from '$model/selection-clipboard.model';
+import { PROJECT_DATABASE_VERSION } from '$model/data.model';
 
 describe('database backup', () => {
+  it('uses database version 1 without compatibility versions', () => {
+    expect(PROJECT_DATABASE_VERSION).toBe(1);
+  });
+
   it('creates a stable timestamped export filename', async () => {
     vi.stubGlobal('self', globalThis);
     const { createBackupFilename } = await import('./database-backup');
@@ -12,7 +17,7 @@ describe('database backup', () => {
   });
 
   it('accepts a structurally valid clipboard record', () => {
-    const result = selectionClipboardSchema.safeParse({
+    const clipboard = {
       id: 'clipboard-1',
       version: 1,
       copiedAt: '2026-11-26T12:00:00.000Z',
@@ -50,9 +55,16 @@ describe('database backup', () => {
         }
       },
       selectionCells: [1, 2]
-    });
+    };
+    const result = selectionClipboardSchema.safeParse(clipboard);
 
     expect(result.success).toBe(true);
+    expect(
+      selectionClipboardSchema.safeParse({
+        ...clipboard,
+        lastUsedAt: undefined
+      }).success
+    ).toBe(false);
   });
 
   it('rejects clipboard data with inconsistent dimensions', () => {

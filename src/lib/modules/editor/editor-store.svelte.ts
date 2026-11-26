@@ -81,14 +81,14 @@ export class EditorStore {
   load(project: BeadProject): void {
     const savedEditorState = project.editorState;
     const restoredLayer =
-      savedEditorState?.temporaryLayer &&
+      savedEditorState.temporaryLayer &&
       savedEditorState.temporaryLayer.cells.length ===
         savedEditorState.temporaryLayer.width *
           savedEditorState.temporaryLayer.height
         ? cloneSelectionLayer(savedEditorState.temporaryLayer)
         : null;
     const restoredSelection = new Set(
-      (savedEditorState?.selectionCells ?? []).filter(
+      savedEditorState.selectionCells.filter(
         (index) => index >= 0 && index < project.cells.length
       )
     );
@@ -98,10 +98,10 @@ export class EditorStore {
       editorState: {
         tool: restoredLayer
           ? EditorTool.Move
-          : (savedEditorState?.tool ?? DEFAULT_EDITOR_TOOL),
+          : savedEditorState.tool,
         selectionCells: [...restoredSelection],
         temporaryLayer: restoredLayer,
-        referenceImages: (savedEditorState?.referenceImages ?? []).map(
+        referenceImages: savedEditorState.referenceImages.map(
           (reference) => ({ ...reference })
         )
       }
@@ -125,7 +125,7 @@ export class EditorStore {
     this.zoom = DEFAULT_EDITOR_ZOOM;
     this.visibleBoardCenter = { x: 0, y: 0 };
     this.activePasteLayer = restoredLayer;
-    this.tool = this.project.editorState?.tool ?? DEFAULT_EDITOR_TOOL;
+    this.tool = this.project.editorState.tool;
     this.selectionOperation = DEFAULT_SELECTION_OPERATION;
     this.colorPickerMode = ColorPickerMode.Artbead;
     this.selectedReferenceImageId = null;
@@ -214,7 +214,7 @@ export class EditorStore {
   }
 
   get referenceImages(): readonly ReferenceImage[] {
-    return this.project?.editorState?.referenceImages ?? [];
+    return this.project ? this.project.editorState.referenceImages : [];
   }
 
   get selectedReferenceImage(): ReferenceImage | null {
@@ -243,7 +243,7 @@ export class EditorStore {
       return;
     }
 
-    const editorState = this.ensureEditorState();
+    const editorState = this.project.editorState;
     editorState.referenceImages = [
       { ...reference },
       ...editorState.referenceImages
@@ -260,7 +260,7 @@ export class EditorStore {
       return;
     }
 
-    const editorState = this.ensureEditorState();
+    const editorState = this.project.editorState;
     const index = editorState.referenceImages.findIndex(
       (reference) => reference.id === id
     );
@@ -312,7 +312,7 @@ export class EditorStore {
       return;
     }
 
-    const editorState = this.ensureEditorState();
+    const editorState = this.project.editorState;
     if (!editorState.referenceImages.some((reference) => reference.id === id)) {
       return;
     }
@@ -331,7 +331,7 @@ export class EditorStore {
       return false;
     }
 
-    const editorState = this.ensureEditorState();
+    const editorState = this.project.editorState;
     const currentIndex = editorState.referenceImages.findIndex(
       (reference) => reference.id === id
     );
@@ -708,25 +708,6 @@ export class EditorStore {
       }))
     };
     return touchProject(snapshot);
-  }
-
-  private ensureEditorState(): NonNullable<BeadProject['editorState']> {
-    if (!this.project) {
-      throw new Error('Editor project is not open.');
-    }
-    if (!this.project.editorState) {
-      this.project.editorState = {
-        tool: this.tool,
-        selectionCells: [...this.selectedCells],
-        temporaryLayer: null,
-        referenceImages: []
-      };
-    }
-    if (!this.project.editorState.referenceImages) {
-      this.project.editorState.referenceImages = [];
-    }
-
-    return this.project.editorState;
   }
 
   private pushUndoSnapshot(snapshot: EditorSnapshot): void {

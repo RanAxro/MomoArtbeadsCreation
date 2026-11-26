@@ -1,4 +1,4 @@
-const CACHE_NAME = 'momo-artbeads-v4';
+const CACHE_NAME = 'momo-artbeads-v1';
 const APP_SHELL = ['/', '/logo.webp', '/home.webp', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

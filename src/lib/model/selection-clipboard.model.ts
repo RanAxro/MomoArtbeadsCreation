@@ -27,7 +27,7 @@ export const selectionClipboardSchema = z
     id: z.string().min(1),
     version: z.literal(SELECTION_CLIPBOARD_VERSION),
     copiedAt: z.string().datetime(),
-    lastUsedAt: z.string().datetime().optional(),
+    lastUsedAt: z.string().datetime(),
     sourceProjectId: z.string().min(1),
     sourceBounds: selectionBoundsSchema,
     board: clipboardBoardSchema,
@@ -70,9 +70,9 @@ export const selectionClipboardSchema = z
 
 export interface SelectionClipboard {
   id: string;
-  version: number;
+  version: typeof SELECTION_CLIPBOARD_VERSION;
   copiedAt: string;
-  lastUsedAt?: string;
+  lastUsedAt: string;
   sourceProjectId: string;
   sourceBounds: SelectionBounds;
   board: ClipboardBoardData;

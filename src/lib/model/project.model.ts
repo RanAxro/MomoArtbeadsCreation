@@ -8,7 +8,7 @@ export enum GameVersion {
   V3 = '3.0'
 }
 
-export const PROJECT_SCHEMA_VERSION = 3;
+export const PROJECT_SCHEMA_VERSION = 1;
 export const MAX_PROJECT_DIMENSION = 300;
 export const MAX_PROJECT_NAME_LENGTH = 80;
 export const MIN_PROJECT_DIMENSION = 1;
@@ -21,7 +21,7 @@ const projectEditorStateSchema = z.object({
   tool: z.nativeEnum(EditorTool),
   selectionCells: z.array(z.number().int().nonnegative()),
   temporaryLayer: selectionLayerSchema.nullable(),
-  referenceImages: z.array(referenceImageSchema).default([])
+  referenceImages: z.array(referenceImageSchema)
 });
 
 export const beadProjectSchema = z.object({
@@ -40,8 +40,8 @@ export const beadProjectSchema = z.object({
     .max(MAX_PROJECT_DIMENSION),
   cells: z.array(z.number().int().nonnegative()),
   palette: paletteSchema,
-  editorState: projectEditorStateSchema.optional(),
-  schemaVersion: z.number().int().positive(),
+  editorState: projectEditorStateSchema,
+  schemaVersion: z.literal(PROJECT_SCHEMA_VERSION),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 });

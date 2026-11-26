@@ -6,6 +6,7 @@ import {
 } from 'dexie-export-import';
 import { beadProjectSchema, type BeadProject } from '$model/project.model';
 import {
+  PROJECT_DATABASE_VERSION,
   PROJECT_DATABASE_NAME,
   PROJECT_TABLE_NAME,
   SELECTION_CLIPBOARD_TABLE_NAME
@@ -114,7 +115,6 @@ export async function importDatabaseBackup(
 
   try {
     await importInto(database, file, {
-      acceptVersionDiff: true,
       overwriteValues: true,
       progressCallback: (progress) => {
         options.onProgress?.(progress);
@@ -205,6 +205,7 @@ async function readAndValidateMetadata(
     metadata.formatName !== 'dexie' ||
     metadata.formatVersion !== 1 ||
     !metadata.data ||
+    metadata.data.databaseVersion !== PROJECT_DATABASE_VERSION ||
     !Array.isArray(metadata.data.tables)
   ) {
     throw new DatabaseBackupError(
@@ -265,7 +266,7 @@ function validateProjectRecord(value: unknown): BeadProject {
     );
   }
 
-  const selection = project.editorState?.selectionCells ?? [];
+  const selection = project.editorState.selectionCells;
   if (selection.some((index) => index >= project.cells.length)) {
     throw new DatabaseBackupError(
       'invalid-project',
@@ -273,7 +274,7 @@ function validateProjectRecord(value: unknown): BeadProject {
     );
   }
 
-  const layer = project.editorState?.temporaryLayer;
+  const layer = project.editorState.temporaryLayer;
   if (
     layer &&
     (layer.cells.length !== layer.width * layer.height ||
@@ -305,5 +306,5 @@ function timestampOf(value: string): number {
 }
 
 function clipboardRecencyOf(clipboard: SelectionClipboard): number {
-  return timestampOf(clipboard.lastUsedAt ?? clipboard.copiedAt);
+  return timestampOf(clipboard.lastUsedAt);
 }

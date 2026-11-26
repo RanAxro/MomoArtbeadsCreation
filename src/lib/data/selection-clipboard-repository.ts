@@ -1,16 +1,11 @@
-import {
-  SELECTION_CLIPBOARD_VERSION,
-  type SelectionClipboard
-} from '$model/selection-clipboard.model';
+import type { SelectionClipboard } from '$model/selection-clipboard.model';
 import { getArtbeadsDatabase } from './database';
 
 export const selectionClipboardRepository = {
   async list(): Promise<SelectionClipboard[]> {
     const entries = await getArtbeadsDatabase()
       .selectionClipboard.toArray();
-    return entries
-      .filter((entry) => entry.version === SELECTION_CLIPBOARD_VERSION)
-      .sort(compareClipboardRecency);
+    return entries.sort(compareClipboardRecency);
   },
 
   async save(clipboard: SelectionClipboard): Promise<void> {
@@ -46,8 +41,8 @@ function compareClipboardRecency(
   first: SelectionClipboard,
   second: SelectionClipboard
 ): number {
-  const firstTime = Date.parse(first.lastUsedAt ?? first.copiedAt);
-  const secondTime = Date.parse(second.lastUsedAt ?? second.copiedAt);
+  const firstTime = Date.parse(first.lastUsedAt);
+  const secondTime = Date.parse(second.lastUsedAt);
   return (
     secondTime - firstTime ||
     Date.parse(second.copiedAt) - Date.parse(first.copiedAt) ||
