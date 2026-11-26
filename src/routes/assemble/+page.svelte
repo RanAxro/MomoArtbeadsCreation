@@ -18,6 +18,8 @@
   const editor = workspace.editor;
 
   let ready = $state(false);
+  let selectedColorIndex = $state<number | null>(null);
+  let selectionProjectId = $state<string | null>(null);
   let requiredColors = $derived.by(() => {
     editor.revision;
     return editor.project ? requiredArtbeadUsage(editor.project) : [];
@@ -31,8 +33,23 @@
     await goto('/');
   }
 
+  function toggleArtbeadSelection(colorIndex: number): void {
+    selectedColorIndex =
+      selectedColorIndex === colorIndex ? null : colorIndex;
+  }
+
   $effect(() => {
-    editor.project;
+    const projectId = editor.project?.id ?? null;
+    if (projectId !== selectionProjectId) {
+      selectionProjectId = projectId;
+      selectedColorIndex = null;
+    }
+    if (
+      selectedColorIndex !== null &&
+      !requiredColors.some((color) => color.colorIndex === selectedColorIndex)
+    ) {
+      selectedColorIndex = null;
+    }
     if (ready && !editor.project) {
       void goto('/');
     }
@@ -70,12 +87,18 @@
         </span>
       </div>
 
-      <div class="usage-list" role="list">
+      <div class="usage-list">
         {#if requiredColors.length === 0}
           <p class="usage-empty">{$_('assembly.empty')}</p>
         {:else}
           {#each requiredColors as color (color.id)}
-            <div class="usage-item" role="listitem">
+            <button
+              class="usage-item"
+              class:active={selectedColorIndex === color.colorIndex}
+              type="button"
+              aria-pressed={selectedColorIndex === color.colorIndex}
+              onclick={() => toggleArtbeadSelection(color.colorIndex)}
+            >
               <span class="usage-swatch" style:--color={color.hex}></span>
               <span class="usage-details">
                 <strong>{color.code}</strong>
@@ -86,7 +109,7 @@
                   values: { count: color.count }
                 })}
               </strong>
-            </div>
+            </button>
           {/each}
         {/if}
       </div>
@@ -131,7 +154,11 @@
       </header>
 
       <div class="board-surface">
-        <BeadCanvas {editor} mode="assembly" />
+        <BeadCanvas
+          {editor}
+          mode="assembly"
+          highlightColorIndex={selectedColorIndex}
+        />
       </div>
 
       <footer class="assembly-footer">
@@ -216,8 +243,9 @@
   .usage-list {
     display: grid;
     align-content: start;
-    gap: 2px;
+    gap: 6px;
     min-height: 0;
+    padding: 2px;
     overflow-y: auto;
   }
 
@@ -226,13 +254,35 @@
     grid-template-columns: 42px minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
+    width: 100%;
     min-height: 58px;
     padding: 8px;
-    border-bottom: 1px solid var(--border);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease,
+      box-shadow 120ms ease;
   }
 
-  .usage-item:first-child {
-    border-top: 1px solid var(--border);
+  .usage-item:hover {
+    border-color: var(--border-strong);
+    background: var(--hover);
+  }
+
+  .usage-item.active {
+    border-color: var(--text);
+    background: var(--hover);
+    box-shadow: inset 0 0 0 1px var(--text);
+  }
+
+  .usage-item.active .usage-swatch {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
   }
 
   .usage-swatch {
@@ -458,11 +508,6 @@
       flex: 0 0 auto;
       min-height: 46px;
       padding: 5px 8px 5px 5px;
-      border: 1px solid var(--border);
-    }
-
-    .usage-item:first-child {
-      border-top: 1px solid var(--border);
     }
 
     .usage-swatch {

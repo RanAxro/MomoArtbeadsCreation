@@ -60,14 +60,21 @@
     editor: EditorStore;
     referenceMode?: boolean;
     mode?: 'editor' | 'assembly';
+    highlightColorIndex?: number | null;
   }
 
   let {
     editor,
     referenceMode = false,
-    mode = 'editor'
+    mode = 'editor',
+    highlightColorIndex = null
   }: Props = $props();
   let isAssembly = $derived(mode === 'assembly');
+  let activeHighlightColorIndex = $derived(
+    isAssembly && highlightColorIndex !== null && highlightColorIndex > 0
+      ? highlightColorIndex
+      : null
+  );
   let canvas: HTMLCanvasElement | undefined = $state();
   let host: HTMLDivElement | undefined = $state();
   let frameWidth = $state(0);
@@ -156,6 +163,7 @@
   const REFERENCE_ROTATION_HANDLE_DISTANCE = 30;
   const REFERENCE_HANDLE_SIZE = 12;
   const REFERENCE_HANDLE_HIT_RADIUS = 12;
+  const ASSEMBLY_DIM_FILL = 'rgba(0, 0, 0, 0.42)';
 
   function updateFrame(): void {
     if (!host) {
@@ -658,6 +666,33 @@
       }
     }
 
+    if (activeHighlightColorIndex !== null) {
+      context.fillStyle = ASSEMBLY_DIM_FILL;
+      context.fillRect(originX, originY, boardWidth, boardHeight);
+
+      for (let y = 0; y < project.height; y += 1) {
+        for (let x = 0; x < project.width; x += 1) {
+          const index = y * project.width + x;
+          if (project.cells[index] !== activeHighlightColorIndex) {
+            continue;
+          }
+
+          const bead = project.palette.colors[activeHighlightColorIndex - 1];
+          if (!bead) {
+            continue;
+          }
+
+          context.fillStyle = bead.hex;
+          context.fillRect(
+            originX + x * cellSize,
+            originY + y * cellSize,
+            Math.ceil(cellSize + 0.2),
+            Math.ceil(cellSize + 0.2)
+          );
+        }
+      }
+    }
+
     if (activeLayer) {
       for (const layerIndex of activeLayer.selectionCells) {
         if (layerIndex < 0 || layerIndex >= activeLayer.cells.length) {
@@ -758,6 +793,31 @@
       boardWidth,
       boardHeight
     );
+
+    if (activeHighlightColorIndex !== null) {
+      const highlightedCells = new Set<number>();
+      for (let y = 0; y < project.height; y += 1) {
+        for (let x = 0; x < project.width; x += 1) {
+          const index = y * project.width + x;
+          if (project.cells[index] === activeHighlightColorIndex) {
+            highlightedCells.add(index);
+          }
+        }
+      }
+
+      strokeSelectionOutline(
+        context,
+        highlightedCells,
+        selectionColor,
+        Math.max(
+          SELECTION_OUTLINE_STYLE.minWidth,
+          Math.min(
+            SELECTION_OUTLINE_STYLE.maxWidth,
+            cellSize * SELECTION_OUTLINE_STYLE.widthRatio
+          )
+        )
+      );
+    }
 
     if (!isAssembly && editor.selectedCells.size > 0) {
       strokeSelectionOutline(
@@ -2450,6 +2510,7 @@
     editor.revision;
     editor.previewRevision;
     editor.zoom;
+    highlightColorIndex;
     editor.selectedCells;
     editor.activePasteLayer;
     editor.colorPickerMode;
