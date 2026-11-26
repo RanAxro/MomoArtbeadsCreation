@@ -247,10 +247,10 @@
         <p class="error-message" role="alert">{pasteError}</p>
       {/if}
 
-      <div class="parse-result" aria-live="polite">
-        {#if parseError}
-          <p class="error-message" role="alert">{parseError}</p>
-        {:else if parsedData}
+      {#if parseError}
+        <p class="error-message" role="alert">{parseError}</p>
+      {:else if parsedData}
+        <div class="parse-result" aria-live="polite">
           <article class="preview-result">
             <div class="preview-frame">
               <ProjectPreview
@@ -277,18 +277,14 @@
               </dl>
             </div>
           </article>
-        {:else if parsing}
-          <p class="parse-status">{$_('shareCode.parsing')}</p>
-        {:else}
-          <p class="parse-status">{$_('shareCode.empty')}</p>
-        {/if}
-      </div>
+        </div>
+      {/if}
 
       {#if confirmError}
         <p class="error-message" role="alert">{confirmError}</p>
       {/if}
 
-      <div class="dialog-actions">
+      <div class="dialog-actions" class:after-preview={Boolean(parsedData)}>
         <button
           class="button secondary"
           type="button"
@@ -320,6 +316,7 @@
   }
 
   .share-code-dialog {
+    --dialog-padding: 26px;
     position: fixed;
     z-index: 61;
     top: 50%;
@@ -328,7 +325,7 @@
     gap: 20px;
     width: min(760px, calc(100vw - 32px));
     max-height: calc(100vh - 32px);
-    padding: 26px;
+    padding: var(--dialog-padding);
     overflow: auto;
     border: 1px solid var(--border-strong);
     background: var(--surface);
@@ -387,7 +384,7 @@
 
   form {
     display: grid;
-    gap: 14px;
+    gap: 10px;
   }
 
   .field-label {
@@ -451,11 +448,6 @@
     opacity: 0.35;
   }
 
-  .parse-result {
-    min-height: 104px;
-  }
-
-  .parse-status,
   .error-message {
     margin: 0;
     padding: 11px 12px;
@@ -537,12 +529,15 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    padding-top: 2px;
+  }
+
+  .dialog-actions.after-preview {
+    margin-top: calc(var(--dialog-padding) - 10px);
   }
 
   @media (max-width: 620px) {
     .share-code-dialog {
-      padding: 20px;
+      --dialog-padding: 20px;
     }
 
     .preview-result {
