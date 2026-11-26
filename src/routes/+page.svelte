@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import { _ } from 'svelte-i18n';
   import BeadCanvas from '$lib/components/BeadCanvas.svelte';
@@ -58,6 +59,8 @@
   let selectionModeArea: HTMLDivElement | undefined = $state();
   let colorPickerOpen = $state(false);
   let colorPickerArea: HTMLDivElement | undefined = $state();
+  let moreOpen = $state(false);
+  let moreArea: HTMLDivElement | undefined = $state();
   let referenceReorder = $state<{
     pointerId: number;
     referenceId: string;
@@ -360,6 +363,33 @@
       alreadyActive && selectionModeOpenFor === tool ? null : tool;
   }
 
+  function toggleMore(event: MouseEvent): void {
+    event.stopPropagation();
+    cancelReferenceReorder();
+    referenceOpen = false;
+    selectionModeOpenFor = null;
+    colorPickerOpen = false;
+    referenceError = '';
+    moreOpen = !moreOpen;
+  }
+
+  async function startAssembly(): Promise<void> {
+    if (!editor.project) {
+      return;
+    }
+
+    moreOpen = false;
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+    }
+    try {
+      await workspace.saveActiveScheme();
+    } catch {
+      // The in-memory scheme remains available when storage is temporarily unavailable.
+    }
+    await goto('/assemble');
+  }
+
   function selectSelectionOperation(operation: SelectionOperation): void {
     editor.setSelectionOperation(operation);
     selectionModeOpenFor = null;
@@ -572,6 +602,7 @@
       referenceOpen = false;
       selectionModeOpenFor = null;
       colorPickerOpen = false;
+      moreOpen = false;
       referenceError = '';
       editor.setTool(tool.id);
     }
@@ -585,6 +616,7 @@
       referenceOpen = false;
       selectionModeOpenFor = null;
       colorPickerOpen = false;
+      moreOpen = false;
     }
     if (editor.project && editor.revision !== editor.savedRevision) {
       scheduleSave();
@@ -626,6 +658,9 @@
       ) {
         colorPickerOpen = false;
       }
+      if (moreOpen && moreArea && !moreArea.contains(target)) {
+        moreOpen = false;
+      }
     };
     const closePopoversOnEscape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape' && referenceOpen) {
@@ -639,6 +674,9 @@
       }
       if (event.key === 'Escape' && colorPickerOpen) {
         colorPickerOpen = false;
+      }
+      if (event.key === 'Escape' && moreOpen) {
+        moreOpen = false;
       }
     };
     window.addEventListener('keydown', onKeydown);
@@ -1172,6 +1210,37 @@
                 {/if}
               </span>
             </button>
+            <div class="more-area" bind:this={moreArea}>
+              <button
+                class="button compact secondary more-button"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={moreOpen}
+                title={$_('board.more')}
+                onclick={toggleMore}
+              >
+                <span class="more-label">{$_('board.more')}</span>
+                <Icon name={IconName.MoreHorizontal} size={16} />
+              </button>
+
+              {#if moreOpen}
+                <div class="more-menu" role="menu">
+                  <button
+                    class="more-menu-item"
+                    type="button"
+                    role="menuitem"
+                    onclick={() => void startAssembly()}
+                  >
+                    <span class="more-menu-icon">
+                      <Icon name={IconName.Play} size={18} />
+                    </span>
+                    <span>
+                      <strong>{$_('board.startAssembly')}</strong>
+                    </span>
+                  </button>
+                </div>
+              {/if}
+            </div>
           </div>
         </div>
       </header>
@@ -1869,6 +1938,62 @@
 
   .save-state {
     flex: 0 0 auto;
+    gap: 8px;
+  }
+
+  .more-area {
+    position: relative;
+    display: flex;
+  }
+
+  .more-button {
+    padding: 0 10px;
+  }
+
+  .more-menu {
+    position: absolute;
+    z-index: 28;
+    top: calc(100% + 8px);
+    right: 0;
+    display: grid;
+    width: min(220px, calc(100vw - 20px));
+    padding: 6px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .more-menu-item {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 46px;
+    padding: 6px 8px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .more-menu-item:hover,
+  .more-menu-item:focus-visible {
+    background: var(--hover);
+  }
+
+  .more-menu-icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border-strong);
+  }
+
+  .more-menu-item strong {
+    font-size: 0.8rem;
+    font-weight: 600;
   }
 
   .save-button {
@@ -2104,6 +2229,15 @@
     .board-actions {
       width: 100%;
       justify-content: space-between;
+    }
+
+    .more-label {
+      display: none;
+    }
+
+    .more-button {
+      width: 34px;
+      padding: 0;
     }
 
     .reference-popover {

@@ -118,6 +118,8 @@
     "dirty": "等待保存",
     "error": "保存失败",
     "save": "保存",
+    "more": "其他功能",
+    "startAssembly": "开始拼绘",
     "undo": "撤销",
     "redo": "重做",
     "colorSelect": "同色框选",
@@ -131,6 +133,18 @@
     "fill": "填充",
     "zoom": "缩放",
     "zoomReset": "恢复到 100%"
+  },
+  "assembly": {
+    "title": "拼绘",
+    "english": "Assemble",
+    "required": "所需艺点点",
+    "colorCount": "{count} 种",
+    "usage": "{count} 个",
+    "total": "共需 {count} 个艺点点",
+    "empty": "当前格板还没有需要拼绘的艺点点",
+    "back": "返回工作区",
+    "hint": "滚轮上下移动 · Shift + 滚轮左右移动 · Ctrl + 滚轮缩放 · 拖动格板平移",
+    "readOnly": "拼绘视图"
   },
   "settings": {
     "title": "设置",

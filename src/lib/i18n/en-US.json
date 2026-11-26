@@ -118,6 +118,8 @@
     "dirty": "Waiting to save",
     "error": "Save failed",
     "save": "Save",
+    "more": "More",
+    "startAssembly": "Start assembling",
     "undo": "Undo",
     "redo": "Redo",
     "colorSelect": "Color select",
@@ -131,6 +133,18 @@
     "fill": "Fill",
     "zoom": "Zoom",
     "zoomReset": "Reset zoom to 100%"
+  },
+  "assembly": {
+    "title": "Assemble",
+    "english": "Assembly",
+    "required": "Required Artbeads",
+    "colorCount": "{count} colors",
+    "usage": "{count} pcs",
+    "total": "{count} Artbeads in total",
+    "empty": "This Pegboard does not require any Artbeads yet",
+    "back": "Back to workspace",
+    "hint": "Wheel to pan · Shift + wheel to pan sideways · Ctrl + wheel to zoom · Drag the Pegboard to pan",
+    "readOnly": "Assembly view"
   },
   "settings": {
     "title": "Settings",

@@ -4,6 +4,7 @@ import {
   createProject,
   fillProjectRegion,
   normalizeProjectName,
+  requiredArtbeadUsage,
   resizeProject
 } from './project';
 import {
@@ -107,5 +108,26 @@ describe('project domain', () => {
 
     expect(resized.cells).toHaveLength(15);
     expect(resized.cells[6]).toBe(2);
+  });
+
+  it('lists only used Artbeads from most to least used', () => {
+    const project = createProject({
+      name: '用量统计测试',
+      width: 4,
+      height: 3,
+      gameVersion: GameVersion.V3
+    });
+    project.cells = [
+      1, 1, 1, 0,
+      2, 2, 2, 2,
+      2, 2, 0, 0
+    ];
+
+    const required = requiredArtbeadUsage(project);
+
+    expect(required.map((color) => color.colorIndex)).toEqual([2, 1]);
+    expect(required.map((color) => color.count)).toEqual([6, 3]);
+    expect(required.some((color) => color.colorIndex === 3)).toBe(false);
+    expect(required[0].code).toBe(project.palette.colors[1].code);
   });
 });

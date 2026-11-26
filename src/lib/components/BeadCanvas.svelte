@@ -59,9 +59,15 @@
   interface Props {
     editor: EditorStore;
     referenceMode?: boolean;
+    mode?: 'editor' | 'assembly';
   }
 
-  let { editor, referenceMode = false }: Props = $props();
+  let {
+    editor,
+    referenceMode = false,
+    mode = 'editor'
+  }: Props = $props();
+  let isAssembly = $derived(mode === 'assembly');
   let canvas: HTMLCanvasElement | undefined = $state();
   let host: HTMLDivElement | undefined = $state();
   let frameWidth = $state(0);
@@ -577,7 +583,7 @@
     context.fillStyle = boardColor;
     context.fillRect(originX, originY, boardWidth, boardHeight);
 
-    const activeLayer = editor.activePasteLayer;
+    const activeLayer = isAssembly ? null : editor.activePasteLayer;
     const sourceSelectionCells = new Set(
       activeLayer?.sourceSelectionCells ?? []
     );
@@ -599,7 +605,9 @@
       }
     }
 
-    drawReferenceImages(context);
+    if (!isAssembly) {
+      drawReferenceImages(context);
+    }
 
     for (let y = 0; y < project.height; y += 1) {
       for (let x = 0; x < project.width; x += 1) {
@@ -663,7 +671,7 @@
       }
     }
 
-    if (editor.selectedCells.size > 0) {
+    if (!isAssembly && editor.selectedCells.size > 0) {
       context.fillStyle = selectionFill;
       for (const index of editor.selectedCells) {
         if (index < 0 || index >= project.cells.length) {
@@ -725,7 +733,7 @@
       boardHeight
     );
 
-    if (editor.selectedCells.size > 0) {
+    if (!isAssembly && editor.selectedCells.size > 0) {
       strokeSelectionOutline(
         context,
         editor.selectedCells,
@@ -740,7 +748,7 @@
       );
     }
 
-    if (selectionDrag?.mode === 'rectangle') {
+    if (!isAssembly && selectionDrag?.mode === 'rectangle') {
       const { minX, minY, width, height } = selectionDrag.rectangle;
       context.save();
       context.strokeStyle = selectionColor;
@@ -798,7 +806,7 @@
       }
     }
 
-    const hovered = hoveredCell;
+    const hovered = isAssembly ? null : hoveredCell;
     if (hovered) {
       const colorIndex = project.cells[hovered.index];
       const bead = colorIndex > 0 ? project.palette.colors[colorIndex - 1] : undefined;
@@ -839,7 +847,9 @@
         fontFamily
       });
     }
-    drawSelectedReferenceControls(context, selectionColor);
+    if (!isAssembly) {
+      drawSelectedReferenceControls(context, selectionColor);
+    }
   }
 
   function strokeSelectionOutline(
@@ -1771,6 +1781,13 @@
   }
 
   function updateHoveredCell(cell: BoardCell | null): void {
+    if (isAssembly) {
+      if (hoveredCell !== null) {
+        hoveredCell = null;
+      }
+      return;
+    }
+
     if (hoveredCell?.index === cell?.index) {
       return;
     }
@@ -1937,6 +1954,11 @@
     touchPoints.set(event.pointerId, point);
 
     if (touchPoints.size === 1) {
+      if (isAssembly) {
+        touchGestureStarted = true;
+        updateHoveredCell(null);
+        return;
+      }
       if (referenceMode && beginReferenceInteraction(event)) {
         return;
       }
@@ -2128,8 +2150,17 @@
     }
 
     event.preventDefault();
-    if (event.button === 1 || (event.button === 0 && spacePressed)) {
+    if (
+      event.button === 1 ||
+      (event.button === 0 && spacePressed) ||
+      (isAssembly && event.button === 0)
+    ) {
       startPan(event);
+      return;
+    }
+
+    if (isAssembly) {
+      updateHoveredCell(null);
       return;
     }
 
@@ -2215,6 +2246,11 @@
       panBy(event.clientX - panLastX, event.clientY - panLastY);
       panLastX = event.clientX;
       panLastY = event.clientY;
+      return;
+    }
+
+    if (isAssembly) {
+      updateHoveredCell(null);
       return;
     }
 
@@ -2331,6 +2367,14 @@
         return;
       }
 
+      if (isAssembly) {
+        if (event.code === KeyboardKey.Space) {
+          event.preventDefault();
+          spacePressed = true;
+        }
+        return;
+      }
+
       if (
         event.key === KeyboardKey.Escape &&
         (selectionDrag || moveDrag || referenceDrag)
@@ -2430,6 +2474,7 @@
     class:panning={panPointerId !== null || pinching}
     class:reference-tool-mode={referenceMode}
     class:color-picker-tool={editor.tool === EditorTool.ColorPicker}
+    class:assembly-mode={isAssembly}
     aria-hidden="true"
     onpointerdown={onPointerDown}
     onpointermove={onPointerMove}
@@ -2487,11 +2532,19 @@
     cursor: crosshair;
   }
 
+  canvas.assembly-mode {
+    cursor: grab;
+  }
+
   canvas.reference-tool-mode.pan-ready {
     cursor: grab;
   }
 
   canvas.reference-tool-mode.panning {
+    cursor: grabbing;
+  }
+
+  canvas.assembly-mode.panning {
     cursor: grabbing;
   }
 

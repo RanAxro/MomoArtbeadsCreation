@@ -18,6 +18,8 @@ export enum IconName {
   Image = 'image',
   Close = 'close',
   ChevronDown = 'chevron-down',
+  MoreHorizontal = 'more-horizontal',
+  Play = 'play',
   Sun = 'sun',
   Moon = 'moon',
   ArrowLeft = 'arrow-left'

@@ -91,6 +91,35 @@ export function countColorUsage(project: BeadProject): number[] {
   return usage;
 }
 
+export interface RequiredArtbeadUsage {
+  colorIndex: number;
+  id: string;
+  hex: string;
+  code: string;
+  count: number;
+}
+
+export function requiredArtbeadUsage(
+  project: BeadProject
+): RequiredArtbeadUsage[] {
+  const usage = countColorUsage(project);
+
+  return project.palette.colors
+    .map((color, index) => ({
+      colorIndex: index + 1,
+      id: color.id,
+      hex: color.hex,
+      code: color.code,
+      count: usage[index + 1] ?? 0
+    }))
+    .filter((color) => color.count > 0)
+    .sort(
+      (first, second) =>
+        second.count - first.count ||
+        first.colorIndex - second.colorIndex
+    );
+}
+
 export function resizeProject(
   project: BeadProject,
   width: number,
