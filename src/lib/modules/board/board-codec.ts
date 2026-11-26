@@ -1087,10 +1087,7 @@ export function extractShareCodeBase64(value: string): string {
     separatorIndex -= 1;
   }
   if (separatorIndex < 0) {
-    throw new BoardCodecError(
-      'invalid-base64',
-      'Share code is missing its scheme name separator.'
-    );
+    return shareCode;
   }
 
   const encoded = shareCode.slice(separatorIndex + 1, contentEnd);

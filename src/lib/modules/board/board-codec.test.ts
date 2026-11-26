@@ -219,10 +219,26 @@ describe('board binary codec', () => {
     });
   });
 
+  it('accepts either a named share code or raw compressed Base64', async () => {
+    const data = createTransferData(2, 2, [0, 1, 2, 3]);
+    const namedShareCode = await encodeShareCode(data);
+    const rawBase64 = await encodeBoardBase64(data);
+
+    expect(await decodeShareCode(namedShareCode)).toMatchObject({
+      name: data.name,
+      cells: data.cells
+    });
+    expect(await decodeShareCode(rawBase64)).toMatchObject({
+      name: data.name,
+      cells: data.cells
+    });
+  });
+
   it('extracts Base64 data while preserving trailing padding', () => {
     expect(extractShareCodeBase64('方案=YWJjZA==')).toBe('YWJjZA==');
     expect(extractShareCodeBase64('A=B=YWJjZA==')).toBe('YWJjZA==');
     expect(extractShareCodeBase64('方案=YWJjZA')).toBe('YWJjZA');
+    expect(extractShareCodeBase64('YWJjZA==')).toBe('YWJjZA==');
   });
 
   it('rejects corrupted binary data using the checksum', async () => {
