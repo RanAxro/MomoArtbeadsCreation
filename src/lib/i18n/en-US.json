@@ -266,6 +266,7 @@
     "tocTools": "Toolbar tools",
     "tocSelection": "Selection & actions",
     "tocShortcuts": "Shortcuts",
+    "tocNotice": "Open source & rights",
     "workflowTitle": "Using the Pegboard",
     "workflowDescription": "Each cell represents one Artbead. Create a scheme, choose a color from the tray, then draw cell by cell.",
     "steps": {
@@ -362,7 +363,13 @@
       "square": "Shift + drag",
       "clear": "Right click"
     },
-    "shortcutTip": "On macOS, use ⌘ instead of Ctrl. Some browsers or operating systems may reserve individual combinations; click the Pegboard first if a shortcut does not respond."
+    "shortcutTip": "On macOS, use ⌘ instead of Ctrl. Some browsers or operating systems may reserve individual combinations; click the Pegboard first if a shortcut does not respond.",
+    "noticeTitle": "Open source & rights",
+    "noticeDescription": "Information about project ownership, the open-source license, and game asset rights.",
+    "noticeOfficial": "This software is independently developed by an unofficial team and has no affiliation with the official Infinity Nikki team.",
+    "noticeLicense": "The source code is released under the MIT License; you may use, modify, and distribute it according to that license.",
+    "noticeAssets": "Infinity Nikki and related game assets remain the property of their original rights holders.",
+    "issuesPrompt": "Questions or suggestions? Open an issue on GitHub:"
   },
   "common": {
     "loading": "Loading local data…",

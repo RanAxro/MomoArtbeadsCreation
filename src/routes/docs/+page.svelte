@@ -201,6 +201,7 @@
         <a href="#tools">02 · {$_('docs.tocTools')}</a>
         <a href="#selection">03 · {$_('docs.tocSelection')}</a>
         <a href="#shortcuts">04 · {$_('docs.tocShortcuts')}</a>
+        <a href="#notice">05 · {$_('docs.tocNotice')}</a>
       </nav>
     </aside>
 
@@ -350,6 +351,42 @@
 
         <p class="shortcut-tip">{$_('docs.shortcutTip')}</p>
       </section>
+
+      <section id="notice" class="docs-section">
+        <div class="section-heading">
+          <span>05</span>
+          <div>
+            <h2>{$_('docs.noticeTitle')}</h2>
+            <p>{$_('docs.noticeDescription')}</p>
+          </div>
+        </div>
+
+        <div class="notice-grid">
+          <article>
+            <span>01</span>
+            <p>{$_('docs.noticeOfficial')}</p>
+          </article>
+          <article>
+            <span>02</span>
+            <p>{$_('docs.noticeLicense')}</p>
+          </article>
+          <article>
+            <span>03</span>
+            <p>{$_('docs.noticeAssets')}</p>
+          </article>
+        </div>
+
+        <div class="issues-panel">
+          <p>{$_('docs.issuesPrompt')}</p>
+          <a
+            href="https://github.com/RanAxro/MomoArtbeadsCreation"
+            target="_blank"
+            rel="noreferrer"
+          >
+            https://github.com/RanAxro/MomoArtbeadsCreation
+          </a>
+        </div>
+      </section>
     </main>
   </div>
 </div>
@@ -368,7 +405,7 @@
     gap: clamp(36px, 6vw, 90px);
     max-width: 1220px;
     margin: 0 auto;
-    padding: 40px 28px 100px;
+    padding: 40px 28px 64px;
   }
 
   .docs-toc {
@@ -712,6 +749,60 @@
     line-height: 1.7;
   }
 
+  .notice-grid {
+    display: grid;
+    gap: 1px;
+    padding: 1px;
+    border: 1px solid var(--border);
+    background: var(--border);
+  }
+
+  .notice-grid article {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 16px;
+    padding: 18px 20px;
+    background: var(--surface);
+  }
+
+  .notice-grid article > span {
+    padding-top: 2px;
+    color: var(--faint);
+    font-size: 0.62rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.1em;
+  }
+
+  .notice-grid p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.75;
+  }
+
+  .issues-panel {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 18px 20px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.7;
+  }
+
+  .issues-panel p {
+    margin: 0;
+  }
+
+  .issues-panel a {
+    color: var(--text);
+    overflow-wrap: anywhere;
+    font-weight: 600;
+    text-underline-offset: 3px;
+  }
+
   @media (max-width: 900px) {
     .docs-layout {
       grid-template-columns: minmax(0, 1fr);
@@ -734,7 +825,7 @@
 
   @media (max-width: 680px) {
     .docs-layout {
-      padding: 28px 16px 72px;
+      padding: 28px 16px 48px;
     }
 
     .workflow-grid,
@@ -766,5 +857,6 @@
     .shortcut-row kbd {
       justify-self: start;
     }
+
   }
 </style>

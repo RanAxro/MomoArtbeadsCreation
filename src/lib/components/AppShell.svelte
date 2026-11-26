@@ -511,23 +511,6 @@
         {$_('nav.view')}
       </button>
 
-      <button
-        class="nav-button"
-        class:active={page.url.pathname === '/docs'}
-        type="button"
-        aria-current={page.url.pathname === '/docs' ? 'page' : undefined}
-        onclick={() => {
-          fileOpen = false;
-          clipboardOpen = false;
-          viewOpen = false;
-          schemeMenu = null;
-          schemePopoverOpen = false;
-          void goto('/docs');
-        }}
-      >
-        {$_('nav.docs')}
-      </button>
-
       {#if workspace.activeId}
         <div class="clipboard-area" bind:this={clipboardArea}>
           <button
@@ -588,6 +571,23 @@
           {/if}
         </div>
       {/if}
+
+      <button
+        class="nav-button"
+        class:active={page.url.pathname === '/docs'}
+        type="button"
+        aria-current={page.url.pathname === '/docs' ? 'page' : undefined}
+        onclick={() => {
+          fileOpen = false;
+          clipboardOpen = false;
+          viewOpen = false;
+          schemeMenu = null;
+          schemePopoverOpen = false;
+          void goto('/docs');
+        }}
+      >
+        {$_('nav.docs')}
+      </button>
 
       <button
         class="nav-button"

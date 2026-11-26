@@ -266,6 +266,7 @@
     "tocTools": "工具栏工具",
     "tocSelection": "选区与操作",
     "tocShortcuts": "快捷键",
+    "tocNotice": "开源与版权",
     "workflowTitle": "格板怎么用",
     "workflowDescription": "每个格子代表一颗艺点点。先建立方案，再从左侧色板选色，即可在格板上逐格绘制。",
     "steps": {
@@ -362,7 +363,13 @@
       "square": "Shift + 拖动",
       "clear": "右键"
     },
-    "shortcutTip": "macOS 可使用 ⌘ 替代 Ctrl；部分浏览器或系统可能保留个别组合键，若未生效可先点击格板再试。"
+    "shortcutTip": "macOS 可使用 ⌘ 替代 Ctrl；部分浏览器或系统可能保留个别组合键，若未生效可先点击格板再试。",
+    "noticeTitle": "开源与版权",
+    "noticeDescription": "关于项目归属、开源许可与游戏素材版权的说明。",
+    "noticeOfficial": "本软件由非官方团队独立开发，与《无限暖暖》官方无关。",
+    "noticeLicense": "源代码采用 MIT 协议开源；你可以依照该协议使用、修改和分发代码。",
+    "noticeAssets": "《无限暖暖》及相关游戏素材的版权归原厂商所有。",
+    "issuesPrompt": "有问题或建议？请前往 GitHub 提交 Issue："
   },
   "common": {
     "loading": "正在读取本地数据…",
