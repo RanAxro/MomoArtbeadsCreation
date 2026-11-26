@@ -74,6 +74,32 @@
   let frameHeight = $state(0);
   let pointerDown = $state(false);
   let hoveredCell = $state<BoardCell | null>(null);
+  let hoveredBead = $derived.by(() => {
+    frameWidth;
+    frameHeight;
+    editor.revision;
+    const cell = hoveredCell;
+    const project = editor.project;
+    if (!isAssembly || !cell || !project) {
+      return null;
+    }
+
+    const colorIndex = project.cells[cell.index];
+    const color = colorIndex > 0
+      ? project.palette.colors[colorIndex - 1]
+      : undefined;
+    if (!color) {
+      return null;
+    }
+
+    return {
+      color,
+      column: cell.x + 1,
+      row: cell.y + 1,
+      left: layout.contentX + 8,
+      top: layout.contentY + 8
+    };
+  });
   let viewCenterX = $state(0);
   let viewCenterY = $state(0);
   let spacePressed = $state(false);
@@ -2462,6 +2488,32 @@
   role="region"
   aria-label={$_('board.title')}
 >
+  {#if hoveredBead}
+    <div
+      class="bead-info-card"
+      role="status"
+      style:left={`${hoveredBead.left}px`}
+      style:top={`${hoveredBead.top}px`}
+    >
+      <span
+        class="bead-info-swatch"
+        style:--color={hoveredBead.color.hex}
+      ></span>
+      <span class="bead-info-copy">
+        <strong>{hoveredBead.color.name} · {hoveredBead.color.code}</strong>
+        <small>{hoveredBead.color.hex}</small>
+        <small>
+          {$_('assembly.cellPosition', {
+            values: {
+              column: hoveredBead.column,
+              row: hoveredBead.row
+            }
+          })}
+        </small>
+      </span>
+    </div>
+  {/if}
+
   <canvas
     bind:this={canvas}
     class:fill-tool={editor.tool === EditorTool.Fill}
@@ -2485,12 +2537,58 @@
 
 <style>
   .canvas-host {
+    position: relative;
     width: 100%;
     min-height: 420px;
     height: 100%;
     overflow: hidden;
     border-radius: 0;
     background: var(--stage);
+  }
+
+  .bead-info-card {
+    position: absolute;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: min(230px, calc(100% - 32px));
+    padding: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    pointer-events: none;
+  }
+
+  .bead-info-swatch {
+    display: block;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--border-strong);
+    background: var(--color);
+  }
+
+  .bead-info-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .bead-info-copy strong {
+    overflow: hidden;
+    color: var(--text);
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bead-info-copy small {
+    color: var(--muted);
+    font-size: 0.62rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.35;
   }
 
   canvas {

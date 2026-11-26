@@ -142,6 +142,7 @@
     "usage": "{count} 个",
     "total": "共需 {count} 个艺点点",
     "empty": "当前格板还没有需要拼绘的艺点点",
+    "cellPosition": "第 {row} 行 · 第 {column} 列",
     "back": "返回工作区",
     "hint": "滚轮上下移动 · Shift + 滚轮左右移动 · Ctrl + 滚轮缩放 · 拖动格板平移",
     "readOnly": "拼绘视图"

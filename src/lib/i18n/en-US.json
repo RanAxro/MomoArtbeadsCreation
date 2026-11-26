@@ -142,6 +142,7 @@
     "usage": "{count} pcs",
     "total": "{count} Artbeads in total",
     "empty": "This Pegboard does not require any Artbeads yet",
+    "cellPosition": "Row {row} · Column {column}",
     "back": "Back to workspace",
     "hint": "Wheel to pan · Shift + wheel to pan sideways · Ctrl + wheel to zoom · Drag the Pegboard to pan",
     "readOnly": "Assembly view"
