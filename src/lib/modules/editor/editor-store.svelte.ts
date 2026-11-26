@@ -30,6 +30,7 @@ import {
 import { clonePalette, createEmptyBeadColor } from '$domain/palette';
 import { floodFill, touchProject } from '$domain/project';
 import { clampBoardZoom } from './board-layout';
+import { eraseSelectedCells } from './selection';
 import {
   cloneSelectionLayer,
   createSelectionClipboard as createClipboardFromSelection,
@@ -375,6 +376,33 @@ export class EditorStore {
       this.selectedCells = new Set();
       this.markChanged();
     }
+  }
+
+  deleteSelection(): boolean {
+    if (!this.project || this.selectedCells.size === 0) {
+      return false;
+    }
+
+    if (this.activePasteLayer) {
+      this.activePasteLayer = null;
+      this.selectedCells = new Set();
+      this.markChanged();
+      this.previewRevision += 1;
+      return true;
+    }
+
+    const snapshot = createEditorSnapshot(this.project);
+    const erased = eraseSelectedCells(this.project.cells, this.selectedCells);
+    if (!erased.changed) {
+      return false;
+    }
+
+    this.pushUndoSnapshot(snapshot);
+    this.project.cells = erased.cells;
+    this.redoStack = [];
+    this.refreshHistoryState();
+    this.markChanged();
+    return true;
   }
 
   createSelectionClipboard(): SelectionClipboard | null {

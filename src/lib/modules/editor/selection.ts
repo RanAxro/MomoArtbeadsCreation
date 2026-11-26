@@ -159,6 +159,27 @@ export function getSameColorSelection(
   return selection;
 }
 
+export function eraseSelectedCells(
+  cells: readonly number[],
+  selectedCells: ReadonlySet<number>
+): { cells: number[]; changed: boolean } {
+  const next = [...cells];
+  let changed = false;
+
+  for (const index of selectedCells) {
+    if (
+      index >= 0 &&
+      index < next.length &&
+      next[index] !== 0
+    ) {
+      next[index] = 0;
+      changed = true;
+    }
+  }
+
+  return { cells: next, changed };
+}
+
 export function combineSelections(
   previous: ReadonlySet<number>,
   rectangle: ReadonlySet<number>,

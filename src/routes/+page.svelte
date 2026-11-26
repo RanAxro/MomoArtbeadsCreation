@@ -21,6 +21,7 @@
     MAX_MAGIC_WAND_THRESHOLD,
     MIN_MAGIC_WAND_THRESHOLD
   } from '$model/selection.model';
+  import { KeyboardKey } from '$model/ui.model';
   import {
     DEFAULT_REFERENCE_IMAGE_COVERAGE,
     REFERENCE_IMAGE_MAX_FILE_BYTES,
@@ -465,6 +466,18 @@
     }
 
     const command = event.ctrlKey || event.metaKey;
+    if (
+      !command &&
+      (event.key === KeyboardKey.Delete ||
+        event.key === KeyboardKey.Backspace) &&
+      editor.selectedCells.size > 0 &&
+      !referenceOpen &&
+      !editor.selectedReferenceImageId
+    ) {
+      event.preventDefault();
+      editor.deleteSelection();
+      return;
+    }
     if (command && event.key.toLowerCase() === EditorCommandKey.Copy) {
       if (editor.project && editor.selectedCells.size > 0) {
         event.preventDefault();

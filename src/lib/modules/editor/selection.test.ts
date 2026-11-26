@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   combineSelections,
   createSelectionRectangle,
+  eraseSelectedCells,
   getSameColorSelection
 } from './selection';
 import { SelectionOperation } from '$model/selection.model';
@@ -98,5 +99,23 @@ describe('same-color selection', () => {
     const colors = [{ hex: '#111111' }];
 
     expect([...getSameColorSelection(cells, colors, 2)]).toEqual([]);
+  });
+});
+
+describe('selection deletion', () => {
+  it('clears only the selected non-empty cells', () => {
+    const result = eraseSelectedCells(
+      [1, 2, 0, 3],
+      new Set([0, 2, 3])
+    );
+
+    expect(result.cells).toEqual([0, 2, 0, 0]);
+    expect(result.changed).toBe(true);
+  });
+
+  it('reports no change when the selected cells are already empty', () => {
+    const result = eraseSelectedCells([1, 0, 1], new Set([1]));
+
+    expect(result.changed).toBe(false);
   });
 });
