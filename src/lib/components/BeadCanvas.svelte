@@ -82,6 +82,10 @@
     scaleVectorX: number;
     scaleVectorY: number;
     scaleAtStart: number;
+    startLocalX: number;
+    startLocalY: number;
+    resizeSignX: number;
+    resizeSignY: number;
     startAngle: number;
   } | null>(null);
   let referenceRenderRevision = $state(0);
@@ -1312,6 +1316,10 @@
     let scaleVectorX = 0;
     let scaleVectorY = 0;
     let scaleAtStart = 1;
+    let startLocalX = 0;
+    let startLocalY = 0;
+    let resizeSignX = 1;
+    let resizeSignY = 1;
     let startAngle = 0;
     let referenceCursor = 'move';
 
@@ -1322,6 +1330,8 @@
       mode = 'resize';
       const signX = handle.endsWith('left') ? -1 : 1;
       const signY = handle.startsWith('top') ? -1 : 1;
+      resizeSignX = signX;
+      resizeSignY = signY;
       const anchor = localToCanvas(
         reference,
         (-signX * reference.width * layout.cellSize) / 2,
@@ -1331,6 +1341,15 @@
       anchorY = anchor.y;
       scaleVectorX = center.x - anchor.x;
       scaleVectorY = center.y - anchor.y;
+      const angle = referenceAngle(reference);
+      const anchorDeltaX = point.x - anchorX;
+      const anchorDeltaY = point.y - anchorY;
+      startLocalX =
+        anchorDeltaX * Math.cos(angle) +
+        anchorDeltaY * Math.sin(angle);
+      startLocalY =
+        -anchorDeltaX * Math.sin(angle) +
+        anchorDeltaY * Math.cos(angle);
       const denominator =
         scaleVectorX * scaleVectorX + scaleVectorY * scaleVectorY;
       if (denominator > 0.0001) {
@@ -1360,6 +1379,10 @@
       scaleVectorX,
       scaleVectorY,
       scaleAtStart,
+      startLocalX,
+      startLocalY,
+      resizeSignX,
+      resizeSignY,
       startAngle
     };
     canvas?.setPointerCapture(event.pointerId);
@@ -1424,49 +1447,86 @@
       return;
     }
 
-    const denominator =
-      drag.scaleVectorX * drag.scaleVectorX +
-      drag.scaleVectorY * drag.scaleVectorY;
-    if (denominator <= 0.0001) {
-      return;
-    }
-
-    const pointerVectorX = point.x - drag.anchorX;
-    const pointerVectorY = point.y - drag.anchorY;
-    const pointerScale =
-      (pointerVectorX * drag.scaleVectorX +
-        pointerVectorY * drag.scaleVectorY) /
-      denominator;
     const maxSize = Math.min(
       MAX_REFERENCE_IMAGE_SIZE,
       Math.max(project.width, project.height) * 4
     );
-    const minimumScale = Math.max(
-      MIN_REFERENCE_IMAGE_SIZE / original.width,
-      MIN_REFERENCE_IMAGE_SIZE / original.height
+    const angle = referenceAngle(original);
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const anchorDeltaX = point.x - drag.anchorX;
+    const anchorDeltaY = point.y - drag.anchorY;
+
+    if (event.shiftKey) {
+      const denominator =
+        drag.scaleVectorX * drag.scaleVectorX +
+        drag.scaleVectorY * drag.scaleVectorY;
+      if (denominator <= 0.0001) {
+        return;
+      }
+      const pointerScale =
+        (anchorDeltaX * drag.scaleVectorX +
+          anchorDeltaY * drag.scaleVectorY) /
+        denominator;
+      const minimumScale = Math.max(
+        MIN_REFERENCE_IMAGE_SIZE / original.width,
+        MIN_REFERENCE_IMAGE_SIZE / original.height
+      );
+      const maximumScale = Math.min(
+        maxSize / original.width,
+        maxSize / original.height
+      );
+      // The scale vector spans half the diagonal.
+      const scale = Math.max(
+        minimumScale,
+        Math.min(
+          maximumScale,
+          1 + (pointerScale - drag.scaleAtStart) * 0.5
+        )
+      );
+      const centerX = drag.anchorX + drag.scaleVectorX * scale;
+      const centerY = drag.anchorY + drag.scaleVectorY * scale;
+      editor.updateReferenceImage(original.id, {
+        centerX: (centerX - layout.originX) / layout.cellSize,
+        centerY: (centerY - layout.originY) / layout.cellSize,
+        width: original.width * scale,
+        height: original.height * scale
+      });
+      return;
+    }
+
+    const localX = anchorDeltaX * cos + anchorDeltaY * sin;
+    const localY = -anchorDeltaX * sin + anchorDeltaY * cos;
+    const width = Math.max(
+      MIN_REFERENCE_IMAGE_SIZE,
+      Math.min(
+        maxSize,
+        original.width +
+          (drag.resizeSignX * (localX - drag.startLocalX)) /
+            layout.cellSize
+      )
     );
-    const maximumScale = Math.min(
-      maxSize / original.width,
-      maxSize / original.height
+    const height = Math.max(
+      MIN_REFERENCE_IMAGE_SIZE,
+      Math.min(
+        maxSize,
+        original.height +
+          (drag.resizeSignY * (localY - drag.startLocalY)) /
+            layout.cellSize
+      )
     );
-    // `scaleVector` spans half of the diagonal. Dividing the projected
-    // pointer movement by two makes the dragged corner track the pointer.
-    const rawScale =
-      1 + (pointerScale - drag.scaleAtStart) * 0.5;
-    const scale = Math.max(
-      minimumScale,
-      Math.min(maximumScale, rawScale)
-    );
+    const halfWidth = (drag.resizeSignX * width * layout.cellSize) / 2;
+    const halfHeight = (drag.resizeSignY * height * layout.cellSize) / 2;
     const centerX =
-      drag.anchorX + drag.scaleVectorX * scale;
+      drag.anchorX + halfWidth * cos - halfHeight * sin;
     const centerY =
-      drag.anchorY + drag.scaleVectorY * scale;
+      drag.anchorY + halfWidth * sin + halfHeight * cos;
 
     editor.updateReferenceImage(original.id, {
       centerX: (centerX - layout.originX) / layout.cellSize,
       centerY: (centerY - layout.originY) / layout.cellSize,
-      width: original.width * scale,
-      height: original.height * scale
+      width,
+      height
     });
   }
 
