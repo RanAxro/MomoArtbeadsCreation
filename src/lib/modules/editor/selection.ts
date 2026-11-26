@@ -231,3 +231,32 @@ export function combineSelections(
   }
   return next;
 }
+
+export function selectionOperationForPointer(
+  defaultOperation: SelectionOperation,
+  button: number,
+  command: boolean,
+  alt: boolean
+): SelectionOperation | 'clear' | null {
+  if (button === 0) {
+    if (command) {
+      return SelectionOperation.Union;
+    }
+    if (alt) {
+      return SelectionOperation.Subtract;
+    }
+    return defaultOperation;
+  }
+
+  if (button === 2) {
+    if (command) {
+      return SelectionOperation.Xor;
+    }
+    if (alt) {
+      return SelectionOperation.Intersect;
+    }
+    return 'clear';
+  }
+
+  return null;
+}

@@ -8,6 +8,44 @@ export enum SelectionOperation {
   Intersect = 'intersect'
 }
 
+export enum SelectionOperationLabelKey {
+  Replace = 'board.selectionModeReplace',
+  Union = 'board.selectionModeUnion',
+  Subtract = 'board.selectionModeSubtract',
+  Xor = 'board.selectionModeXor',
+  Intersect = 'board.selectionModeIntersect'
+}
+
+export interface SelectionOperationDefinition {
+  id: SelectionOperation;
+  labelKey: SelectionOperationLabelKey;
+}
+
+export const SELECTION_OPERATION_DEFINITIONS: readonly SelectionOperationDefinition[] = [
+  {
+    id: SelectionOperation.Replace,
+    labelKey: SelectionOperationLabelKey.Replace
+  },
+  {
+    id: SelectionOperation.Union,
+    labelKey: SelectionOperationLabelKey.Union
+  },
+  {
+    id: SelectionOperation.Subtract,
+    labelKey: SelectionOperationLabelKey.Subtract
+  },
+  {
+    id: SelectionOperation.Xor,
+    labelKey: SelectionOperationLabelKey.Xor
+  },
+  {
+    id: SelectionOperation.Intersect,
+    labelKey: SelectionOperationLabelKey.Intersect
+  }
+];
+
+export const DEFAULT_SELECTION_OPERATION = SelectionOperation.Replace;
+
 export interface SelectionRectangle {
   start: BoardCell;
   end: BoardCell;

@@ -3,11 +3,56 @@ import {
   combineSelections,
   createSelectionRectangle,
   eraseSelectedCells,
-  getSameColorSelection
+  getSameColorSelection,
+  selectionOperationForPointer
 } from './selection';
-import { SelectionOperation } from '$model/selection.model';
+import {
+  DEFAULT_SELECTION_OPERATION,
+  SELECTION_OPERATION_DEFINITIONS,
+  SelectionOperation
+} from '$model/selection.model';
 
 describe('rectangular selection', () => {
+  it('defines the five toolbar modes in the expected order', () => {
+    expect(
+      SELECTION_OPERATION_DEFINITIONS.map((definition) => definition.id)
+    ).toEqual([
+      SelectionOperation.Replace,
+      SelectionOperation.Union,
+      SelectionOperation.Subtract,
+      SelectionOperation.Xor,
+      SelectionOperation.Intersect
+    ]);
+    expect(DEFAULT_SELECTION_OPERATION).toBe(SelectionOperation.Replace);
+  });
+
+  it('uses the active mode for an unmodified drag', () => {
+    expect(
+      selectionOperationForPointer(SelectionOperation.Subtract, 0, false, false)
+    ).toBe(SelectionOperation.Subtract);
+    expect(
+      selectionOperationForPointer(SelectionOperation.Xor, 0, false, false)
+    ).toBe(SelectionOperation.Xor);
+  });
+
+  it('keeps modifier shortcuts and right-click clearing', () => {
+    expect(
+      selectionOperationForPointer(SelectionOperation.Replace, 0, true, false)
+    ).toBe(SelectionOperation.Union);
+    expect(
+      selectionOperationForPointer(SelectionOperation.Replace, 0, false, true)
+    ).toBe(SelectionOperation.Subtract);
+    expect(
+      selectionOperationForPointer(SelectionOperation.Replace, 2, true, false)
+    ).toBe(SelectionOperation.Xor);
+    expect(
+      selectionOperationForPointer(SelectionOperation.Replace, 2, false, true)
+    ).toBe(SelectionOperation.Intersect);
+    expect(
+      selectionOperationForPointer(SelectionOperation.Replace, 2, false, false)
+    ).toBe('clear');
+  });
+
   it('creates an inclusive normalized rectangle', () => {
     const selection = createSelectionRectangle(
       { x: 3, y: 2, index: 13 },

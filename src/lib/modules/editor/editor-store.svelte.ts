@@ -24,9 +24,11 @@ import {
 import type { SelectionClipboard } from '$model/selection-clipboard.model';
 import type { SelectionLayer } from '$model/selection-layer.model';
 import {
+  DEFAULT_SELECTION_OPERATION,
   DEFAULT_MAGIC_WAND_THRESHOLD,
   MAX_MAGIC_WAND_THRESHOLD,
-  MIN_MAGIC_WAND_THRESHOLD
+  MIN_MAGIC_WAND_THRESHOLD,
+  type SelectionOperation
 } from '$model/selection.model';
 import { clonePalette, createEmptyBeadColor } from '$domain/palette';
 import { fillProjectRegion, touchProject } from '$domain/project';
@@ -58,6 +60,7 @@ export class EditorStore {
   project = $state<BeadProject | null>(null);
   selectedColorIndex = $state(DEFAULT_SELECTED_PALETTE_INDEX);
   magicWandThreshold = $state(DEFAULT_MAGIC_WAND_THRESHOLD);
+  selectionOperation = $state<SelectionOperation>(DEFAULT_SELECTION_OPERATION);
   colorPickerMode = $state<ColorPickerMode>(ColorPickerMode.Artbead);
   tool = $state<EditorTool>(DEFAULT_EDITOR_TOOL);
   selectedCells = $state<ReadonlySet<number>>(new Set());
@@ -123,6 +126,7 @@ export class EditorStore {
     this.visibleBoardCenter = { x: 0, y: 0 };
     this.activePasteLayer = restoredLayer;
     this.tool = this.project.editorState?.tool ?? DEFAULT_EDITOR_TOOL;
+    this.selectionOperation = DEFAULT_SELECTION_OPERATION;
     this.colorPickerMode = ColorPickerMode.Artbead;
     this.selectedReferenceImageId = null;
     this.previewRevision += 1;
@@ -141,6 +145,7 @@ export class EditorStore {
     this.visibleBoardCenter = { x: 0, y: 0 };
     this.activePasteLayer = null;
     this.selectedReferenceImageId = null;
+    this.selectionOperation = DEFAULT_SELECTION_OPERATION;
     this.colorPickerMode = ColorPickerMode.Artbead;
     this.previewRevision += 1;
     this.canUndo = false;
@@ -202,6 +207,10 @@ export class EditorStore {
   setColorPickerMode(mode: ColorPickerMode): void {
     this.colorPickerMode = mode;
     this.setTool(EditorTool.ColorPicker);
+  }
+
+  setSelectionOperation(operation: SelectionOperation): void {
+    this.selectionOperation = operation;
   }
 
   get referenceImages(): readonly ReferenceImage[] {

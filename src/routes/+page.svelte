@@ -3,6 +3,7 @@
   import { _ } from 'svelte-i18n';
   import BeadCanvas from '$lib/components/BeadCanvas.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import SelectionModeOptions from '$lib/components/SelectionModeOptions.svelte';
   import { ARTBEAD_COLORS } from '$model/pegboard.model';
   import {
     AUTO_SAVE_DELAY_MS,
@@ -20,7 +21,8 @@
   } from '$model/editor.model';
   import {
     MAX_MAGIC_WAND_THRESHOLD,
-    MIN_MAGIC_WAND_THRESHOLD
+    MIN_MAGIC_WAND_THRESHOLD,
+    SelectionOperation
   } from '$model/selection.model';
   import { KeyboardKey } from '$model/ui.model';
   import {
@@ -52,8 +54,8 @@
   let referenceInput: HTMLInputElement | undefined = $state();
   let referenceArea: HTMLDivElement | undefined = $state();
   let referenceList: HTMLDivElement | undefined = $state();
-  let magicWandOpen = $state(false);
-  let magicWandArea: HTMLDivElement | undefined = $state();
+  let selectionModeOpenFor = $state<EditorTool | null>(null);
+  let selectionModeArea: HTMLDivElement | undefined = $state();
   let colorPickerOpen = $state(false);
   let colorPickerArea: HTMLDivElement | undefined = $state();
   let referenceReorder = $state<{
@@ -302,7 +304,7 @@
       editor.addReferenceImage(reference);
       cancelReferenceReorder();
       referenceOpen = false;
-      magicWandOpen = false;
+      selectionModeOpenFor = null;
       colorPickerOpen = false;
     } catch {
       referenceError = $_('reference.readError');
@@ -324,7 +326,7 @@
     cancelReferenceReorder();
     if (editor.selectReferenceImage(id)) {
       referenceOpen = false;
-      magicWandOpen = false;
+      selectionModeOpenFor = null;
       colorPickerOpen = false;
     }
   }
@@ -332,7 +334,7 @@
   function toggleColorPicker(): void {
     cancelReferenceReorder();
     referenceOpen = false;
-    magicWandOpen = false;
+    selectionModeOpenFor = null;
     referenceError = '';
     editor.clearReferenceImageSelection();
     colorPickerOpen = !colorPickerOpen;
@@ -341,10 +343,41 @@
   function activateColorPicker(mode: ColorPickerMode): void {
     cancelReferenceReorder();
     referenceOpen = false;
-    magicWandOpen = false;
+    selectionModeOpenFor = null;
     colorPickerOpen = false;
     referenceError = '';
     editor.setColorPickerMode(mode);
+  }
+
+  function toggleSelectionTool(tool: EditorTool): void {
+    const alreadyActive = editor.tool === tool;
+    cancelReferenceReorder();
+    referenceOpen = false;
+    colorPickerOpen = false;
+    referenceError = '';
+    editor.setTool(tool);
+    selectionModeOpenFor =
+      alreadyActive && selectionModeOpenFor === tool ? null : tool;
+  }
+
+  function selectSelectionOperation(operation: SelectionOperation): void {
+    editor.setSelectionOperation(operation);
+    selectionModeOpenFor = null;
+  }
+
+  function selectionOperationLabel(): string {
+    switch (editor.selectionOperation) {
+      case SelectionOperation.Union:
+        return $_('board.selectionModeUnion');
+      case SelectionOperation.Subtract:
+        return $_('board.selectionModeSubtract');
+      case SelectionOperation.Xor:
+        return $_('board.selectionModeXor');
+      case SelectionOperation.Intersect:
+        return $_('board.selectionModeIntersect');
+      default:
+        return $_('board.selectionModeReplace');
+    }
   }
 
   function removeReferenceImage(id: string): void {
@@ -537,7 +570,7 @@
     if (tool) {
       cancelReferenceReorder();
       referenceOpen = false;
-      magicWandOpen = false;
+      selectionModeOpenFor = null;
       colorPickerOpen = false;
       referenceError = '';
       editor.setTool(tool.id);
@@ -550,7 +583,7 @@
     if (!editor.project) {
       cancelReferenceReorder();
       referenceOpen = false;
-      magicWandOpen = false;
+      selectionModeOpenFor = null;
       colorPickerOpen = false;
     }
     if (editor.project && editor.revision !== editor.savedRevision) {
@@ -576,11 +609,15 @@
         referenceError = '';
       }
       if (
-        magicWandOpen &&
-        magicWandArea &&
-        !magicWandArea.contains(target)
+        selectionModeOpenFor &&
+        selectionModeArea &&
+        !selectionModeArea.contains(target) &&
+        !(
+          target instanceof Element &&
+          target.closest('.selection-tool-area')
+        )
       ) {
-        magicWandOpen = false;
+        selectionModeOpenFor = null;
       }
       if (
         colorPickerOpen &&
@@ -597,8 +634,8 @@
         referenceError = '';
         referenceDragActive = false;
       }
-      if (event.key === 'Escape' && magicWandOpen) {
-        magicWandOpen = false;
+      if (event.key === 'Escape' && selectionModeOpenFor) {
+        selectionModeOpenFor = null;
       }
       if (event.key === 'Escape' && colorPickerOpen) {
         colorPickerOpen = false;
@@ -693,7 +730,79 @@
         <div class="board-actions">
           <div class="tools">
             {#each EDITOR_TOOL_DEFINITIONS as tool}
-              {#if tool.id === EditorTool.ColorPicker}
+              {#if tool.id === EditorTool.ColorSelect || tool.id === EditorTool.MagicWand || tool.id === EditorTool.Select}
+                <div
+                  class="selection-tool-area"
+                  bind:this={selectionModeArea}
+                >
+                  <button
+                    class="tool"
+                    class:active={
+                      editor.tool === tool.id &&
+                      !referenceOpen &&
+                      !editor.selectedReferenceImageId
+                    }
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-controls={`selection-mode-popover-${tool.id}`}
+                    aria-expanded={selectionModeOpenFor === tool.id}
+                    title={`${$_(tool.labelKey)} (${tool.shortcut})`}
+                    aria-label={$_(tool.labelKey)}
+                    aria-pressed={
+                      editor.tool === tool.id &&
+                      !referenceOpen &&
+                      !editor.selectedReferenceImageId
+                    }
+                    onclick={() => toggleSelectionTool(tool.id)}
+                  >
+                    <Icon name={tool.icon} size={18} />
+                  </button>
+
+                  {#if selectionModeOpenFor === tool.id}
+                    <div
+                      id={`selection-mode-popover-${tool.id}`}
+                      class="selection-mode-popover"
+                      role="dialog"
+                      aria-labelledby={`selection-mode-title-${tool.id}`}
+                    >
+                      <strong
+                        id={`selection-mode-title-${tool.id}`}
+                        class="selection-mode-title"
+                      >
+                        {$_('board.selectionMode')}
+                      </strong>
+                      <SelectionModeOptions
+                        value={editor.selectionOperation}
+                        onselect={selectSelectionOperation}
+                      />
+
+                      {#if tool.id === EditorTool.MagicWand}
+                        <div class="selection-mode-threshold">
+                          <div class="magic-wand-popover-heading">
+                            <span>{$_('board.magicWandThreshold')}</span>
+                            <output for="magic-wand-threshold">
+                              {editor.magicWandThreshold}%
+                            </output>
+                          </div>
+                          <input
+                            id="magic-wand-threshold"
+                            type="range"
+                            min={MIN_MAGIC_WAND_THRESHOLD}
+                            max={MAX_MAGIC_WAND_THRESHOLD}
+                            step="1"
+                            value={editor.magicWandThreshold}
+                            aria-label={$_('board.magicWandThreshold')}
+                            oninput={(event) =>
+                              editor.setMagicWandThreshold(
+                                Number((event.currentTarget as HTMLInputElement).value)
+                              )}
+                          />
+                        </div>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+              {:else if tool.id === EditorTool.ColorPicker}
                 <div
                   class="color-picker-area"
                   bind:this={colorPickerArea}
@@ -780,75 +889,6 @@
                     </div>
                   {/if}
                 </div>
-              {:else if tool.id === EditorTool.MagicWand}
-                <div
-                  class="magic-wand-area"
-                  bind:this={magicWandArea}
-                >
-                  <button
-                    class="tool"
-                    class:active={
-                      editor.tool === tool.id &&
-                      !referenceOpen &&
-                      !editor.selectedReferenceImageId
-                    }
-                    type="button"
-                    aria-haspopup="dialog"
-                    aria-controls="magic-wand-popover"
-                    aria-expanded={magicWandOpen}
-                    title={`${$_(tool.labelKey)} (${tool.shortcut})`}
-                    aria-label={$_(tool.labelKey)}
-                    aria-pressed={
-                      editor.tool === tool.id &&
-                      !referenceOpen &&
-                      !editor.selectedReferenceImageId
-                    }
-                    onclick={() => {
-                      const alreadyActive = editor.tool === tool.id;
-                      cancelReferenceReorder();
-                      referenceOpen = false;
-                      colorPickerOpen = false;
-                      referenceError = '';
-                      editor.setTool(tool.id);
-                      magicWandOpen = alreadyActive
-                        ? !magicWandOpen
-                        : true;
-                    }}
-                  >
-                    <Icon name={tool.icon} size={18} />
-                  </button>
-
-                  {#if magicWandOpen}
-                    <div
-                      id="magic-wand-popover"
-                      class="magic-wand-popover"
-                      role="dialog"
-                      aria-labelledby="magic-wand-popover-title"
-                    >
-                      <div class="magic-wand-popover-heading">
-                        <strong id="magic-wand-popover-title">
-                          {$_('board.magicWandThreshold')}
-                        </strong>
-                        <output for="magic-wand-threshold">
-                          {editor.magicWandThreshold}%
-                        </output>
-                      </div>
-                      <input
-                        id="magic-wand-threshold"
-                        type="range"
-                        min={MIN_MAGIC_WAND_THRESHOLD}
-                        max={MAX_MAGIC_WAND_THRESHOLD}
-                        step="1"
-                        value={editor.magicWandThreshold}
-                        aria-label={$_('board.magicWandThreshold')}
-                        oninput={(event) =>
-                          editor.setMagicWandThreshold(
-                            Number((event.currentTarget as HTMLInputElement).value)
-                          )}
-                      />
-                    </div>
-                  {/if}
-                </div>
               {:else}
                 <button
                   class="tool"
@@ -872,7 +912,7 @@
                   onclick={() => {
                     cancelReferenceReorder();
                     referenceOpen = false;
-                    magicWandOpen = false;
+                    selectionModeOpenFor = null;
                     colorPickerOpen = false;
                     referenceError = '';
                     editor.setTool(tool.id);
@@ -917,7 +957,7 @@
                 title={$_('reference.hint')}
                 onclick={() => {
                   referenceOpen = !referenceOpen;
-                  magicWandOpen = false;
+                  selectionModeOpenFor = null;
                   colorPickerOpen = false;
                   referenceError = '';
                 }}
@@ -1147,11 +1187,17 @@
       <footer class="board-footer">
         <span>
           {editor.tool === EditorTool.ColorSelect
-            ? $_('board.colorSelectionHint')
+            ? $_('board.colorSelectionHint', {
+                values: { mode: selectionOperationLabel() }
+              })
             : editor.tool === EditorTool.MagicWand
-              ? $_('board.magicWandHint')
+              ? $_('board.magicWandHint', {
+                  values: { mode: selectionOperationLabel() }
+                })
               : editor.tool === EditorTool.Select
-                ? $_('board.selectionHint')
+                ? $_('board.selectionHint', {
+                    values: { mode: selectionOperationLabel() }
+                  })
                 : editor.tool === EditorTool.Move
                   ? $_('board.moveHint')
                   : editor.tool === EditorTool.ColorPicker
@@ -1416,7 +1462,7 @@
     display: flex;
   }
 
-  .magic-wand-area {
+  .selection-tool-area {
     position: relative;
     display: flex;
     align-items: center;
@@ -1428,18 +1474,32 @@
     align-items: center;
   }
 
-  .magic-wand-popover {
+  .selection-mode-popover {
     position: absolute;
     z-index: 26;
     top: calc(100% + 9px);
     left: 0;
     display: grid;
-    gap: 10px;
-    width: min(280px, calc(100vw - 20px));
-    padding: 12px;
+    gap: 5px;
+    width: min(240px, calc(100vw - 20px));
+    padding: 8px;
     border: 1px solid var(--border-strong);
     background: var(--surface);
     box-shadow: var(--shadow);
+  }
+
+  .selection-mode-title {
+    padding: 4px 8px 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .selection-mode-threshold {
+    display: grid;
+    gap: 9px;
+    margin-top: 4px;
+    padding: 10px 8px 4px;
+    border-top: 1px solid var(--border);
   }
 
   .magic-wand-popover-heading {
@@ -1449,7 +1509,7 @@
     gap: 12px;
   }
 
-  .magic-wand-popover-heading strong {
+  .magic-wand-popover-heading span {
     font-size: 0.76rem;
     font-weight: 600;
   }
@@ -1460,7 +1520,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .magic-wand-popover input {
+  .selection-mode-threshold input {
     width: 100%;
     height: 18px;
     margin: 0;
@@ -2053,11 +2113,11 @@
       width: min(330px, calc(100vw - 20px));
     }
 
-    .magic-wand-popover {
+    .selection-mode-popover {
       position: fixed;
       top: 116px;
       left: 10px;
-      width: min(280px, calc(100vw - 20px));
+      width: min(240px, calc(100vw - 20px));
     }
 
     .board-title h1 {

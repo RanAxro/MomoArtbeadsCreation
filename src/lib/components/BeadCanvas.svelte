@@ -23,7 +23,8 @@
   import {
     combineSelections,
     createSelectionRectangle,
-    getSameColorSelection
+    getSameColorSelection,
+    selectionOperationForPointer
   } from '$modules/editor/selection';
   import { createMagicWandSelection } from '$modules/editor/magic-wand';
   import {
@@ -1233,34 +1234,6 @@
     };
   }
 
-  function selectionOperationForPointer(
-    event: PointerEvent
-  ): SelectionOperation | 'clear' | null {
-    const command = event.ctrlKey || event.metaKey;
-
-    if (event.button === 0) {
-      if (command) {
-        return SelectionOperation.Union;
-      }
-      if (event.altKey) {
-        return SelectionOperation.Subtract;
-      }
-      return SelectionOperation.Replace;
-    }
-
-    if (event.button === 2) {
-      if (command) {
-        return SelectionOperation.Xor;
-      }
-      if (event.altKey) {
-        return SelectionOperation.Intersect;
-      }
-      return 'clear';
-    }
-
-    return null;
-  }
-
   function beginSelectionDrag(
     event: PointerEvent,
     operation: SelectionOperation
@@ -1986,7 +1959,7 @@
         editor.tool === EditorTool.MagicWand ||
         editor.tool === EditorTool.Select
       ) {
-        beginSelectionDrag(event, SelectionOperation.Replace);
+        beginSelectionDrag(event, editor.selectionOperation);
       } else {
         updateHoveredCell(null);
       }
@@ -2196,7 +2169,12 @@
       editor.tool === EditorTool.MagicWand ||
       editor.tool === EditorTool.Select
     ) {
-      const operation = selectionOperationForPointer(event);
+      const operation = selectionOperationForPointer(
+        editor.selectionOperation,
+        event.button,
+        event.ctrlKey || event.metaKey,
+        event.altKey
+      );
       if (operation === 'clear') {
         cancelSelectionDrag();
         editor.clearSelection();
