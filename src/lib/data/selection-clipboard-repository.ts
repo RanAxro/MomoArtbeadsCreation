@@ -1,15 +1,24 @@
-import type { SelectionClipboard } from '$model/selection-clipboard.model';
+import {
+  selectionClipboardSchema,
+  type SelectionClipboard
+} from '$model/selection-clipboard.model';
 import { getArtbeadsDatabase } from './database';
 
 export const selectionClipboardRepository = {
   async list(): Promise<SelectionClipboard[]> {
     const entries = await getArtbeadsDatabase()
       .selectionClipboard.toArray();
-    return entries.sort(compareClipboardRecency);
+    return entries
+      .flatMap((entry) => {
+        const parsed = selectionClipboardSchema.safeParse(entry);
+        return parsed.success ? [parsed.data] : [];
+      })
+      .sort(compareClipboardRecency);
   },
 
   async save(clipboard: SelectionClipboard): Promise<void> {
-    await getArtbeadsDatabase().selectionClipboard.put(clipboard);
+    const parsed = selectionClipboardSchema.parse(clipboard);
+    await getArtbeadsDatabase().selectionClipboard.put(parsed);
   },
 
   async touch(id: string): Promise<void> {
@@ -18,8 +27,12 @@ export const selectionClipboardRepository = {
     if (!clipboard) {
       return;
     }
+    const parsed = selectionClipboardSchema.safeParse(clipboard);
+    if (!parsed.success) {
+      return;
+    }
     await database.selectionClipboard.put({
-      ...clipboard,
+      ...parsed.data,
       lastUsedAt: new Date().toISOString()
     });
   },

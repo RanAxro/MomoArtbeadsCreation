@@ -15,7 +15,6 @@ import {
 import {
   DEFAULT_PALETTE_COLOR_PREFIX,
   DEFAULT_PALETTE_NAME,
-  PALETTE_CODE_PAD_LENGTH,
   PALETTE_MAX_COLORS,
   type BeadPalette
 } from '$model/palette.model';
@@ -994,15 +993,11 @@ export async function decodeBoardData(
       id: paletteId,
       name: paletteName || DEFAULT_PALETTE_NAME,
       colors: records.map((record, index) => {
-        const code = String(index + 1).padStart(
-          PALETTE_CODE_PAD_LENGTH,
-          '0'
-        );
+        const hex = rgbToHex(record);
         return {
           id: `${paletteId}-${index + 1}`,
-          name: `${DEFAULT_PALETTE_COLOR_PREFIX}${code}`,
-          hex: rgbToHex(record),
-          code
+          name: `${DEFAULT_PALETTE_COLOR_PREFIX}${hex}`,
+          hex
         };
       })
     };

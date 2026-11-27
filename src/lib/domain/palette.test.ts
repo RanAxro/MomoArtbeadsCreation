@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { hexToRgb, rgbToHex } from './color';
 import {
   ARTBEAD_CATALOG,
+  artbeadCodeForHex,
   clonePalette,
   createArtbeadCode,
   createColorIndex,
@@ -36,9 +37,13 @@ describe('palette domain', () => {
       '6',
       '7'
     ]);
-    expect(createStarterPalette().colors.map((color) => color.code)).toEqual(
-      ARTBEAD_CATALOG.map((color) => color.code)
-    );
+    const starter = createStarterPalette();
+    expect(starter.colors).toHaveLength(ARTBEAD_COLOR_COUNT);
+    expect(artbeadCodeForHex('#CA966B')).toBe('A11');
+    expect(
+      starter.colors.find((color) => color.hex === '#CA966B')
+    ).toBeDefined();
+    expect(starter.colors[0]).not.toHaveProperty('code');
   });
 
   it('clones reactive palette proxies into storage-safe plain data', () => {

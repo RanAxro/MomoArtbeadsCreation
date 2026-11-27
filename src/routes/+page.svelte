@@ -801,9 +801,9 @@
       paletteSource={editor.project.paletteSource}
       selectedColorIndex={editor.selectedColorIndex}
       {usage}
-      onselect={(code, hex) => editor.selectCatalogColor(code, hex)}
-      ontogglecurrentcolor={(code, hex) =>
-        editor.toggleProjectPaletteColor(code, hex)}
+      onselect={(hex) => editor.selectCatalogColor(hex)}
+      ontogglecurrentcolor={(hex) =>
+        editor.toggleProjectPaletteColor(hex)}
       onreordercurrentcolor={(fromIndex, toIndex) =>
         editor.movePaletteColor(fromIndex, toIndex)}
       onpalettesourcechange={(source) => editor.setPaletteSource(source)}

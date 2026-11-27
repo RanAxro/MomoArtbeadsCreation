@@ -8,7 +8,6 @@ import {
   DEFAULT_CUSTOM_COLOR_HEX,
   DEFAULT_CUSTOM_COLOR_NAME_PREFIX,
   DEFAULT_PALETTE_NAME,
-  PALETTE_CODE_PAD_LENGTH,
   type BeadColor,
   type BeadPalette,
   type IndexedColor
@@ -17,6 +16,7 @@ import {
 export type { BeadColor, BeadPalette, IndexedColor } from '$model/palette.model';
 
 export interface ArtbeadCatalogColor extends BeadColor {
+  code: string;
   familyCode: string;
   familyLabelKey: string;
   paletteNumber: number;
@@ -71,8 +71,7 @@ export function createStarterPalette(id = crypto.randomUUID()): BeadPalette {
       return {
         id: `${id}-${index + 1}`,
         name: code,
-        hex,
-        code
+        hex
       };
     })
   };
@@ -89,7 +88,12 @@ export function createEmptyPalette(id = crypto.randomUUID()): BeadPalette {
 export function clonePalette(palette: BeadPalette): BeadPalette {
   return {
     ...palette,
-    colors: palette.colors.map((color) => ({ ...color }))
+    colors: palette.colors.map((color) => ({
+      id: color.id,
+      name: color.name,
+      hex: color.hex,
+      ...(color.stock === undefined ? {} : { stock: color.stock })
+    }))
   };
 }
 
@@ -97,9 +101,29 @@ export function createEmptyBeadColor(paletteId: string, index: number): BeadColo
   return {
     id: `${paletteId}-custom-${crypto.randomUUID()}`,
     name: `${DEFAULT_CUSTOM_COLOR_NAME_PREFIX}${index}`,
-    hex: DEFAULT_CUSTOM_COLOR_HEX,
-    code: String(index).padStart(PALETTE_CODE_PAD_LENGTH, '0')
+    hex: DEFAULT_CUSTOM_COLOR_HEX
   };
+}
+
+export function normalizeHexColor(hex: string): string {
+  return hex.trim().toUpperCase();
+}
+
+export function artbeadCatalogColorForHex(
+  hex: string
+): ArtbeadCatalogColor | undefined {
+  const normalizedHex = normalizeHexColor(hex);
+  return ARTBEAD_CATALOG.find(
+    (color) => normalizeHexColor(color.hex) === normalizedHex
+  );
+}
+
+export function artbeadHexForCode(code: string): string | undefined {
+  return ARTBEAD_CATALOG.find((color) => color.code === code)?.hex;
+}
+
+export function artbeadCodeForHex(hex: string): string {
+  return artbeadCatalogColorForHex(hex)?.code ?? normalizeHexColor(hex);
 }
 
 export function createColorIndex(palette: BeadPalette): IndexedColor[] {

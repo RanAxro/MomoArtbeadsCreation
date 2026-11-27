@@ -19,11 +19,6 @@ export const DEFAULT_DRAWING_EXPORT_SETTINGS: DrawingExportSettings = {
   showArtbeadCodes: true
 };
 
-export function artbeadDisplayCode(code: string, hex: string): string {
-  const normalizedCode = code.trim();
-  return normalizedCode || hex.trim().toUpperCase();
-}
-
 export function createDrawingExportFilename(
   projectName: string,
   suffix: string

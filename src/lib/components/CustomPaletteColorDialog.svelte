@@ -1,7 +1,10 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
   import Icon from '$lib/components/Icon.svelte';
-  import { createArtbeadCode } from '$domain/palette';
+  import {
+    createArtbeadCode,
+    normalizeHexColor
+  } from '$domain/palette';
   import { hexToRgb } from '$domain/color';
   import {
     ARTBEAD_COLOR_FAMILIES,
@@ -14,14 +17,16 @@
 
   interface Props {
     open: boolean;
-    selectedCodes: readonly string[];
-    ontoggle: (code: string) => void;
+    selectedHexes: readonly string[];
+    ontoggle: (hex: string) => void;
     onclose: () => void;
   }
 
-  let { open, selectedCodes, ontoggle, onclose }: Props = $props();
+  let { open, selectedHexes, ontoggle, onclose }: Props = $props();
   let activeCategoryId = $state(DEFAULT_ARTBEAD_FAMILY_CODE);
-  let selected = $derived(new Set(selectedCodes));
+  let selected = $derived(
+    new Set(selectedHexes.map((hex) => normalizeHexColor(hex)))
+  );
   let activeFamily = $derived(
     ARTBEAD_COLOR_FAMILIES.find(
       (family) => family.code === activeCategoryId
@@ -163,18 +168,18 @@
               {#each palette as color (color.code)}
                 <button
                   class="palette-color"
-                  class:selected={selected.has(color.code)}
+                  class:selected={selected.has(normalizeHexColor(color.hex))}
                   type="button"
                   aria-label={color.code}
-                  aria-pressed={selected.has(color.code)}
+                  aria-pressed={selected.has(normalizeHexColor(color.hex))}
                   title={color.code}
-                  onclick={() => ontoggle(color.code)}
+                  onclick={() => ontoggle(color.hex)}
                 >
                   <span
                     class="palette-swatch"
                     style:--color={color.hex}
                   >
-                    {#if selected.has(color.code)}
+                    {#if selected.has(normalizeHexColor(color.hex))}
                       <span class="selected-mark" aria-hidden="true">✓</span>
                     {/if}
                   </span>
@@ -190,7 +195,7 @@
     <footer class="dialog-footer">
       <span>
         {$_('tray.selectedColorCount', {
-          values: { count: selectedCodes.length }
+          values: { count: selectedHexes.length }
         })}
       </span>
       <button class="button primary" type="button" onclick={onclose}>

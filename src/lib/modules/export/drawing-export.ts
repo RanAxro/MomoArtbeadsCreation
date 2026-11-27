@@ -1,5 +1,4 @@
 import {
-  artbeadDisplayCode,
   DRAWING_EXPORT_MAX_DIMENSION,
   DRAWING_EXPORT_MAX_PIXELS,
   type DrawingExportSettings
@@ -8,6 +7,7 @@ import { BeadShape } from '$model/bead-shape.model';
 import type { BeadProject } from '$model/project.model';
 import { BoardBackground } from '$model/view.model';
 import { requiredArtbeadUsage } from '$domain/project';
+import { artbeadCodeForHex } from '$domain/palette';
 
 export interface DrawingSheetLabels {
   authorPrefix: string;
@@ -429,7 +429,7 @@ function drawArtbeadCodes(
   const maximumWidth = Math.max(1, cellSize * 0.88);
   const maximumFontSize = Math.max(2, Math.min(12, cellSize * 0.42));
   const labels = project.palette.colors.map((color) => {
-    const code = artbeadDisplayCode(color.code, color.hex);
+    const code = artbeadCodeForHex(color.hex);
     let fontSize = maximumFontSize;
     setFont(context, fontSize, 700);
     while (fontSize > 0.8 && context.measureText(code).width > maximumWidth) {
@@ -703,7 +703,7 @@ function drawLegend(
     context.textAlign = 'left';
     context.textBaseline = 'middle';
     context.fillStyle = INK;
-    const code = artbeadDisplayCode(color.code, color.hex);
+    const code = artbeadCodeForHex(color.hex);
     const codeWidth = itemWidth - swatchSize - 9;
     let codeFontSize = maximumCodeFontSize;
     setFont(context, codeFontSize, 700);

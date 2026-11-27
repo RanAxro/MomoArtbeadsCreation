@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createProject } from '$domain/project';
 import {
-  artbeadDisplayCode,
   createDrawingExportFilename,
   DEFAULT_DRAWING_EXPORT_SETTINGS
 } from '$model/drawing-export.model';
+import { artbeadCodeForHex } from '$domain/palette';
 import {
   calculateDrawingSheetLayout,
   calculateRulerFontSize
@@ -65,7 +65,6 @@ describe('drawing export', () => {
     project.palette.colors = Array.from({ length: 30 }, (_, index) => ({
       id: `color-${index}`,
       name: `Color ${index}`,
-      code: `T${index + 1}`,
       hex: `#${(index + 1).toString(16).padStart(6, '0')}`
     }));
     project.cells = Array.from({ length: 32 }, (_, index) => index + 1);
@@ -92,9 +91,9 @@ describe('drawing export', () => {
     );
   });
 
-  it('uses the hex value when an Artbead has no code', () => {
-    expect(artbeadDisplayCode('A13', '#aabbcc')).toBe('A13');
-    expect(artbeadDisplayCode('   ', '#aabbcc')).toBe('#AABBCC');
+  it('resolves an Artbead code from the configured color value', () => {
+    expect(artbeadCodeForHex('#CA966B')).toBe('A11');
+    expect(artbeadCodeForHex('#aabbcc')).toBe('#AABBCC');
   });
 
   it('shrinks ruler text to fit every label', () => {

@@ -27,7 +27,10 @@
     MAX_PROJECT_NAME_LENGTH
   } from '$model/project.model';
   import type { BeadProject } from '$model/project.model';
-  import { createStarterPalette } from '$domain/palette';
+  import {
+    artbeadCodeForHex,
+    createStarterPalette
+  } from '$domain/palette';
   import { createProject } from '$domain/project';
   import {
     calculateAspectCrop,
@@ -418,7 +421,10 @@
           <div class="settings-content">
             <div class="color-strip">
               {#each palette.colors as color (color.id)}
-                <span style:--color={color.hex} title={color.code}></span>
+                <span
+                  style:--color={color.hex}
+                  title={artbeadCodeForHex(color.hex)}
+                ></span>
               {/each}
             </div>
             <p class="dimension-note">

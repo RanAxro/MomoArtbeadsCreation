@@ -12,6 +12,7 @@
     EditorTool
   } from '$model/editor.model';
   import { BoardBackground } from '$model/view.model';
+  import { artbeadCodeForHex } from '$domain/palette';
   import {
     boardOriginForView,
     calculateBoardLayout,
@@ -2571,7 +2572,7 @@
       ></span>
       <span class="bead-info-copy">
         <strong>{hoveredBead.color.name}</strong>
-        <small>{hoveredBead.color.code}</small>
+        <small>{artbeadCodeForHex(hoveredBead.color.hex)}</small>
         <small>
           {$_('assembly.cellPosition', {
             values: {

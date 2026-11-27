@@ -18,7 +18,10 @@ import {
   DEFAULT_BEAD_SHAPE
 } from '$model/bead-shape.model';
 import { PaletteSourceType } from '$model/palette-source.model';
-import { createStarterPalette } from './palette';
+import {
+  artbeadCodeForHex,
+  createStarterPalette
+} from './palette';
 
 describe('project domain', () => {
   it('creates an empty project with the requested dimensions', () => {
@@ -240,6 +243,8 @@ describe('project domain', () => {
     expect(required.map((color) => color.colorIndex)).toEqual([2, 1]);
     expect(required.map((color) => color.count)).toEqual([6, 3]);
     expect(required.some((color) => color.colorIndex === 3)).toBe(false);
-    expect(required[0].code).toBe(project.palette.colors[1].code);
+    expect(required[0].code).toBe(
+      artbeadCodeForHex(project.palette.colors[1].hex)
+    );
   });
 });

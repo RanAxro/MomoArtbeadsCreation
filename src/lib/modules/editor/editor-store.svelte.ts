@@ -37,7 +37,12 @@ import {
   MIN_MAGIC_WAND_THRESHOLD,
   type SelectionOperation
 } from '$model/selection.model';
-import { clonePalette, createEmptyBeadColor } from '$domain/palette';
+import {
+  artbeadCodeForHex,
+  clonePalette,
+  createEmptyBeadColor,
+  normalizeHexColor
+} from '$domain/palette';
 import { fillProjectRegion, touchProject } from '$domain/project';
 import { clampBoardZoom } from './board-layout';
 import { eraseSelectedCells } from './selection';
@@ -102,6 +107,7 @@ export class EditorStore {
 
     this.project = {
       ...project,
+      palette: clonePalette(project.palette),
       paletteSource: project.paletteSource ?? {
         ...DEFAULT_PROJECT_PALETTE_SOURCE
       },
@@ -408,21 +414,15 @@ export class EditorStore {
     this.selectedColorIndex = index;
   }
 
-  selectCatalogColor(code: string, hex: string): void {
+  selectCatalogColor(hex: string): void {
     if (!this.project) {
       return;
     }
 
-    let matchedByHex = false;
+    const normalizedHex = normalizeHexColor(hex);
     let colorIndex = this.project.palette.colors.findIndex(
-      (color) => color.code === code
+      (color) => normalizeHexColor(color.hex) === normalizedHex
     );
-    if (colorIndex < 0) {
-      colorIndex = this.project.palette.colors.findIndex(
-        (color) => color.hex.toUpperCase() === hex.toUpperCase()
-      );
-      matchedByHex = colorIndex >= 0;
-    }
 
     if (colorIndex < 0) {
       if (this.project.palette.colors.length >= PALETTE_MAX_COLORS) {
@@ -431,45 +431,32 @@ export class EditorStore {
       this.project.palette.colors = [
         ...this.project.palette.colors,
         {
-          id: `${this.project.palette.id}-${code}`,
-          name: code,
-          hex,
-          code
+          id: `${this.project.palette.id}-${normalizedHex.slice(1)}`,
+          name: artbeadCodeForHex(normalizedHex),
+          hex: normalizedHex
         }
       ];
       colorIndex = this.project.palette.colors.length - 1;
-      this.markChanged();
-    } else if (matchedByHex) {
-      this.project.palette.colors[colorIndex] = {
-        ...this.project.palette.colors[colorIndex],
-        name: code,
-        code
-      };
-      this.project.palette.colors = [...this.project.palette.colors];
       this.markChanged();
     }
 
     this.selectedColorIndex = colorIndex + 1;
   }
 
-  toggleProjectPaletteColor(code: string, hex: string): void {
+  toggleProjectPaletteColor(hex: string): void {
     if (!this.project) {
       return;
     }
 
-    let colorIndex = this.project.palette.colors.findIndex(
-      (color) => color.code === code
+    const normalizedHex = normalizeHexColor(hex);
+    const colorIndex = this.project.palette.colors.findIndex(
+      (color) => normalizeHexColor(color.hex) === normalizedHex
     );
-    if (colorIndex < 0) {
-      colorIndex = this.project.palette.colors.findIndex(
-        (color) => color.hex.toUpperCase() === hex.toUpperCase()
-      );
-    }
     if (colorIndex >= 0) {
       this.removePaletteColor(colorIndex + 1);
       return;
     }
-    this.selectCatalogColor(code, hex);
+    this.selectCatalogColor(normalizedHex);
   }
 
   removePaletteColor(index: number): void {

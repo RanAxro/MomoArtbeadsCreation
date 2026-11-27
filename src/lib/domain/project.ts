@@ -1,4 +1,4 @@
-import { createEmptyPalette } from './palette';
+import { artbeadCodeForHex, createEmptyPalette } from './palette';
 import { DEFAULT_BEAD_SHAPE } from '$model/bead-shape.model';
 import { DEFAULT_EDITOR_TOOL } from '$model/editor.model';
 import { DEFAULT_PROJECT_PALETTE_SOURCE } from '$model/palette-source.model';
@@ -115,7 +115,7 @@ export function requiredArtbeadUsage(
       colorIndex: index + 1,
       id: color.id,
       hex: color.hex,
-      code: color.code,
+      code: artbeadCodeForHex(color.hex),
       count: usage[index + 1] ?? 0
     }))
     .filter((color) => color.count > 0)

@@ -22,7 +22,7 @@ export const customPaletteRepository = {
     const scheme: CustomPaletteScheme = {
       id: crypto.randomUUID(),
       name,
-      colorCodes: [],
+      colorHexes: [],
       schemaVersion: CUSTOM_PALETTE_SCHEMA_VERSION,
       createdAt: now,
       updatedAt: now
@@ -34,7 +34,7 @@ export const customPaletteRepository = {
   async save(scheme: CustomPaletteScheme): Promise<void> {
     await getArtbeadsDatabase().customPaletteSchemes.put({
       ...scheme,
-      colorCodes: [...scheme.colorCodes]
+      colorHexes: [...scheme.colorHexes]
     });
   },
 

@@ -6,6 +6,7 @@ import {
 } from '$model/palette-source.model';
 import type { ProjectSummary } from '$model/workspace.model';
 import { getArtbeadsDatabase } from './database';
+import { clonePalette } from '$domain/palette';
 
 export type { ProjectSummary } from '$model/workspace.model';
 
@@ -23,7 +24,7 @@ export const projectRepository = {
       height: project.height,
       updatedAt: project.updatedAt,
       pixels: project.cells,
-      palette: project.palette
+      palette: clonePalette(project.palette)
     }));
   },
 
@@ -37,6 +38,7 @@ export const projectRepository = {
     );
     return {
       ...project,
+      palette: clonePalette(project.palette),
       paletteSource: paletteSource.success
         ? paletteSource.data
         : { ...DEFAULT_PROJECT_PALETTE_SOURCE }

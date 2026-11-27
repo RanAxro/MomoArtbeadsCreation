@@ -11,7 +11,6 @@ const beadColorSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   hex: z.string().regex(HEX_COLOR_VALUE_PATTERN),
-  code: z.string(),
   stock: z.number().int().nonnegative().optional()
 });
 
@@ -33,5 +32,4 @@ export const DEFAULT_PALETTE_NAME = 'Artbead Palette';
 export const DEFAULT_PALETTE_COLOR_PREFIX = 'A';
 export const DEFAULT_CUSTOM_COLOR_NAME_PREFIX = '自定义色 ';
 export const DEFAULT_CUSTOM_COLOR_HEX = WHITE_HEX;
-export const PALETTE_CODE_PAD_LENGTH = 2;
 export const DEFAULT_SELECTED_PALETTE_INDEX = 1;

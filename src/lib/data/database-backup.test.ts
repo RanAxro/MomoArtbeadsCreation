@@ -3,8 +3,8 @@ import { selectionClipboardSchema } from '$model/selection-clipboard.model';
 import { PROJECT_DATABASE_VERSION } from '$model/data.model';
 
 describe('database backup', () => {
-  it('uses database version 2 for custom palette schemes', () => {
-    expect(PROJECT_DATABASE_VERSION).toBe(2);
+  it('uses database version 3 without stored color codes', () => {
+    expect(PROJECT_DATABASE_VERSION).toBe(3);
   });
 
   it('creates a stable timestamped export filename', async () => {
@@ -42,14 +42,12 @@ describe('database backup', () => {
             {
               id: 'color-1',
               name: 'A01',
-              hex: '#FFFFFF',
-              code: '01'
+              hex: '#FFFFFF'
             },
             {
               id: 'color-2',
               name: 'A02',
-              hex: '#000000',
-              code: '02'
+              hex: '#000000'
             }
           ]
         }
@@ -59,6 +57,11 @@ describe('database backup', () => {
     const result = selectionClipboardSchema.safeParse(clipboard);
 
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.board.palette.colors[0]).not.toHaveProperty(
+        'code'
+      );
+    }
     expect(
       selectionClipboardSchema.safeParse({
         ...clipboard,
@@ -92,8 +95,7 @@ describe('database backup', () => {
             {
               id: 'color-1',
               name: 'A01',
-              hex: '#FFFFFF',
-              code: '01'
+              hex: '#FFFFFF'
             }
           ]
         }

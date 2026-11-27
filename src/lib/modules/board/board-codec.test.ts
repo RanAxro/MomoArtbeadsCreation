@@ -27,20 +27,17 @@ function createTestPalette(): BeadPalette {
       {
         id: 'black',
         name: '黑色',
-        code: '01',
         hex: '#000000',
         stock: 12
       },
       {
         id: 'white',
         name: '白色',
-        code: '02',
         hex: '#FFFFFF'
       },
       {
         id: 'blue',
         name: '蓝色',
-        code: '03',
         hex: '#4E89B8',
         stock: 0
       }
@@ -85,16 +82,14 @@ describe('board binary codec', () => {
       '#FFFFFF',
       '#4E89B8'
     ]);
-    expect(decoded.palette.colors.map((color) => color.code)).toEqual([
-      '01',
-      '02',
-      '03'
-    ]);
     expect(decoded.palette.colors.map((color) => color.name)).toEqual([
-      'A01',
-      'A02',
-      'A03'
+      'A#000000',
+      'A#FFFFFF',
+      'A#4E89B8'
     ]);
+    expect(
+      decoded.palette.colors.every((color) => !('code' in color))
+    ).toBe(true);
     expect(decoded.palette.colors.some((color) => color.stock !== undefined))
       .toBe(false);
   });

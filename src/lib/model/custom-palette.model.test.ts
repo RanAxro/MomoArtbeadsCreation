@@ -8,7 +8,7 @@ describe('custom palette scheme model', () => {
   const scheme = {
     id: 'palette-1',
     name: '我的调色板',
-    colorCodes: ['1', 'A11', 'A28'],
+    colorHexes: ['#4F4745', '#CA966B', '#9D6745'],
     schemaVersion: CUSTOM_PALETTE_SCHEMA_VERSION,
     createdAt: '2026-11-27T12:00:00.000Z',
     updatedAt: '2026-11-27T12:05:00.000Z'
@@ -19,7 +19,7 @@ describe('custom palette scheme model', () => {
     expect(
       customPaletteSchemeSchema.safeParse({
         ...scheme,
-        colorCodes: []
+        colorHexes: []
       }).success
     ).toBe(true);
   });
@@ -28,7 +28,7 @@ describe('custom palette scheme model', () => {
     expect(
       customPaletteSchemeSchema.safeParse({
         ...scheme,
-        colorCodes: ['1', '1']
+        colorHexes: ['#4F4745', '#4f4745']
       }).success
     ).toBe(false);
   });

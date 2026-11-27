@@ -4,7 +4,12 @@
   import CustomPaletteColorDialog from '$lib/components/CustomPaletteColorDialog.svelte';
   import CustomPaletteSchemeSelect from '$lib/components/CustomPaletteSchemeSelect.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import { ARTBEAD_CATALOG, createArtbeadCode } from '$domain/palette';
+  import {
+    artbeadCatalogColorForHex,
+    artbeadCodeForHex,
+    createArtbeadCode,
+    normalizeHexColor
+  } from '$domain/palette';
   import { hexToRgb } from '$domain/color';
   import { customPaletteRepository } from '$data/custom-palette-repository';
   import {
@@ -32,8 +37,8 @@
     paletteSource: ProjectPaletteSource;
     selectedColorIndex: number;
     usage: readonly number[];
-    onselect: (code: string, hex: string) => void;
-    ontogglecurrentcolor: (code: string, hex: string) => void;
+    onselect: (hex: string) => void;
+    ontogglecurrentcolor: (hex: string) => void;
     onreordercurrentcolor: (fromIndex: number, toIndex: number) => void;
     onpalettesourcechange: (source: ProjectPaletteSource) => void;
   }
@@ -49,9 +54,6 @@
     onreordercurrentcolor,
     onpalettesourcechange
   }: Props = $props();
-  const catalogByCode = new Map(
-    ARTBEAD_CATALOG.map((color) => [color.code, color])
-  );
   const CUSTOM_PALETTE_REORDER_HOLD_MS = 320;
   const CUSTOM_PALETTE_REORDER_CANCEL_DISTANCE = 8;
   let activeTab = $state<ArtbeadTrayTab>(
@@ -81,7 +83,7 @@
   let customPaletteGrid: HTMLDivElement | undefined = $state();
   let customPaletteReorder = $state<{
     pointerId: number;
-    code: string;
+    hex: string;
     startX: number;
     startY: number;
     active: boolean;
@@ -96,11 +98,10 @@
 
   let selectedColor = $derived(palette.colors[selectedColorIndex - 1]);
   let selectedCode = $derived(
-    ARTBEAD_CATALOG.find((color) => color.code === selectedColor?.code)?.code ??
-      ARTBEAD_CATALOG.find(
-        (color) => color.hex === selectedColor?.hex.toUpperCase()
-      )?.code ??
-      selectedColor?.code
+    selectedColor ? artbeadCodeForHex(selectedColor.hex) : undefined
+  );
+  let selectedHex = $derived(
+    selectedColor ? normalizeHexColor(selectedColor.hex) : undefined
   );
   let activeFamily = $derived(
     ARTBEAD_COLOR_FAMILIES.find(
@@ -139,19 +140,15 @@
     customPalettes.find((scheme) => scheme.id === activeCustomPaletteId)
   );
   let activeCustomPaletteColors = $derived.by(() =>
-    (activeCustomPalette?.colorCodes ?? []).flatMap((code) => {
-      const color = catalogByCode.get(code);
+    (activeCustomPalette?.colorHexes ?? []).flatMap((hex) => {
+      const color = artbeadCatalogColorForHex(hex);
       return color ? [color] : [];
     })
   );
-  let currentPaletteCatalogCodes = $derived.by(() =>
+  let currentPaletteCatalogHexes = $derived.by(() =>
     palette.colors.flatMap((color) => {
-      const catalogColor =
-        ARTBEAD_CATALOG.find((candidate) => candidate.code === color.code) ??
-        ARTBEAD_CATALOG.find(
-          (candidate) => candidate.hex === color.hex.toUpperCase()
-        );
-      return catalogColor ? [catalogColor.code] : [];
+      const catalogColor = artbeadCatalogColorForHex(color.hex);
+      return catalogColor ? [normalizeHexColor(catalogColor.hex)] : [];
     })
   );
 
@@ -358,7 +355,7 @@
   function queueCustomPaletteSave(scheme: CustomPaletteScheme): void {
     const snapshot: CustomPaletteScheme = {
       ...scheme,
-      colorCodes: [...scheme.colorCodes]
+      colorHexes: [...scheme.colorHexes]
     };
     customPaletteSaveQueue = customPaletteSaveQueue
       .then(() => customPaletteRepository.save(snapshot))
@@ -367,8 +364,8 @@
       });
   }
 
-  function updateCustomPaletteColorCodes(
-    colorCodes: string[],
+  function updateCustomPaletteColorHexes(
+    colorHexes: string[],
     persist: boolean
   ): void {
     const scheme = activeCustomPalette;
@@ -378,7 +375,7 @@
 
     const updated: CustomPaletteScheme = {
       ...scheme,
-      colorCodes,
+      colorHexes,
       updatedAt: new Date().toISOString()
     };
     customPalettes = [
@@ -391,17 +388,18 @@
     }
   }
 
-  function toggleCustomPaletteColor(code: string): void {
+  function toggleCustomPaletteColor(hex: string): void {
     const scheme = activeCustomPalette;
     if (!scheme) {
       return;
     }
 
-    const selected = scheme.colorCodes.includes(code);
-    const colorCodes = selected
-      ? scheme.colorCodes.filter((candidate) => candidate !== code)
-      : [...scheme.colorCodes, code];
-    updateCustomPaletteColorCodes(colorCodes, true);
+    const normalizedHex = normalizeHexColor(hex);
+    const selected = scheme.colorHexes.includes(normalizedHex);
+    const colorHexes = selected
+      ? scheme.colorHexes.filter((candidate) => candidate !== normalizedHex)
+      : [...scheme.colorHexes, normalizedHex];
+    updateCustomPaletteColorHexes(colorHexes, true);
   }
 
   function endCustomPaletteReorder(persist: boolean): void {
@@ -422,7 +420,7 @@
 
   function beginCustomPaletteReorder(
     event: PointerEvent,
-    code: string
+    hex: string
   ): void {
     if (
       event.button !== 0 ||
@@ -430,7 +428,7 @@
       !customPaletteGrid ||
       (activeTab === ArtbeadTrayTab.Current
         ? palette.colors.length
-        : (activeCustomPalette?.colorCodes.length ?? 0)) < 2
+        : (activeCustomPalette?.colorHexes.length ?? 0)) < 2
     ) {
       return;
     }
@@ -439,7 +437,7 @@
     customPaletteGrid.setPointerCapture(event.pointerId);
     customPaletteReorder = {
       pointerId: event.pointerId,
-      code,
+      hex,
       startX: event.clientX,
       startY: event.clientY,
       active: false
@@ -448,7 +446,7 @@
       customPaletteReorderTimer = undefined;
       if (
         customPaletteReorder?.pointerId !== event.pointerId ||
-        customPaletteReorder.code !== code
+        customPaletteReorder.hex !== hex
       ) {
         return;
       }
@@ -480,21 +478,21 @@
     event.preventDefault();
     const target = document
       .elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>('[data-palette-color-code]');
+      ?.closest<HTMLElement>('[data-palette-color-hex]');
     if (!target || !customPaletteGrid?.contains(target)) {
       return;
     }
 
-    const targetCode = target.dataset.paletteColorCode;
+    const targetHex = target.dataset.paletteColorHex;
     if (activeTab === ArtbeadTrayTab.Current) {
-      if (!targetCode || targetCode === reorder.code) {
+      if (!targetHex || targetHex === reorder.hex) {
         return;
       }
       const fromIndex = palette.colors.findIndex(
-        (color) => color.code === reorder.code
+        (color) => normalizeHexColor(color.hex) === reorder.hex
       );
       const toIndex = palette.colors.findIndex(
-        (color) => color.code === targetCode
+        (color) => normalizeHexColor(color.hex) === targetHex
       );
       if (fromIndex >= 0 && toIndex >= 0) {
         onreordercurrentcolor(fromIndex + 1, toIndex + 1);
@@ -503,19 +501,19 @@
     }
 
     const scheme = activeCustomPalette;
-    if (!targetCode || !scheme || targetCode === reorder.code) {
+    if (!targetHex || !scheme || targetHex === reorder.hex) {
       return;
     }
-    const currentIndex = scheme.colorCodes.indexOf(reorder.code);
-    const targetIndex = scheme.colorCodes.indexOf(targetCode);
+    const currentIndex = scheme.colorHexes.indexOf(reorder.hex);
+    const targetIndex = scheme.colorHexes.indexOf(targetHex);
     if (currentIndex < 0 || targetIndex < 0) {
       return;
     }
 
-    const colorCodes = [...scheme.colorCodes];
-    const [moved] = colorCodes.splice(currentIndex, 1);
-    colorCodes.splice(targetIndex, 0, moved);
-    updateCustomPaletteColorCodes(colorCodes, false);
+    const colorHexes = [...scheme.colorHexes];
+    const [moved] = colorHexes.splice(currentIndex, 1);
+    colorHexes.splice(targetIndex, 0, moved);
+    updateCustomPaletteColorHexes(colorHexes, false);
   }
 
   function finishCustomPaletteReorder(event: PointerEvent): void {
@@ -629,26 +627,30 @@
           onpointercancel={cancelCustomPaletteReorder}
           onlostpointercapture={cancelCustomPaletteReorder}
         >
-          {#each activeCustomPaletteColors as color (color.code)}
+          {#each activeCustomPaletteColors as color (color.hex)}
             <button
               class="custom-palette-color"
               class:reordering={
-                customPaletteReorder?.code === color.code &&
+                customPaletteReorder?.hex ===
+                  normalizeHexColor(color.hex) &&
                 customPaletteReorder.active
               }
               type="button"
-              data-palette-color-code={color.code}
+              data-palette-color-hex={normalizeHexColor(color.hex)}
               aria-label={color.code}
               title={`${color.code} · ${$_('tray.longPressReorder')}`}
               onpointerdown={(event) =>
-                beginCustomPaletteReorder(event, color.code)}
+                beginCustomPaletteReorder(
+                  event,
+                  normalizeHexColor(color.hex)
+                )}
               oncontextmenu={(event) => event.preventDefault()}
               onclick={() => {
                 if (suppressCustomPaletteClick) {
                   suppressCustomPaletteClick = false;
                   return;
                 }
-                onselect(color.code, color.hex);
+                onselect(color.hex);
               }}
             >
               <span style:--color={color.hex}></span>
@@ -690,22 +692,22 @@
           <button
             class="custom-palette-color"
             class:reordering={
-              customPaletteReorder?.code === color.code &&
+              customPaletteReorder?.hex === normalizeHexColor(color.hex) &&
               customPaletteReorder.active
             }
             type="button"
-            data-palette-color-code={color.code}
-            aria-label={color.code}
-            title={`${color.code} · ${$_('tray.longPressReorder')}`}
+            data-palette-color-hex={normalizeHexColor(color.hex)}
+            aria-label={artbeadCodeForHex(color.hex)}
+            title={`${artbeadCodeForHex(color.hex)} · ${$_('tray.longPressReorder')}`}
             onpointerdown={(event) =>
-              beginCustomPaletteReorder(event, color.code)}
+              beginCustomPaletteReorder(event, color.hex)}
             oncontextmenu={(event) => event.preventDefault()}
             onclick={() => {
               if (suppressCustomPaletteClick) {
                 suppressCustomPaletteClick = false;
                 return;
               }
-              onselect(color.code, color.hex);
+              onselect(color.hex);
             }}
           >
             <span style:--color={color.hex}></span>
@@ -775,12 +777,16 @@
               {#each paletteGroup.colors as color (color.code)}
                 <button
                   class="palette-color"
-                  class:active={selectedCode === color.code}
+                  class:active={
+                    selectedHex === normalizeHexColor(color.hex)
+                  }
                   type="button"
                   aria-label={color.code}
-                  aria-pressed={selectedCode === color.code}
+                  aria-pressed={
+                    selectedHex === normalizeHexColor(color.hex)
+                  }
                   title={color.code}
-                  onclick={() => onselect(color.code, color.hex)}
+                  onclick={() => onselect(color.hex)}
                 >
                   <span
                     class="palette-swatch"
@@ -804,7 +810,7 @@
       ></span>
       <div class="selected-color-info">
         <small>{$_('tray.selected')}</small>
-        <strong>{selectedColor.code}</strong>
+        <strong>{selectedCode}</strong>
       </div>
       <span class="selected-usage">{usage[selectedColorIndex] ?? 0}</span>
     </div>
@@ -813,20 +819,15 @@
 
 <CustomPaletteColorDialog
   open={customPaletteDialogOpen}
-  selectedCodes={activeCustomPalette?.colorCodes ?? []}
+  selectedHexes={activeCustomPalette?.colorHexes ?? []}
   ontoggle={toggleCustomPaletteColor}
   onclose={() => (customPaletteDialogOpen = false)}
 />
 
 <CustomPaletteColorDialog
   open={currentPaletteDialogOpen}
-  selectedCodes={currentPaletteCatalogCodes}
-  ontoggle={(code) => {
-    const color = catalogByCode.get(code);
-    if (color) {
-      ontogglecurrentcolor(color.code, color.hex);
-    }
-  }}
+  selectedHexes={currentPaletteCatalogHexes}
+  ontoggle={(hex) => ontogglecurrentcolor(hex)}
   onclose={() => (currentPaletteDialogOpen = false)}
 />
 
