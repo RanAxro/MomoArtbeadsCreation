@@ -71,11 +71,25 @@
     "importShareCode": "导入分享码方案"
   },
   "tray": {
-    "title": "艺点点",
-    "english": "Artbeads",
+    "title": "艺点点调色盒",
+    "english": "Artbead Palette",
     "count": "{count} 种艺点点",
     "empty": "打开方案后即可选择艺点点",
-    "selected": "当前艺点点"
+    "selected": "当前艺点点",
+    "tabsLabel": "艺点点调色盒页面",
+    "schemeTab": "方案",
+    "completeTab": "完整",
+    "familiesLabel": "艺点点颜色分类",
+    "paletteCount": "{count} 个色盘",
+    "families": {
+      "orange": "橙",
+      "yellow": "黄",
+      "green": "绿",
+      "blue": "蓝",
+      "purple": "紫",
+      "pink": "粉",
+      "red": "红"
+    }
   },
   "clipboard": {
     "title": "近期剪贴板",

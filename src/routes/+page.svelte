@@ -2,11 +2,11 @@
   import { goto } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import { _ } from 'svelte-i18n';
+  import ArtbeadPaletteTray from '$lib/components/ArtbeadPaletteTray.svelte';
   import BeadCanvas from '$lib/components/BeadCanvas.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import SelectionModeOptions from '$lib/components/SelectionModeOptions.svelte';
   import ShareCodeImportDialog from '$lib/components/ShareCodeImportDialog.svelte';
-  import { ARTBEAD_COLORS } from '$model/pegboard.model';
   import {
     AUTO_SAVE_DELAY_MS,
     ColorPickerMode,
@@ -95,29 +95,6 @@
     editor.revision;
     return editor.project ? countColorUsage(editor.project) : [];
   });
-
-  let trayColors = $derived.by(() => {
-    editor.revision;
-    if (editor.project) {
-      return editor.project.palette.colors.map((color) => ({
-        id: color.id,
-        hex: color.hex,
-        code: color.code
-      }));
-    }
-
-    return ARTBEAD_COLORS.map((hex, index) => ({
-      id: `${hex}-${index}`,
-      hex,
-      code: String(index + 1).padStart(2, '0')
-    }));
-  });
-
-  let selectedTrayColor = $derived(
-    editor.project
-      ? editor.project.palette.colors[editor.selectedColorIndex - 1]
-      : undefined
-  );
 
   let isDirty = $derived(
     editor.revision !== editor.savedRevision ||
@@ -801,47 +778,12 @@
 
 <div class="workspace" class:home-only={!editor.project}>
   {#if editor.project}
-    <aside class="artbead-tray" aria-label={$_('tray.title')}>
-    <div class="tray-heading">
-      <div>
-        <p class="eyebrow">{$_('tray.english')}</p>
-        <h2>{$_('tray.title')}</h2>
-      </div>
-      <span class="tray-count">
-        {$_('tray.count', { values: { count: trayColors.length } })}
-      </span>
-    </div>
-
-    <div class="color-grid" class:disabled={!editor.project}>
-      {#each trayColors as color, index (color.id)}
-        <button
-          class="artbead"
-          class:active={editor.project && editor.selectedColorIndex === index + 1}
-          type="button"
-          disabled={!editor.project}
-          aria-label={`${color.code} ${color.hex}`}
-          aria-pressed={editor.project && editor.selectedColorIndex === index + 1}
-          title={`${color.code} · ${color.hex}`}
-          onclick={() => editor.setSelectedColor(index + 1)}
-        >
-          <span class="swatch" style:--color={color.hex}></span>
-        </button>
-      {/each}
-    </div>
-
-    {#if selectedTrayColor}
-      <div class="selected-color">
-        <span class="selected-swatch" style:--color={selectedTrayColor.hex}></span>
-        <div class="selected-color-info">
-          <small>{$_('tray.selected')}</small>
-          <strong>{selectedTrayColor.code} · {selectedTrayColor.hex}</strong>
-        </div>
-        <span class="selected-usage">{usage[editor.selectedColorIndex] ?? 0}</span>
-      </div>
-    {:else}
-      <p class="tray-empty">{$_('tray.empty')}</p>
-    {/if}
-    </aside>
+    <ArtbeadPaletteTray
+      palette={editor.project.palette}
+      selectedColorIndex={editor.selectedColorIndex}
+      {usage}
+      onselect={(code, hex) => editor.selectCatalogColor(code, hex)}
+    />
   {/if}
 
   <main class="board-area">
@@ -1460,142 +1402,13 @@
 <style>
   .workspace {
     display: grid;
-    grid-template-columns: 244px minmax(0, 1fr);
+    grid-template-columns: 288px minmax(0, 1fr);
     height: 100%;
   }
 
   .workspace.home-only {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
-  }
-
-  .artbead-tray {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    gap: 18px;
-    min-height: 0;
-    padding: 20px 16px;
-    overflow: hidden;
-    border-right: 1px solid var(--border);
-    background: var(--surface);
-  }
-
-  .tray-heading {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .tray-heading .eyebrow {
-    margin-bottom: 5px;
-    font-size: 0.58rem;
-  }
-
-  .tray-heading h2 {
-    margin-bottom: 0;
-    font-size: 1.35rem;
-    font-weight: 600;
-  }
-
-  .tray-count {
-    color: var(--muted);
-    font-size: 0.65rem;
-    text-align: right;
-  }
-
-  .color-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-content: start;
-    gap: 8px;
-    min-height: 0;
-    overflow: auto;
-    padding: 2px;
-  }
-
-  .color-grid.disabled {
-    opacity: 0.38;
-  }
-
-  .artbead {
-    display: grid;
-    place-items: center;
-    aspect-ratio: 1;
-    padding: 4px;
-    border: 1px solid transparent;
-    border-radius: 2px;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  .artbead:hover:not(:disabled) {
-    border-color: var(--border-strong);
-  }
-
-  .artbead.active {
-    border-color: var(--text);
-  }
-
-  .artbead:disabled {
-    cursor: default;
-  }
-
-  .swatch {
-    display: block;
-    width: 100%;
-    height: 100%;
-    min-height: 48px;
-    border: 1px solid rgba(0, 0, 0, 0.13);
-    background: var(--color);
-  }
-
-  .selected-color {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 10px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-  }
-
-  .selected-swatch {
-    width: 42px;
-    height: 42px;
-    border: 1px solid var(--border-strong);
-    background: var(--color);
-  }
-
-  .selected-color-info {
-    display: grid;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .selected-color small {
-    color: var(--muted);
-    font-size: 0.62rem;
-  }
-
-  .selected-color strong {
-    overflow: hidden;
-    font-size: 0.72rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .selected-usage {
-    color: var(--muted);
-    font-size: 0.72rem;
-  }
-
-  .tray-empty {
-    margin: 0;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-    color: var(--muted);
-    font-size: 0.75rem;
-    line-height: 1.6;
   }
 
   .board-area {
@@ -2343,7 +2156,7 @@
 
   @media (max-width: 900px) {
     .workspace {
-      grid-template-columns: 200px minmax(0, 1fr);
+      grid-template-columns: 244px minmax(0, 1fr);
     }
 
   }
@@ -2358,36 +2171,6 @@
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto minmax(0, 1fr);
       overflow: auto;
-    }
-
-    .artbead-tray {
-      display: block;
-      padding: 10px;
-      overflow: visible;
-      border-right: 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .tray-heading,
-    .selected-color,
-    .tray-empty {
-      display: none;
-    }
-
-    .color-grid {
-      display: flex;
-      gap: 4px;
-      overflow-x: auto;
-    }
-
-    .artbead {
-      flex: 0 0 38px;
-      width: 38px;
-      height: 38px;
-    }
-
-    .swatch {
-      min-height: 30px;
     }
 
     .board-header {

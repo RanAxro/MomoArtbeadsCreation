@@ -1,7 +1,8 @@
 import type { BeadColor, BeadPalette } from '$model/palette.model';
 import type { BeadShape } from '$model/bead-shape.model';
 import {
-  DEFAULT_SELECTED_PALETTE_INDEX
+  DEFAULT_SELECTED_PALETTE_INDEX,
+  PALETTE_MAX_COLORS
 } from '$model/palette.model';
 import {
   DEFAULT_EDITOR_TOOL,
@@ -369,6 +370,50 @@ export class EditorStore {
 
   setSelectedColor(index: number): void {
     this.selectedColorIndex = index;
+  }
+
+  selectCatalogColor(code: string, hex: string): void {
+    if (!this.project) {
+      return;
+    }
+
+    let matchedByHex = false;
+    let colorIndex = this.project.palette.colors.findIndex(
+      (color) => color.code === code
+    );
+    if (colorIndex < 0) {
+      colorIndex = this.project.palette.colors.findIndex(
+        (color) => color.hex.toUpperCase() === hex.toUpperCase()
+      );
+      matchedByHex = colorIndex >= 0;
+    }
+
+    if (colorIndex < 0) {
+      if (this.project.palette.colors.length >= PALETTE_MAX_COLORS) {
+        return;
+      }
+      this.project.palette.colors = [
+        ...this.project.palette.colors,
+        {
+          id: `${this.project.palette.id}-${code}`,
+          name: code,
+          hex,
+          code
+        }
+      ];
+      colorIndex = this.project.palette.colors.length - 1;
+      this.markChanged();
+    } else if (matchedByHex) {
+      this.project.palette.colors[colorIndex] = {
+        ...this.project.palette.colors[colorIndex],
+        name: code,
+        code
+      };
+      this.project.palette.colors = [...this.project.palette.colors];
+      this.markChanged();
+    }
+
+    this.selectedColorIndex = colorIndex + 1;
   }
 
   setMagicWandThreshold(threshold: number): void {

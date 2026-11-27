@@ -71,11 +71,25 @@
     "importShareCode": "Import share-code scheme"
   },
   "tray": {
-    "title": "Artbeads",
-    "english": "Tray",
+    "title": "Artbead palette",
+    "english": "Palette",
     "count": "{count} Artbeads",
     "empty": "Open a scheme to select Artbeads",
-    "selected": "Selected Artbead"
+    "selected": "Selected Artbead",
+    "tabsLabel": "Artbead palette pages",
+    "schemeTab": "Scheme",
+    "completeTab": "Complete",
+    "familiesLabel": "Artbead color families",
+    "paletteCount": "{count} palettes",
+    "families": {
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "green": "Green",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "red": "Red"
+    }
   },
   "clipboard": {
     "title": "Recent clipboard",

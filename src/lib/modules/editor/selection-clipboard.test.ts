@@ -209,6 +209,7 @@ describe('selection clipboard', () => {
     const clipboard = createSelectionClipboard(source, new Set([0]));
     const layer = createSelectionLayer(clipboard!, { x: 1, y: 1 });
     const clone = cloneSelectionLayer(layer!);
+    const originalHex = layer!.palette.colors[0].hex;
 
     clone.cells[0] = 2;
     clone.selectionCells.length = 0;
@@ -216,6 +217,6 @@ describe('selection clipboard', () => {
 
     expect(layer?.cells[0]).toBe(1);
     expect(layer?.selectionCells).toEqual([0]);
-    expect(layer?.palette.colors[0].hex).toBe('#000000');
+    expect(layer?.palette.colors[0].hex).toBe(originalHex);
   });
 });

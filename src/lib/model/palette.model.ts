@@ -5,7 +5,7 @@ import {
   type LabColor
 } from './color.model';
 
-export const PALETTE_MAX_COLORS = 128;
+export const PALETTE_MAX_COLORS = 256;
 
 const beadColorSchema = z.object({
   id: z.string().min(1),

@@ -1,9 +1,8 @@
 import { rgbToOklab, hexToRgb, oklabDistance } from './color';
-import { ARTBEAD_COLORS } from '$model/pegboard.model';
+import { ARTBEAD_COLOR_FAMILIES } from '$model/artbead-palette.model';
 import {
   DEFAULT_CUSTOM_COLOR_HEX,
   DEFAULT_CUSTOM_COLOR_NAME_PREFIX,
-  DEFAULT_PALETTE_COLOR_PREFIX,
   DEFAULT_PALETTE_NAME,
   PALETTE_CODE_PAD_LENGTH,
   type BeadColor,
@@ -13,18 +12,50 @@ import {
 
 export type { BeadColor, BeadPalette, IndexedColor } from '$model/palette.model';
 
+export interface ArtbeadCatalogColor extends BeadColor {
+  familyCode: string;
+  familyLabelKey: string;
+  paletteNumber: number;
+  cellNumber: number;
+}
+
+export function createArtbeadCode(
+  familyCode: string,
+  paletteNumber: number,
+  cellNumber: number
+): string {
+  return `${familyCode}${paletteNumber}${cellNumber}`;
+}
+
+export const ARTBEAD_CATALOG: readonly ArtbeadCatalogColor[] =
+  ARTBEAD_COLOR_FAMILIES.flatMap((family) =>
+    family.palettes.flatMap((palette, paletteIndex) =>
+      palette.map((hex, cellIndex) => {
+        const paletteNumber = paletteIndex + 1;
+        const cellNumber = cellIndex + 1;
+        const code = createArtbeadCode(family.code, paletteNumber, cellNumber);
+        return {
+          id: code,
+          name: code,
+          hex,
+          code,
+          familyCode: family.code,
+          familyLabelKey: family.labelKey,
+          paletteNumber,
+          cellNumber
+        };
+      })
+    )
+  );
+
 export function createStarterPalette(id = crypto.randomUUID()): BeadPalette {
   return {
     id,
     name: DEFAULT_PALETTE_NAME,
-    colors: ARTBEAD_COLORS.map((hex, index) => {
-      const code = String(index + 1).padStart(
-        PALETTE_CODE_PAD_LENGTH,
-        '0'
-      );
+    colors: ARTBEAD_CATALOG.map(({ code, hex }, index) => {
       return {
         id: `${id}-${index + 1}`,
-        name: `${DEFAULT_PALETTE_COLOR_PREFIX}${code}`,
+        name: code,
         hex,
         code
       };
