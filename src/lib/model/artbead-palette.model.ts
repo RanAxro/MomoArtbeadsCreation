@@ -21,13 +21,13 @@ export const DEFAULT_ARTBEAD_FAMILY_CODE = 'A';
 export const GLOBAL_ARTBEAD_CATEGORY_ID = 'global';
 
 export const GLOBAL_ARTBEAD_COLORS: readonly GlobalArtbeadColor[] = [
-  { number: 1, hex: '#332E2A' },
-  { number: 2, hex: '#506E8A' },
-  { number: 3, hex: '#E75A4C' },
-  { number: 4, hex: '#BA822F' },
-  { number: 5, hex: '#65904F' },
-  { number: 6, hex: '#A8335B' },
-  { number: 7, hex: '#C8C3C0' }
+  { number: 1, hex: '#4F4745' },
+  { number: 2, hex: '#AACAE1' },
+  { number: 3, hex: '#FF9588' },
+  { number: 4, hex: '#FFDB8D' },
+  { number: 5, hex: '#B8CDA2' },
+  { number: 6, hex: '#FEABC9' },
+  { number: 7, hex: '#EBEAE8' }
 ];
 
 export const GLOBAL_ARTBEAD_COLOR_COUNT = GLOBAL_ARTBEAD_COLORS.length;
