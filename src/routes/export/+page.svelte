@@ -3,7 +3,6 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import { _, locale } from 'svelte-i18n';
   import Icon from '$lib/components/Icon.svelte';
-  import { requiredArtbeadUsage } from '$domain/project';
   import {
     DRAWING_EXPORT_AUTHOR_STORAGE_KEY,
     DRAWING_EXPORT_PREVIEW_MAX_DIMENSION,
@@ -56,14 +55,6 @@
   let previewTimer: ReturnType<typeof setTimeout> | undefined;
   let exportMessageTimer: ReturnType<typeof setTimeout> | undefined;
   let previewRenderRequest = 0;
-
-  let colors = $derived.by(() => {
-    editor.revision;
-    return editor.project ? requiredArtbeadUsage(editor.project) : [];
-  });
-  let totalBeads = $derived.by(() =>
-    colors.reduce((total, color) => total + color.count, 0)
-  );
 
   function currentSettings(): DrawingExportSettings {
     return {
@@ -150,14 +141,6 @@
 
   async function returnToWorkspace(): Promise<void> {
     await goto('/');
-  }
-
-  function restoreCurrentView(): void {
-    showRulers = viewStore.showRulers;
-    showGrid = viewStore.showGrid;
-    showCoarseGrid = viewStore.showCoarseGrid;
-    coarseGridSpacing = viewStore.coarseGridSpacing;
-    background = viewStore.background;
   }
 
   function updateCoarseGridSpacing(value: number): void {
@@ -279,29 +262,7 @@
 <div class="export-page">
   {#if ready && editor.project}
     <header class="export-header">
-      <div class="export-heading">
-        <p class="eyebrow">{$_('drawingExport.eyebrow')}</p>
-        <h1>{$_('drawingExport.title')}</h1>
-      </div>
-      <div class="export-summary">
-        <strong>{editor.project.name}</strong>
-        <span>
-          {$_('board.size', {
-            values: {
-              width: editor.project.width,
-              height: editor.project.height
-            }
-          })}
-          ·
-          {$_('drawingExport.colorCount', {
-            values: { count: colors.length }
-          })}
-          ·
-          {$_('drawingExport.totalBeads', {
-            values: { count: totalBeads }
-          })}
-        </span>
-      </div>
+      <h1>{$_('drawingExport.title')}</h1>
       <button
         class="button ghost compact"
         type="button"
@@ -368,7 +329,6 @@
               placeholder={$_('drawingExport.author')}
               oninput={(event) => updateAuthor(event.currentTarget.value)}
             />
-            <small>{$_('drawingExport.authorHint')}</small>
           </label>
 
           <div class="setting-stack">
@@ -463,18 +423,7 @@
             </select>
           </label>
 
-          <p class="local-note">{$_('drawingExport.settingsHint')}</p>
-
           <div class="settings-actions">
-            <button
-              class="button secondary"
-              type="button"
-              disabled={exporting}
-              onclick={restoreCurrentView}
-            >
-              <Icon name={IconName.Reset} size={16} />
-              {$_('drawingExport.reset')}
-            </button>
             <button
               class="button primary export-button"
               type="submit"
@@ -518,51 +467,16 @@
     display: flex;
     align-items: center;
     gap: 24px;
-    min-height: 68px;
-    padding: 10px 22px;
+    min-height: 54px;
+    padding: 8px 20px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
   }
 
-  .export-heading {
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-    flex: 0 0 auto;
-  }
-
-  .export-heading .eyebrow {
-    margin: 0;
-  }
-
-  .export-heading h1 {
+  .export-header h1 {
     margin: 0;
     font-size: 1.28rem;
     font-weight: 600;
-  }
-
-  .export-summary {
-    display: grid;
-    gap: 3px;
-    min-width: 0;
-    color: var(--muted);
-    font-size: 0.68rem;
-    line-height: 1.4;
-  }
-
-  .export-summary strong {
-    overflow: hidden;
-    color: var(--text);
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .export-summary span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .export-header .button {
@@ -795,23 +709,6 @@
     cursor: text;
   }
 
-  .author-field small {
-    color: var(--muted);
-    font-size: 0.66rem;
-    font-weight: 400;
-    line-height: 1.5;
-  }
-
-  .local-note {
-    margin: 0;
-    padding: 12px;
-    border-left: 2px solid var(--text);
-    background: var(--hover);
-    color: var(--muted);
-    font-size: 0.7rem;
-    line-height: 1.6;
-  }
-
   .settings-actions {
     display: grid;
     gap: 8px;
@@ -850,9 +747,6 @@
       grid-template-columns: minmax(0, 1fr) 310px;
     }
 
-    .export-summary {
-      display: none;
-    }
   }
 
   @media (max-width: 760px) {
@@ -865,14 +759,6 @@
       flex-wrap: wrap;
       gap: 10px;
       padding: 10px 12px;
-    }
-
-    .export-heading {
-      flex: 1 1 auto;
-    }
-
-    .export-heading .eyebrow {
-      display: none;
     }
 
     .export-layout {
