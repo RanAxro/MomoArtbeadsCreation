@@ -4,6 +4,7 @@
   import { countFilledCells } from '$domain/project';
   import Icon from '$lib/components/Icon.svelte';
   import ProjectPreview from '$lib/components/ProjectPreview.svelte';
+  import { beadShapeLabelKey } from '$model/bead-shape.model';
   import { IconName } from '$model/icon.model';
   import {
     MAX_PROJECT_NAME_LENGTH,
@@ -302,6 +303,10 @@
                 <div>
                   <dt>{$_('shareCode.size')}</dt>
                   <dd>{parsedData.width} × {parsedData.height}</dd>
+                </div>
+                <div>
+                  <dt>{$_('beadShape.label')}</dt>
+                  <dd>{$_(beadShapeLabelKey(parsedData.beadShape))}</dd>
                 </div>
                 <div>
                   <dt>{$_('shareCode.artbeads')}</dt>

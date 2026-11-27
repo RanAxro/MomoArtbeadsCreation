@@ -13,6 +13,10 @@ import {
   MAX_PROJECT_NAME_LENGTH,
   PROJECT_SCHEMA_VERSION
 } from '$model/project.model';
+import {
+  BeadShape,
+  DEFAULT_BEAD_SHAPE
+} from '$model/bead-shape.model';
 
 describe('project domain', () => {
   it('creates an empty project with the requested dimensions', () => {
@@ -26,6 +30,7 @@ describe('project domain', () => {
     expect(project.cells).toHaveLength(96);
     expect(project.cells.every((cell) => cell === 0)).toBe(true);
     expect(project.gameVersion).toBe(GameVersion.V3);
+    expect(project.beadShape).toBe(DEFAULT_BEAD_SHAPE);
     expect(project.schemaVersion).toBe(1);
     expect(project.editorState.referenceImages).toEqual([]);
   });
@@ -64,6 +69,22 @@ describe('project domain', () => {
     expect(normalizeProjectName('  拼绘方案  ')).toBe('拼绘方案');
     expect(normalizeProjectName('名'.repeat(MAX_PROJECT_NAME_LENGTH + 5))).toHaveLength(
       MAX_PROJECT_NAME_LENGTH
+    );
+  });
+
+  it('stores a selected Artbead shape and requires the field', () => {
+    const project = createProject({
+      name: 'shape test',
+      width: 2,
+      height: 2,
+      beadShape: BeadShape.Hexagon
+    });
+    const { beadShape, ...projectWithoutShape } = project;
+
+    expect(beadShape).toBe(BeadShape.Hexagon);
+    expect(project.beadShape).toBe(BeadShape.Hexagon);
+    expect(beadProjectSchema.safeParse(projectWithoutShape).success).toBe(
+      false
     );
   });
 

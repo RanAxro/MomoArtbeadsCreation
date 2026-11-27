@@ -1,10 +1,14 @@
 <script lang="ts">
   import type { BeadProject } from '$model/project.model';
   import { PROJECT_PREVIEW } from '$model/project-preview.model';
+  import { fillBeadShape } from '$modules/editor/bead-shape';
   import { themeStore } from '$modules/settings/theme.svelte';
 
   interface Props {
-    project: Pick<BeadProject, 'width' | 'height' | 'cells' | 'palette'>;
+    project: Pick<
+      BeadProject,
+      'width' | 'height' | 'beadShape' | 'cells' | 'palette'
+    >;
     revision?: number;
     label?: string;
   }
@@ -57,16 +61,28 @@
     const originX = (hostWidth - project.width * cellSize) / 2;
     const originY = (viewportHeight - project.height * cellSize) / 2;
 
+    context.fillStyle = boardColor;
+    context.fillRect(
+      originX,
+      originY,
+      project.width * cellSize,
+      project.height * cellSize
+    );
+
     for (let y = 0; y < project.height; y += 1) {
       for (let x = 0; x < project.width; x += 1) {
         const colorIndex = project.cells[y * project.width + x];
         const color = project.palette.colors[colorIndex - 1];
-        context.fillStyle = color?.hex ?? boardColor;
-        context.fillRect(
+        if (!color) {
+          continue;
+        }
+        context.fillStyle = color.hex;
+        fillBeadShape(
+          context,
+          project.beadShape,
           originX + x * cellSize,
           originY + y * cellSize,
-          Math.ceil(cellSize + PROJECT_PREVIEW.pixelPadding),
-          Math.ceil(cellSize + PROJECT_PREVIEW.pixelPadding)
+          cellSize
         );
       }
     }

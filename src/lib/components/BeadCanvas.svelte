@@ -51,6 +51,7 @@
     cellCenterPoint,
     referencePixelAtPoint
   } from '$modules/editor/color-picker';
+  import { fillBeadShape } from '$modules/editor/bead-shape';
   import { KeyboardKey } from '$model/ui.model';
   import { themeStore } from '$modules/settings/theme.svelte';
   import { viewStore } from '$modules/view/view-store.svelte';
@@ -662,7 +663,13 @@
         }
 
         context.fillStyle = bead.hex;
-        context.fillRect(cellX, cellY, Math.ceil(cellSize + 0.2), Math.ceil(cellSize + 0.2));
+        fillBeadShape(
+          context,
+          project.beadShape,
+          cellX,
+          cellY,
+          cellSize
+        );
       }
     }
 
@@ -683,11 +690,12 @@
           }
 
           context.fillStyle = bead.hex;
-          context.fillRect(
+          fillBeadShape(
+            context,
+            project.beadShape,
             originX + x * cellSize,
             originY + y * cellSize,
-            Math.ceil(cellSize + 0.2),
-            Math.ceil(cellSize + 0.2)
+            cellSize
           );
         }
       }
@@ -723,11 +731,12 @@
         }
 
         context.fillStyle = bead.hex;
-        context.fillRect(
+        fillBeadShape(
+          context,
+          project.beadShape,
           originX + projectX * cellSize,
           originY + projectY * cellSize,
-          Math.ceil(cellSize + 0.2),
-          Math.ceil(cellSize + 0.2)
+          cellSize
         );
       }
     }

@@ -1,4 +1,5 @@
 import type { BeadColor, BeadPalette } from '$model/palette.model';
+import type { BeadShape } from '$model/bead-shape.model';
 import {
   DEFAULT_SELECTED_PALETTE_INDEX
 } from '$model/palette.model';
@@ -202,6 +203,16 @@ export class EditorStore {
     if (previousTool !== tool) {
       this.markChanged();
     }
+  }
+
+  setBeadShape(beadShape: BeadShape): void {
+    if (!this.project || this.project.beadShape === beadShape) {
+      return;
+    }
+
+    this.project.beadShape = beadShape;
+    this.markChanged();
+    this.previewRevision += 1;
   }
 
   setColorPickerMode(mode: ColorPickerMode): void {

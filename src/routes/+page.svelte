@@ -458,6 +458,7 @@
         name: project.name,
         width: project.width,
         height: project.height,
+        beadShape: project.beadShape,
         cells: project.cells,
         palette: project.palette
       });

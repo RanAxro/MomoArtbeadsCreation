@@ -4,6 +4,10 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { MAX_PROJECT_NAME_LENGTH } from '$model/project.model';
+  import {
+    BEAD_SHAPE_OPTIONS,
+    type BeadShape
+  } from '$model/bead-shape.model';
   import { IconName } from '$model/icon.model';
   import { AppLocale } from '$model/settings.model';
   import type { SelectionClipboard } from '$model/selection-clipboard.model';
@@ -862,6 +866,27 @@
           </option>
         </select>
       </label>
+
+      {#if workspace.editor.project}
+        <div class="setting-group">
+          <h3>{$_('beadShape.label')}</h3>
+          <select
+            class="field"
+            value={workspace.editor.project.beadShape}
+            onchange={(event) => {
+              workspace.editor.setBeadShape(
+                event.currentTarget.value as BeadShape
+              );
+              void workspace.saveActiveScheme();
+            }}
+          >
+            {#each BEAD_SHAPE_OPTIONS as option}
+              <option value={option.value}>{$_(option.labelKey)}</option>
+            {/each}
+          </select>
+          <p class="setting-hint">{$_('beadShape.hint')}</p>
+        </div>
+      {/if}
     </form>
   </div>
 {/if}
@@ -1603,6 +1628,13 @@
   .view-form {
     display: grid;
     gap: 22px;
+  }
+
+  .setting-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.74rem;
+    line-height: 1.5;
   }
 
   .switch-control {

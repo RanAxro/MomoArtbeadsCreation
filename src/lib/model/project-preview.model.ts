@@ -7,6 +7,5 @@ export const PROJECT_PREVIEW = {
   viewportHeightRatio: 0.72,
   padding: 24,
   gridVisibilityCellSize: 7,
-  gridLineWidth: 0.5,
-  pixelPadding: 0.2
+  gridLineWidth: 0.5
 } as const;

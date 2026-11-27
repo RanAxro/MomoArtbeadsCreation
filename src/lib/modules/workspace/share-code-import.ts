@@ -14,6 +14,7 @@ export async function createProjectFromShareCodeData(
     name: data.name,
     width: data.width,
     height: data.height,
+    beadShape: data.beadShape,
     palette: clonePalette(data.palette)
   });
   project.cells = [...data.cells];

@@ -6,6 +6,11 @@
   import ImageCropFrame from '$lib/components/ImageCropFrame.svelte';
   import ProjectPreview from '$lib/components/ProjectPreview.svelte';
   import {
+    BEAD_SHAPE_OPTIONS,
+    DEFAULT_BEAD_SHAPE,
+    type BeadShape
+  } from '$model/bead-shape.model';
+  import {
     DEFAULT_PEGBOARD,
     PEGBOARD_PRESETS,
     type PegboardPreset
@@ -44,6 +49,7 @@
   let sourceDimensions = $state({ width: 0, height: 0 });
   let schemeName = $state('');
   let selectedPegboard = $state<PegboardPreset>(DEFAULT_PEGBOARD);
+  let selectedBeadShape = $state(DEFAULT_BEAD_SHAPE);
   let cropCenterX = $state(DEFAULT_CROP_CENTER);
   let cropCenterY = $state(DEFAULT_CROP_CENTER);
   let cropScale = $state(DEFAULT_CROP_SCALE);
@@ -252,6 +258,7 @@
         name: schemeName.trim() || $_('import.defaultName'),
         width: pegboard.width,
         height: pegboard.height,
+        beadShape: selectedBeadShape,
         palette,
         gameVersion: DEFAULT_GAME_VERSION
       });
@@ -391,6 +398,23 @@
                     {$_(preset.labelKey)}
                     · {preset.width} × {preset.height}
                   </option>
+                {/each}
+              </select>
+            </label>
+
+            <label class="field-label">
+              {$_('beadShape.label')}
+              <select
+                class="field"
+                value={selectedBeadShape}
+                onchange={(event) => {
+                  selectedBeadShape =
+                    event.currentTarget.value as BeadShape;
+                  scheduleAutoPreview(0);
+                }}
+              >
+                {#each BEAD_SHAPE_OPTIONS as option}
+                  <option value={option.value}>{$_(option.labelKey)}</option>
                 {/each}
               </select>
             </label>

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BeadShape } from './bead-shape.model';
 import { EditorTool } from './editor.model';
 import { paletteSchema, type BeadPalette } from './palette.model';
 import { referenceImageSchema } from './reference-image.model';
@@ -38,6 +39,7 @@ export const beadProjectSchema = z.object({
     .int()
     .min(MIN_PROJECT_DIMENSION)
     .max(MAX_PROJECT_DIMENSION),
+  beadShape: z.nativeEnum(BeadShape),
   cells: z.array(z.number().int().nonnegative()),
   palette: paletteSchema,
   editorState: projectEditorStateSchema,
@@ -52,6 +54,7 @@ export interface NewProjectOptions {
   name: string;
   width: number;
   height: number;
+  beadShape?: BeadShape;
   palette?: BeadPalette;
   gameVersion?: string;
 }

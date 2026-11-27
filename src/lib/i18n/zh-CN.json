@@ -166,6 +166,13 @@
     "hint": "滚轮上下移动 · Shift + 滚轮左右移动 · Ctrl + 滚轮缩放 · 拖动格板平移",
     "readOnly": "拼绘视图"
   },
+  "beadShape": {
+    "label": "艺点点形状",
+    "hint": "选择艺点点在格板和预览中的显示形状。",
+    "square": "方形",
+    "circle": "圆形",
+    "hexagon": "六边形"
+  },
   "settings": {
     "title": "设置",
     "close": "关闭设置",

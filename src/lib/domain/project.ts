@@ -1,4 +1,5 @@
 import { createStarterPalette } from './palette';
+import { DEFAULT_BEAD_SHAPE } from '$model/bead-shape.model';
 import { DEFAULT_EDITOR_TOOL } from '$model/editor.model';
 import {
   DEFAULT_GAME_VERSION,
@@ -47,6 +48,7 @@ export function createProject(options: NewProjectOptions): BeadProject {
     gameVersion: options.gameVersion?.trim() || DEFAULT_GAME_VERSION,
     width,
     height,
+    beadShape: options.beadShape ?? DEFAULT_BEAD_SHAPE,
     cells: Array.from({ length: width * height }, () => EMPTY_CELL_COLOR_INDEX),
     palette: options.palette ?? createStarterPalette(),
     editorState: {

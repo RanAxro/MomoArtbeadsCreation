@@ -9,6 +9,10 @@ import {
   MIN_PROJECT_DIMENSION
 } from '$model/project.model';
 import {
+  BeadShape,
+  isBeadShape
+} from '$model/bead-shape.model';
+import {
   DEFAULT_PALETTE_COLOR_PREFIX,
   DEFAULT_PALETTE_NAME,
   PALETTE_CODE_PAD_LENGTH,
@@ -25,6 +29,11 @@ const MAX_TRANSFER_BYTES = 16 * 1024 * 1024;
 const MIN_DEFLATE_SOURCE_BYTES = 64;
 const BASE64_ALPHABET =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const BEAD_SHAPE_BY_BYTE: readonly BeadShape[] = [
+  BeadShape.Square,
+  BeadShape.Circle,
+  BeadShape.Hexagon
+];
 
 export enum BoardCodec {
   Constant = 0,
@@ -60,6 +69,7 @@ export interface BoardTransferData {
   name: string;
   width: number;
   height: number;
+  beadShape: BeadShape;
   cells: number[];
   palette: BeadPalette;
 }
@@ -708,8 +718,27 @@ function assertDimensions(width: number, height: number): void {
   }
 }
 
+function beadShapeToByte(shape: BeadShape): number {
+  const value = BEAD_SHAPE_BY_BYTE.indexOf(shape);
+  if (value < 0) {
+    throw new BoardCodecError('invalid-data', 'Invalid bead shape.');
+  }
+  return value;
+}
+
+function beadShapeFromByte(value: number): BeadShape {
+  const shape = BEAD_SHAPE_BY_BYTE[value];
+  if (!shape) {
+    throw new BoardCodecError('invalid-data', 'Invalid bead shape.');
+  }
+  return shape;
+}
+
 function validateTransferData(data: BoardTransferData): void {
   assertDimensions(data.width, data.height);
+  if (!isBeadShape(data.beadShape)) {
+    throw new BoardCodecError('invalid-data', 'Invalid bead shape.');
+  }
   if (data.cells.length !== data.width * data.height) {
     throw new BoardCodecError('invalid-data', 'Cell count does not match size.');
   }
@@ -805,6 +834,7 @@ export async function encodeBoardData(
   writer.writeByte(FORMAT_VERSION);
   writer.writeByte(selected.codec);
   writer.writeByte(hasEmpty ? FLAG_HAS_EMPTY : 0);
+  writer.writeByte(beadShapeToByte(data.beadShape));
   writer.writeVarUint(data.width);
   writer.writeVarUint(data.height);
   writer.writeString(data.name);
@@ -903,6 +933,7 @@ export async function decodeBoardData(
   if ((flags & ~FLAG_HAS_EMPTY) !== 0) {
     throw new BoardCodecError('invalid-data', 'Unknown format flags.');
   }
+  const beadShape = beadShapeFromByte(reader.readByte());
 
   const width = reader.readVarUint();
   const height = reader.readVarUint();
@@ -984,6 +1015,7 @@ export async function decodeBoardData(
     name: name || DEFAULT_PROJECT_NAME,
     width,
     height,
+    beadShape,
     cells,
     palette
   };

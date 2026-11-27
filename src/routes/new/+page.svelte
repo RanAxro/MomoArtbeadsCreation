@@ -3,6 +3,11 @@
   import { _ } from 'svelte-i18n';
   import Icon from '$lib/components/Icon.svelte';
   import {
+    BEAD_SHAPE_OPTIONS,
+    DEFAULT_BEAD_SHAPE,
+    type BeadShape
+  } from '$model/bead-shape.model';
+  import {
     DEFAULT_PEGBOARD,
     PEGBOARD_PRESETS,
     type PegboardPreset
@@ -19,6 +24,7 @@
   const palette = createStarterPalette();
   let name = $state('');
   let selectedPegboard = $state(DEFAULT_PEGBOARD);
+  let selectedBeadShape = $state(DEFAULT_BEAD_SHAPE);
   let creating = $state(false);
   let error = $state('');
 
@@ -40,6 +46,7 @@
         name: schemeName,
         width: selectedPegboard.width,
         height: selectedPegboard.height,
+        beadShape: selectedBeadShape,
         palette,
         gameVersion: DEFAULT_GAME_VERSION
       });
@@ -100,6 +107,21 @@
               {/each}
             </div>
           </div>
+
+          <label class="field-label">
+            {$_('beadShape.label')}
+            <select
+              class="field"
+              value={selectedBeadShape}
+              onchange={(event) =>
+                (selectedBeadShape =
+                  event.currentTarget.value as BeadShape)}
+            >
+              {#each BEAD_SHAPE_OPTIONS as option}
+                <option value={option.value}>{$_(option.labelKey)}</option>
+              {/each}
+            </select>
+          </label>
 
         </div>
       </section>

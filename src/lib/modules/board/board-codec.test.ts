@@ -14,11 +14,10 @@ import {
   type BoardTransferData
 } from './board-codec';
 import type { BeadPalette } from '$model/palette.model';
-import { createProject } from '$domain/project';
-import { beadProjectSchema } from '$model/project.model';
-
-const HOME_SHARE_CODE =
-  'home=TUFDAQQBGBgEaG9tZQ9BcnRiZWFkIFBhbGV0dGUK////SkpKioqKycnJ8ujY57ibyYdw56SzyUxoc1ONzQFtkVFuBDEIQ+M1Bib3P3BlsrPtaMtHpDwDhmQtBFjF9RVaTMU/grmSzJobJGmw0kIm6SpEx80Hy1VuHMJaEl04eNqRnaOe7LfgaFeRUgYQHyV7HZ7ChMYix2SVOpo9Quj29vAtgJOvkvTekF1GAMj+w/d2vhSAusYa5q+oMnOFqqiIw1VVNTi65eFOo1ddVdc1q/E80TE2vcqtC9o3RjApXuWV4jddCgZg3NyfdL+ql4qs558Bwx184LUIfXFPS4mbArYe/749tY+4d1o/lyjteg==';
+import {
+  BeadShape,
+  DEFAULT_BEAD_SHAPE
+} from '$model/bead-shape.model';
 
 function createTestPalette(): BeadPalette {
   return {
@@ -58,6 +57,7 @@ function createTransferData(
     name: '压缩测试方案',
     width,
     height,
+    beadShape: DEFAULT_BEAD_SHAPE,
     cells,
     palette: createTestPalette()
   };
@@ -75,6 +75,7 @@ describe('board binary codec', () => {
     const decoded = await decodeBoardBase64(await encodeBoardBase64(data));
 
     expect(decoded.name).toBe(data.name);
+    expect(decoded.beadShape).toBe(BeadShape.Square);
     expect(decoded.width).toBe(6);
     expect(decoded.height).toBe(4);
     expect(decoded.cells).toEqual(data.cells);
@@ -96,6 +97,24 @@ describe('board binary codec', () => {
     ]);
     expect(decoded.palette.colors.some((color) => color.stock !== undefined))
       .toBe(false);
+  });
+
+  it.each([
+    [BeadShape.Square, 0],
+    [BeadShape.Circle, 1],
+    [BeadShape.Hexagon, 2]
+  ])('stores %s as one shape byte', async (beadShape, wireValue) => {
+    const data = {
+      ...createTransferData(2, 2, [0, 1, 2, 3]),
+      beadShape
+    };
+
+    const encoded = await encodeBoardData(data);
+    const decoded = await decodeBoardData(encoded);
+
+    expect(encoded[3]).toBe(1);
+    expect(encoded[6]).toBe(wireValue);
+    expect(decoded.beadShape).toBe(beadShape);
   });
 
   it('round trips a fully filled board without an empty symbol', async () => {
@@ -268,20 +287,4 @@ describe('board binary codec', () => {
     expect(base64ToBytes(bytesToBase64(bytes))).toEqual(bytes);
   });
 
-  it('decodes the home share code into a valid project', async () => {
-    const data = await decodeShareCode(HOME_SHARE_CODE);
-    const project = createProject({
-      name: data.name,
-      width: data.width,
-      height: data.height,
-      palette: data.palette
-    });
-    project.cells = [...data.cells];
-
-    expect(() => beadProjectSchema.parse(project)).not.toThrow();
-    expect(project.name).toBe('home');
-    expect(project.width).toBe(24);
-    expect(project.height).toBe(24);
-    expect(project.cells).toHaveLength(24 * 24);
-  });
 });

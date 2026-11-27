@@ -166,6 +166,13 @@
     "hint": "Wheel to pan · Shift + wheel to pan sideways · Ctrl + wheel to zoom · Drag the Pegboard to pan",
     "readOnly": "Assembly view"
   },
+  "beadShape": {
+    "label": "Artbead shape",
+    "hint": "Choose how Artbeads appear on the Pegboard and in previews.",
+    "square": "Square",
+    "circle": "Circle",
+    "hexagon": "Hexagon"
+  },
   "settings": {
     "title": "Settings",
     "close": "Close settings",
