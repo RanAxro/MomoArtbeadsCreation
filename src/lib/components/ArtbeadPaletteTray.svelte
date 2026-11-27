@@ -702,7 +702,7 @@
 
   .custom-palette-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-content: start;
     gap: 8px;
   }
@@ -927,7 +927,7 @@
     }
 
     .custom-palette-grid {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .palette-browser {
