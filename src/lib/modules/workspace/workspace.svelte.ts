@@ -1,5 +1,9 @@
 import { projectRepository } from '$data/project-repository';
-import { normalizeProjectName } from '$domain/project';
+import {
+  normalizeProjectName,
+  touchProject
+} from '$domain/project';
+import type { BeadShape } from '$model/bead-shape.model';
 import type { BeadProject } from '$model/project.model';
 import {
   ACTIVE_SCHEME_STORAGE_KEY,
@@ -74,6 +78,48 @@ class WorkspaceStore {
     this.editor.load(project);
     window.localStorage.setItem(ACTIVE_SCHEME_STORAGE_KEY, id);
     return true;
+  }
+
+  async getSchemeBeadShape(id: string): Promise<BeadShape | undefined> {
+    if (this.activeId === id && this.editor.project) {
+      return this.editor.project.beadShape;
+    }
+
+    return (await projectRepository.get(id))?.beadShape;
+  }
+
+  async setSchemeBeadShape(id: string, beadShape: BeadShape): Promise<void> {
+    if (this.activeId === id && this.editor.project) {
+      const previousShape = this.editor.project.beadShape;
+      if (previousShape === beadShape) {
+        return;
+      }
+
+      this.editor.setBeadShape(beadShape);
+      try {
+        await this.saveActiveScheme();
+      } catch (error) {
+        this.editor.setBeadShape(previousShape);
+        throw error;
+      }
+      return;
+    }
+
+    const project = await projectRepository.get(id);
+    if (!project) {
+      throw new Error(WORKSPACE_ERRORS.schemeNotFound);
+    }
+    if (project.beadShape === beadShape) {
+      return;
+    }
+
+    await projectRepository.save(
+      touchProject({
+        ...project,
+        beadShape
+      })
+    );
+    await this.refresh();
   }
 
   async create(project: BeadProject): Promise<void> {

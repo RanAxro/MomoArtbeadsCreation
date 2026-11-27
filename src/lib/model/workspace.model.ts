@@ -25,7 +25,7 @@ export interface SchemeMenu {
 export const ACTIVE_SCHEME_STORAGE_KEY = 'momo-artbeads.active-scheme';
 export const SCHEME_MENU_SIZE = {
   width: 176,
-  height: 130,
+  height: 168,
   viewportMargin: 8
 } as const;
 export const SCHEME_TAB_GAP = 2;
@@ -36,5 +36,6 @@ export const SCHEME_DATE_FORMAT: Intl.DateTimeFormatOptions = {
   minute: '2-digit'
 };
 export const WORKSPACE_ERRORS = {
-  emptySchemeName: 'Scheme name cannot be empty'
+  emptySchemeName: 'Scheme name cannot be empty',
+  schemeNotFound: 'Scheme not found'
 } as const;

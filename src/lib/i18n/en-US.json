@@ -32,7 +32,11 @@
     "cancel": "Cancel",
     "confirmDelete": "Delete",
     "deleting": "Deleting…",
-    "deleteError": "Deletion failed. Try again."
+    "deleteError": "Deletion failed. Try again.",
+    "artbeadConfig": "Artbead settings",
+    "artbeadConfigTitle": "Artbead settings",
+    "artbeadConfigError": "Failed to save settings. Try again.",
+    "close": "Close"
   },
   "file": {
     "new": "New blank scheme",
@@ -168,7 +172,6 @@
   },
   "beadShape": {
     "label": "Artbead shape",
-    "hint": "Choose how Artbeads appear on the Pegboard and in previews.",
     "square": "Square",
     "circle": "Circle",
     "hexagon": "Hexagon"

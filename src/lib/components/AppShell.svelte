@@ -6,6 +6,7 @@
   import { MAX_PROJECT_NAME_LENGTH } from '$model/project.model';
   import {
     BEAD_SHAPE_OPTIONS,
+    DEFAULT_BEAD_SHAPE,
     type BeadShape
   } from '$model/bead-shape.model';
   import { IconName } from '$model/icon.model';
@@ -60,6 +61,12 @@
   let deleteTarget = $state<SchemeTarget | null>(null);
   let deleting = $state(false);
   let deleteError = $state('');
+  let artbeadConfigTarget = $state<SchemeTarget | null>(null);
+  let artbeadConfigShape = $state<BeadShape>(DEFAULT_BEAD_SHAPE);
+  let artbeadConfigLoading = $state(false);
+  let artbeadConfigSaving = $state(false);
+  let artbeadConfigError = $state('');
+  let artbeadConfigRequest = 0;
   let shareCodeDialogOpen = $state(false);
   let topNotice = $state('');
   let topNoticeIsError = $state(false);
@@ -228,6 +235,87 @@
     renameInput?.select();
   }
 
+  async function requestArtbeadConfig(): Promise<void> {
+    const target = schemeMenu?.target;
+    schemeMenu = null;
+    if (!target) {
+      return;
+    }
+
+    renameTarget = null;
+    renameError = '';
+    deleteTarget = null;
+    deleteError = '';
+    artbeadConfigTarget = target;
+    artbeadConfigShape = DEFAULT_BEAD_SHAPE;
+    artbeadConfigError = '';
+    artbeadConfigLoading = true;
+    const request = ++artbeadConfigRequest;
+
+    try {
+      const shape = await workspace.getSchemeBeadShape(target.id);
+      if (
+        request !== artbeadConfigRequest ||
+        artbeadConfigTarget?.id !== target.id
+      ) {
+        return;
+      }
+      if (shape === undefined) {
+        artbeadConfigError = $_('nav.artbeadConfigError');
+        return;
+      }
+      artbeadConfigShape = shape;
+    } catch {
+      if (request === artbeadConfigRequest) {
+        artbeadConfigError = $_('nav.artbeadConfigError');
+      }
+    } finally {
+      if (request === artbeadConfigRequest) {
+        artbeadConfigLoading = false;
+      }
+    }
+  }
+
+  function closeArtbeadConfig(): void {
+    if (artbeadConfigSaving) {
+      return;
+    }
+    artbeadConfigRequest += 1;
+    artbeadConfigTarget = null;
+    artbeadConfigError = '';
+    artbeadConfigLoading = false;
+  }
+
+  async function changeArtbeadShape(event: Event): Promise<void> {
+    const target = artbeadConfigTarget;
+    const select = event.currentTarget;
+    if (!(select instanceof HTMLSelectElement)) {
+      return;
+    }
+    const shape = select.value as BeadShape;
+    if (
+      !target ||
+      artbeadConfigLoading ||
+      artbeadConfigSaving ||
+      shape === artbeadConfigShape
+    ) {
+      return;
+    }
+
+    const previousShape = artbeadConfigShape;
+    artbeadConfigShape = shape;
+    artbeadConfigSaving = true;
+    artbeadConfigError = '';
+    try {
+      await workspace.setSchemeBeadShape(target.id, shape);
+    } catch {
+      artbeadConfigShape = previousShape;
+      artbeadConfigError = $_('nav.artbeadConfigError');
+    } finally {
+      artbeadConfigSaving = false;
+    }
+  }
+
   function cancelSchemeRename(): void {
     if (renaming) {
       return;
@@ -374,6 +462,7 @@
           renameValue = '';
           renameError = '';
         }
+        closeArtbeadConfig();
       }
     };
 
@@ -734,6 +823,13 @@
     <button
       type="button"
       role="menuitem"
+      onclick={() => void requestArtbeadConfig()}
+    >
+      {$_('nav.artbeadConfig')}
+    </button>
+    <button
+      type="button"
+      role="menuitem"
       onclick={() => void requestSchemeRename()}
     >
       {$_('nav.rename')}
@@ -884,9 +980,74 @@
               <option value={option.value}>{$_(option.labelKey)}</option>
             {/each}
           </select>
-          <p class="setting-hint">{$_('beadShape.hint')}</p>
         </div>
       {/if}
+    </form>
+  </div>
+{/if}
+
+{#if artbeadConfigTarget}
+  <button
+    class="dialog-backdrop"
+    type="button"
+    aria-label={$_('nav.close')}
+    disabled={artbeadConfigSaving}
+    onclick={closeArtbeadConfig}
+  ></button>
+  <div
+    class="settings-dialog artbead-config-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="artbead-config-title"
+    aria-busy={artbeadConfigLoading || artbeadConfigSaving}
+  >
+    <div class="dialog-heading">
+      <div>
+        <span class="dialog-index">02</span>
+        <h2 id="artbead-config-title">{$_('nav.artbeadConfigTitle')}</h2>
+      </div>
+      <button
+        class="icon-button"
+        type="button"
+        aria-label={$_('nav.close')}
+        disabled={artbeadConfigSaving}
+        onclick={closeArtbeadConfig}
+      >
+        <Icon name={IconName.Close} size={18} />
+      </button>
+    </div>
+
+    <form
+      class="artbead-config-form"
+      onsubmit={(event) => event.preventDefault()}
+    >
+      <label class="field-label">
+        <span>{$_('beadShape.label')}</span>
+        <select
+          class="field"
+          value={artbeadConfigShape}
+          disabled={artbeadConfigLoading || artbeadConfigSaving}
+          onchange={(event) => void changeArtbeadShape(event)}
+        >
+          {#each BEAD_SHAPE_OPTIONS as option}
+            <option value={option.value}>{$_(option.labelKey)}</option>
+          {/each}
+        </select>
+      </label>
+      {#if artbeadConfigError}
+        <p class="dialog-error" role="alert">{artbeadConfigError}</p>
+      {/if}
+
+      <div class="confirm-actions">
+        <button
+          class="button secondary"
+          type="button"
+          disabled={artbeadConfigSaving}
+          onclick={closeArtbeadConfig}
+        >
+          {$_('nav.close')}
+        </button>
+      </div>
     </form>
   </div>
 {/if}
@@ -1545,6 +1706,16 @@
     line-height: 1.7;
   }
 
+  .artbead-config-dialog {
+    gap: 22px;
+    width: min(420px, calc(100vw - 32px));
+  }
+
+  .artbead-config-form {
+    display: grid;
+    gap: 12px;
+  }
+
   .delete-error,
   .dialog-error {
     margin: 0;
@@ -1628,13 +1799,6 @@
   .view-form {
     display: grid;
     gap: 22px;
-  }
-
-  .setting-hint {
-    margin: 0;
-    color: var(--muted);
-    font-size: 0.74rem;
-    line-height: 1.5;
   }
 
   .switch-control {

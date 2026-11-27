@@ -32,7 +32,11 @@
     "cancel": "取消",
     "confirmDelete": "删除",
     "deleting": "正在删除…",
-    "deleteError": "删除失败，请重试。"
+    "deleteError": "删除失败，请重试。",
+    "artbeadConfig": "艺点点配置",
+    "artbeadConfigTitle": "艺点点配置",
+    "artbeadConfigError": "配置保存失败，请重试。",
+    "close": "关闭"
   },
   "file": {
     "new": "新建空白方案",
@@ -168,7 +172,6 @@
   },
   "beadShape": {
     "label": "艺点点形状",
-    "hint": "选择艺点点在格板和预览中的显示形状。",
     "square": "方形",
     "circle": "圆形",
     "hexagon": "六边形"
