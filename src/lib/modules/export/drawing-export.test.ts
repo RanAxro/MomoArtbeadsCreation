@@ -5,7 +5,10 @@ import {
   createDrawingExportFilename
 } from '$model/drawing-export.model';
 import { DEFAULT_VIEW_PREFERENCES } from '$model/view.model';
-import { calculateDrawingSheetLayout } from './drawing-export';
+import {
+  calculateDrawingSheetLayout,
+  calculateRulerFontSize
+} from './drawing-export';
 
 describe('drawing export', () => {
   it('keeps the largest supported board within the export board area', () => {
@@ -85,5 +88,11 @@ describe('drawing export', () => {
   it('uses the hex value when an Artbead has no code', () => {
     expect(artbeadDisplayCode('A13', '#aabbcc')).toBe('A13');
     expect(artbeadDisplayCode('   ', '#aabbcc')).toBe('#AABBCC');
+  });
+
+  it('shrinks ruler text to fit every label', () => {
+    expect(calculateRulerFontSize(24, 18, 48)).toBe(13.5);
+    expect(calculateRulerFontSize(84, 63, 13)).toBeLessThan(13.5);
+    expect(calculateRulerFontSize(300, 300, 3)).toBeCloseTo(1.6129, 3);
   });
 });

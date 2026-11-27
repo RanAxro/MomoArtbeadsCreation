@@ -59,11 +59,11 @@ const SHEET_MARGIN = 24;
 const SIDE_PANEL_WIDTH = 300;
 const SIDE_PANEL_GAP = 24;
 const PANEL_GAP = 16;
-const BASIC_INFO_HEIGHT = 190;
-const LEGEND_PADDING = 14;
-const LEGEND_HEADING_HEIGHT = 50;
+const BASIC_INFO_HEIGHT = 240;
+const LEGEND_PADDING = 21;
+const LEGEND_HEADING_HEIGHT = 70;
 const LEGEND_ITEM_HEIGHT_MIN = 18;
-const LEGEND_ITEM_HEIGHT_MAX = 30;
+const LEGEND_ITEM_HEIGHT_MAX = 45;
 const BOARD_CELL_MIN = 1;
 const BOARD_CELL_MAX = 64;
 const RULER_SIZE = 36;
@@ -83,7 +83,7 @@ function legendColumnCount(itemCount: number): number {
   if (itemCount >= 241) {
     return 6;
   }
-  if (itemCount >= 169) {
+  if (itemCount >= 97) {
     return 5;
   }
   if (itemCount >= 17) {
@@ -408,11 +408,19 @@ function drawGrid(
   context.strokeRect(boardX, boardY, boardWidth, boardHeight);
 }
 
-function niceRulerStep(cellSize: number): number {
-  const minimumPixels = 34;
-  const rawStep = minimumPixels / cellSize;
-  const candidates = [1, 2, 5, 10, 20, 25, 50, 100];
-  return candidates.find((candidate) => candidate >= rawStep) ?? 100;
+export function calculateRulerFontSize(
+  width: number,
+  height: number,
+  cellSize: number
+): number {
+  const maximumLabelLength = Math.max(
+    String(width).length,
+    String(height).length
+  );
+  return Math.min(
+    13.5,
+    Math.max(1, cellSize / (maximumLabelLength * 0.62))
+  );
 }
 
 function drawRulers(
@@ -432,22 +440,21 @@ function drawRulers(
     boardHeight,
     rulerSize
   } = layout;
-  const columnStep = niceRulerStep(cellSize);
-  const rowStep = niceRulerStep(cellSize);
+  const rulerFontSize = calculateRulerFontSize(
+    project.width,
+    project.height,
+    cellSize
+  );
 
   context.save();
   context.fillStyle = MUTED;
   context.strokeStyle = BORDER;
   context.lineWidth = 0.8;
-  setFont(context, 9, 500);
+  setFont(context, rulerFontSize, 500);
   context.textAlign = 'center';
   context.textBaseline = 'middle';
 
   for (let x = 0; x < project.width; x += 1) {
-    const isEdge = x === 0 || x === project.width - 1;
-    if (!isEdge && x % columnStep !== 0) {
-      continue;
-    }
     const centerX = boardX + x * cellSize + cellSize / 2;
     const label = String(x + 1);
     context.fillText(label, centerX, boardY - rulerSize / 2);
@@ -465,10 +472,6 @@ function drawRulers(
   }
 
   for (let y = 0; y < project.height; y += 1) {
-    const isEdge = y === 0 || y === project.height - 1;
-    if (!isEdge && y % rowStep !== 0) {
-      continue;
-    }
     const centerY = boardY + y * cellSize + cellSize / 2;
     const label = String(y + 1);
     context.fillText(label, boardX - rulerSize / 2, centerY);
@@ -511,17 +514,15 @@ function drawBasicInfo(
   context.textAlign = 'left';
   context.textBaseline = 'alphabetic';
   context.fillStyle = INK;
-  setFont(context, 17, 700);
-  context.fillText(labels.basicInfoTitle, contentX, y + 31);
+  setFont(context, 25.5, 700);
+  context.fillText(labels.basicInfoTitle, contentX, y + 40);
   context.strokeStyle = HAIRLINE;
   context.beginPath();
-  context.moveTo(contentX, y + 43);
-  context.lineTo(x + SIDE_PANEL_WIDTH - 14, y + 43);
+  context.moveTo(contentX, y + 56);
+  context.lineTo(x + SIDE_PANEL_WIDTH - 14, y + 56);
   context.stroke();
 
-  const labelX = x + 14;
-  const valueX = x + 94;
-  const valueWidth = SIDE_PANEL_WIDTH - 108;
+  const valueWidth = SIDE_PANEL_WIDTH - 28;
   const rows = [
     {
       label: labels.schemeNameLabel,
@@ -538,26 +539,26 @@ function drawBasicInfo(
   ];
 
   rows.forEach((row, index) => {
-    const rowTop = y + 53 + index * 37;
+    const rowTop = y + 62 + index * 50;
     if (index > 0) {
       context.strokeStyle = HAIRLINE;
-      context.lineWidth = 0.7;
+      context.lineWidth = 0.8;
       context.beginPath();
       context.moveTo(contentX, rowTop);
       context.lineTo(x + SIDE_PANEL_WIDTH - 14, rowTop);
       context.stroke();
     }
     context.textAlign = 'left';
-    context.textBaseline = 'middle';
+    context.textBaseline = 'alphabetic';
     context.fillStyle = MUTED;
-    setFont(context, 11, 600);
-    context.fillText(row.label, labelX, rowTop + 18.5);
+    setFont(context, 16.5, 600);
+    context.fillText(row.label, contentX, rowTop + 20);
     context.fillStyle = INK;
-    setFont(context, 14, 600);
+    setFont(context, 21, 600);
     context.fillText(
       fitText(context, row.value, valueWidth),
-      valueX,
-      rowTop + 18.5
+      contentX,
+      rowTop + 46
     );
   });
 }
@@ -588,18 +589,18 @@ function drawLegend(
   context.textAlign = 'left';
   context.textBaseline = 'alphabetic';
   context.fillStyle = INK;
-  setFont(context, 17, 700);
-  context.fillText(labels.legendTitle, contentX, y + 31);
+  setFont(context, 25.5, 700);
+  context.fillText(labels.legendTitle, contentX, y + 43);
   context.strokeStyle = HAIRLINE;
   context.beginPath();
-  context.moveTo(contentX, y + 45);
-  context.lineTo(contentX + contentWidth, y + 45);
+  context.moveTo(contentX, y + 58);
+  context.lineTo(contentX + contentWidth, y + 58);
   context.stroke();
 
   if (usedColors.length === 0) {
     context.textBaseline = 'middle';
     context.fillStyle = MUTED;
-    setFont(context, 12, 400);
+    setFont(context, 18, 400);
     context.fillText(
       fitText(context, labels.emptyLegend, contentWidth),
       contentX,
@@ -610,12 +611,12 @@ function drawLegend(
 
   const itemWidth = contentWidth / layout.legendColumns;
   const swatchSize = Math.max(
-    10,
-    Math.min(22, layout.legendItemHeight - 7)
+    12,
+    Math.min(24, layout.legendItemHeight - 8)
   );
   const maximumCodeFontSize = Math.max(
-    9,
-    Math.min(13, layout.legendItemHeight * 0.5)
+    13.5,
+    Math.min(19.5, layout.legendItemHeight * 0.75)
   );
   const gridTop = y + LEGEND_HEADING_HEIGHT;
 
@@ -654,10 +655,10 @@ function drawLegend(
     let codeFontSize = maximumCodeFontSize;
     setFont(context, codeFontSize, 700);
     while (
-      codeFontSize > 7 &&
+      codeFontSize > 10.5 &&
       context.measureText(code).width > codeWidth
     ) {
-      codeFontSize = Math.max(7, codeFontSize - 0.5);
+      codeFontSize = Math.max(10.5, codeFontSize - 0.5);
       setFont(context, codeFontSize, 700);
     }
     context.fillText(
