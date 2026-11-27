@@ -4,8 +4,13 @@ import {
   peakImportFile,
   type ExportProgress
 } from 'dexie-export-import';
+import {
+  customPaletteSchemeSchema,
+  type CustomPaletteScheme
+} from '$model/custom-palette.model';
 import { beadProjectSchema, type BeadProject } from '$model/project.model';
 import {
+  CUSTOM_PALETTE_TABLE_NAME,
   PROJECT_DATABASE_VERSION,
   PROJECT_DATABASE_NAME,
   PROJECT_TABLE_NAME,
@@ -20,7 +25,8 @@ import { selectionClipboardRepository } from './selection-clipboard-repository';
 
 const BACKUP_TABLE_NAMES = new Set([
   PROJECT_TABLE_NAME,
-  SELECTION_CLIPBOARD_TABLE_NAME
+  SELECTION_CLIPBOARD_TABLE_NAME,
+  CUSTOM_PALETTE_TABLE_NAME
 ]);
 
 export type DatabaseBackupErrorCode =
@@ -28,7 +34,8 @@ export type DatabaseBackupErrorCode =
   | 'wrong-database'
   | 'unknown-table'
   | 'invalid-project'
-  | 'invalid-clipboard';
+  | 'invalid-clipboard'
+  | 'invalid-custom-palette';
 
 export class DatabaseBackupError extends Error {
   constructor(
@@ -55,6 +62,7 @@ export interface BackupImportOptions {
 export interface BackupImportSummary {
   projectsImported: number;
   clipboardsImported: number;
+  customPalettesImported: number;
 }
 
 export async function createDatabaseBackup(
@@ -97,9 +105,10 @@ export async function importDatabaseBackup(
 ): Promise<BackupImportSummary> {
   await readAndValidateMetadata(file);
   const database = getArtbeadsDatabase();
-  const [projects, clipboards] = await Promise.all([
+  const [projects, clipboards, customPalettes] = await Promise.all([
     database.projects.toArray(),
-    selectionClipboardRepository.list()
+    selectionClipboardRepository.list(),
+    database.customPaletteSchemes.toArray()
   ]);
   const projectUpdatedAt = new Map(
     projects.map((project) => [project.id, timestampOf(project.updatedAt)])
@@ -110,8 +119,12 @@ export async function importDatabaseBackup(
       clipboardRecencyOf(clipboard)
     ])
   );
+  const customPaletteUpdatedAt = new Map(
+    customPalettes.map((scheme) => [scheme.id, timestampOf(scheme.updatedAt)])
+  );
   let projectsImported = 0;
   let clipboardsImported = 0;
+  let customPalettesImported = 0;
 
   try {
     await importInto(database, file, {
@@ -155,6 +168,23 @@ export async function importDatabaseBackup(
           return true;
         }
 
+        if (tableName === CUSTOM_PALETTE_TABLE_NAME) {
+          const scheme = validateCustomPaletteRecord(value);
+          const nextUpdatedAt = timestampOf(scheme.updatedAt);
+          const currentUpdatedAt = customPaletteUpdatedAt.get(scheme.id);
+
+          if (
+            currentUpdatedAt !== undefined &&
+            nextUpdatedAt <= currentUpdatedAt
+          ) {
+            return false;
+          }
+
+          customPaletteUpdatedAt.set(scheme.id, nextUpdatedAt);
+          customPalettesImported += 1;
+          return true;
+        }
+
         throw new DatabaseBackupError(
           'unknown-table',
           `Unsupported backup table: ${tableName}`
@@ -178,7 +208,8 @@ export async function importDatabaseBackup(
 
   return {
     projectsImported,
-    clipboardsImported
+    clipboardsImported,
+    customPalettesImported
   };
 }
 
@@ -235,7 +266,8 @@ async function readAndValidateMetadata(
 
   if (
     !tableNames.has(PROJECT_TABLE_NAME) ||
-    !tableNames.has(SELECTION_CLIPBOARD_TABLE_NAME)
+    !tableNames.has(SELECTION_CLIPBOARD_TABLE_NAME) ||
+    !tableNames.has(CUSTOM_PALETTE_TABLE_NAME)
   ) {
     throw new DatabaseBackupError(
       'invalid-export',
@@ -296,6 +328,17 @@ function validateClipboardRecord(value: unknown): SelectionClipboard {
     throw new DatabaseBackupError(
       'invalid-clipboard',
       'The backup contains invalid clipboard data.'
+    );
+  }
+  return result.data;
+}
+
+function validateCustomPaletteRecord(value: unknown): CustomPaletteScheme {
+  const result = customPaletteSchemeSchema.safeParse(value);
+  if (!result.success) {
+    throw new DatabaseBackupError(
+      'invalid-custom-palette',
+      'The backup contains an invalid custom palette.'
     );
   }
   return result.data;

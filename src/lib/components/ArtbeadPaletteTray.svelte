@@ -1,7 +1,11 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { _ } from 'svelte-i18n';
+  import CustomPaletteColorDialog from '$lib/components/CustomPaletteColorDialog.svelte';
+  import Icon from '$lib/components/Icon.svelte';
   import { ARTBEAD_CATALOG, createArtbeadCode } from '$domain/palette';
   import { hexToRgb } from '$domain/color';
+  import { customPaletteRepository } from '$data/custom-palette-repository';
   import {
     ARTBEAD_COLOR_COUNT,
     ARTBEAD_COLOR_FAMILIES,
@@ -12,6 +16,8 @@
     ArtbeadTrayTab,
     type ArtbeadColorFamily
   } from '$model/artbead-palette.model';
+  import type { CustomPaletteScheme } from '$model/custom-palette.model';
+  import { IconName } from '$model/icon.model';
   import type { BeadPalette } from '$model/palette.model';
 
   interface Props {
@@ -27,8 +33,19 @@
     usage,
     onselect
   }: Props = $props();
+  const ADD_PALETTE_SCHEME_VALUE = '__add-palette-scheme__';
+  const catalogByCode = new Map(
+    ARTBEAD_CATALOG.map((color) => [color.code, color])
+  );
   let activeTab = $state<ArtbeadTrayTab>(DEFAULT_ARTBEAD_TRAY_TAB);
   let activeCategoryId = $state(DEFAULT_ARTBEAD_FAMILY_CODE);
+  let customPalettes = $state<CustomPaletteScheme[]>([]);
+  let activeCustomPaletteId = $state<string | null>(null);
+  let customPalettesLoading = $state(true);
+  let creatingCustomPalette = $state(false);
+  let customPaletteDialogOpen = $state(false);
+  let customPaletteError = $state('');
+  let customPaletteSaveQueue = Promise.resolve();
 
   let selectedColor = $derived(palette.colors[selectedColorIndex - 1]);
   let selectedCode = $derived(
@@ -71,6 +88,15 @@
       }))
     }));
   });
+  let activeCustomPalette = $derived(
+    customPalettes.find((scheme) => scheme.id === activeCustomPaletteId)
+  );
+  let activeCustomPaletteColors = $derived.by(() =>
+    (activeCustomPalette?.colorCodes ?? []).flatMap((code) => {
+      const color = catalogByCode.get(code);
+      return color ? [color] : [];
+    })
+  );
 
   function relativeLuminance(hex: string): number {
     const { r, g, b } = hexToRgb(hex);
@@ -99,6 +125,96 @@
       return contrast > bestContrast ? candidate : best;
     }, colors[0]);
   }
+
+  async function loadCustomPalettes(): Promise<void> {
+    customPalettesLoading = true;
+    customPaletteError = '';
+    try {
+      customPalettes = await customPaletteRepository.list();
+      if (
+        !activeCustomPaletteId ||
+        !customPalettes.some(
+          (scheme) => scheme.id === activeCustomPaletteId
+        )
+      ) {
+        activeCustomPaletteId = customPalettes[0]?.id ?? null;
+      }
+    } catch {
+      customPaletteError = $_('tray.paletteSchemeLoadError');
+    } finally {
+      customPalettesLoading = false;
+    }
+  }
+
+  async function createBlankCustomPalette(): Promise<void> {
+    if (creatingCustomPalette) {
+      return;
+    }
+
+    creatingCustomPalette = true;
+    customPaletteError = '';
+    try {
+      const name = $_('tray.unnamedPalette', {
+        values: { number: customPalettes.length + 1 }
+      });
+      const scheme = await customPaletteRepository.create(name);
+      customPalettes = [scheme, ...customPalettes];
+      activeCustomPaletteId = scheme.id;
+    } catch {
+      customPaletteError = $_('tray.paletteSchemeCreateError');
+    } finally {
+      creatingCustomPalette = false;
+    }
+  }
+
+  async function changeCustomPalette(event: Event): Promise<void> {
+    const select = event.currentTarget as HTMLSelectElement;
+    if (select.value === ADD_PALETTE_SCHEME_VALUE) {
+      await createBlankCustomPalette();
+      return;
+    }
+    activeCustomPaletteId = select.value || null;
+  }
+
+  function queueCustomPaletteSave(scheme: CustomPaletteScheme): void {
+    const snapshot: CustomPaletteScheme = {
+      ...scheme,
+      colorCodes: [...scheme.colorCodes]
+    };
+    customPaletteSaveQueue = customPaletteSaveQueue
+      .then(() => customPaletteRepository.save(snapshot))
+      .catch(() => {
+        customPaletteError = $_('tray.paletteSchemeSaveError');
+      });
+  }
+
+  function toggleCustomPaletteColor(code: string): void {
+    const scheme = activeCustomPalette;
+    if (!scheme) {
+      return;
+    }
+
+    const selected = scheme.colorCodes.includes(code);
+    const colorCodes = selected
+      ? scheme.colorCodes.filter((candidate) => candidate !== code)
+      : [...scheme.colorCodes, code];
+    const updated: CustomPaletteScheme = {
+      ...scheme,
+      colorCodes,
+      updatedAt: new Date().toISOString()
+    };
+
+    customPalettes = [
+      updated,
+      ...customPalettes.filter((candidate) => candidate.id !== updated.id)
+    ].sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
+    customPaletteError = '';
+    queueCustomPaletteSave(updated);
+  }
+
+  onMount(() => {
+    void loadCustomPalettes();
+  });
 </script>
 
 <aside class="artbead-tray" aria-label={$_('tray.title')}>
@@ -112,38 +228,95 @@
     </span>
   </div>
 
-  <div class="tray-tabs" role="tablist" aria-label={$_('tray.tabsLabel')}>
-    <button
-      class:active={activeTab === ArtbeadTrayTab.Scheme}
-      type="button"
-      role="tab"
-      id="artbead-tray-tab-scheme"
-      aria-controls="artbead-tray-panel-scheme"
-      aria-selected={activeTab === ArtbeadTrayTab.Scheme}
-      onclick={() => (activeTab = ArtbeadTrayTab.Scheme)}
-    >
-      {$_('tray.schemeTab')}
-    </button>
-    <button
-      class:active={activeTab === ArtbeadTrayTab.Complete}
-      type="button"
-      role="tab"
-      id="artbead-tray-tab-complete"
-      aria-controls="artbead-tray-panel-complete"
-      aria-selected={activeTab === ArtbeadTrayTab.Complete}
-      onclick={() => (activeTab = ArtbeadTrayTab.Complete)}
-    >
-      {$_('tray.completeTab')}
-    </button>
+  <div class="tray-navigation">
+    <div class="tray-tabs" role="tablist" aria-label={$_('tray.tabsLabel')}>
+      <button
+        class:active={activeTab === ArtbeadTrayTab.Scheme}
+        type="button"
+        role="tab"
+        id="artbead-tray-tab-scheme"
+        aria-controls="artbead-tray-panel-scheme"
+        aria-selected={activeTab === ArtbeadTrayTab.Scheme}
+        onclick={() => (activeTab = ArtbeadTrayTab.Scheme)}
+      >
+        {$_('tray.schemeTab')}
+      </button>
+      <button
+        class:active={activeTab === ArtbeadTrayTab.Complete}
+        type="button"
+        role="tab"
+        id="artbead-tray-tab-complete"
+        aria-controls="artbead-tray-panel-complete"
+        aria-selected={activeTab === ArtbeadTrayTab.Complete}
+        onclick={() => (activeTab = ArtbeadTrayTab.Complete)}
+      >
+        {$_('tray.completeTab')}
+      </button>
+    </div>
+
+    {#if activeTab === ArtbeadTrayTab.Scheme}
+      <label class="palette-scheme-selector">
+        <span class="visually-hidden">
+          {$_('tray.paletteSchemeSelectLabel')}
+        </span>
+        <select
+          value={activeCustomPalette?.id ?? ''}
+          aria-label={$_('tray.paletteSchemeSelectLabel')}
+          disabled={customPalettesLoading || creatingCustomPalette}
+          onchange={(event) => void changeCustomPalette(event)}
+        >
+          <option value={ADD_PALETTE_SCHEME_VALUE}>
+            + {$_('tray.addPaletteScheme')}
+          </option>
+          {#each customPalettes as scheme (scheme.id)}
+            <option value={scheme.id}>{scheme.name}</option>
+          {/each}
+        </select>
+      </label>
+    {/if}
   </div>
 
   {#if activeTab === ArtbeadTrayTab.Scheme}
     <div
-      class="tray-panel tray-panel-empty"
+      class="tray-panel custom-palette-panel"
       id="artbead-tray-panel-scheme"
       role="tabpanel"
       aria-labelledby="artbead-tray-tab-scheme"
-    ></div>
+    >
+      {#if customPaletteError}
+        <p class="custom-palette-error" role="alert">
+          {customPaletteError}
+        </p>
+      {/if}
+
+      {#if activeCustomPalette}
+        <div class="custom-palette-grid">
+          {#each activeCustomPaletteColors as color (color.code)}
+            <button
+              class="custom-palette-color"
+              type="button"
+              aria-label={`${color.code} ${color.hex}`}
+              title={`${color.code} · ${color.hex}`}
+              onclick={() => onselect(color.code, color.hex)}
+            >
+              <span style:--color={color.hex}></span>
+            </button>
+          {/each}
+          <button
+            class="custom-palette-add"
+            type="button"
+            aria-label={$_('tray.addColor')}
+            title={$_('tray.addColor')}
+            onclick={() => {
+              customPaletteError = '';
+              customPaletteDialogOpen = true;
+            }}
+          >
+            <Icon name={IconName.Plus} size={18} />
+          </button>
+        </div>
+      {/if}
+    </div>
   {:else}
     <div
       class="tray-panel palette-browser"
@@ -231,6 +404,14 @@
   {/if}
 </aside>
 
+<CustomPaletteColorDialog
+  open={customPaletteDialogOpen}
+  colors={ARTBEAD_CATALOG}
+  selectedCodes={activeCustomPalette?.colorCodes ?? []}
+  ontoggle={toggleCustomPaletteColor}
+  onclose={() => (customPaletteDialogOpen = false)}
+/>
+
 <style>
   .artbead-tray {
     display: grid;
@@ -275,6 +456,39 @@
     border-bottom: 1px solid var(--border);
   }
 
+  .tray-navigation {
+    display: grid;
+    gap: 9px;
+  }
+
+  .palette-scheme-selector select {
+    width: 100%;
+    height: 34px;
+    padding: 0 30px 0 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.74rem;
+  }
+
+  .palette-scheme-selector select:disabled {
+    cursor: wait;
+    opacity: 0.55;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
   .tray-tabs button {
     position: relative;
     padding: 8px 4px 9px;
@@ -311,6 +525,63 @@
   .tray-panel {
     min-height: 0;
     overflow: hidden;
+  }
+
+  .custom-palette-panel {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+
+  .custom-palette-error {
+    margin: 0;
+    color: var(--danger, #b42318);
+    font-size: 0.68rem;
+    line-height: 1.45;
+  }
+
+  .custom-palette-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: start;
+    gap: 8px;
+  }
+
+  .custom-palette-color,
+  .custom-palette-add {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    padding: 4px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .custom-palette-color {
+    border-color: var(--border);
+  }
+
+  .custom-palette-color:hover,
+  .custom-palette-add:hover {
+    border-color: var(--border-strong);
+  }
+
+  .custom-palette-color > span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.13);
+    background: var(--color);
+  }
+
+  .custom-palette-add {
+    border-color: var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
   }
 
   .palette-browser {
@@ -485,6 +756,10 @@
 
     .tray-tabs {
       align-self: start;
+    }
+
+    .custom-palette-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 
     .palette-browser {

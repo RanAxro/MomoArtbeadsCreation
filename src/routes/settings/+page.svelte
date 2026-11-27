@@ -195,7 +195,8 @@
         $_('settings.importSuccess', {
           values: {
             projects: summary.projectsImported,
-            clipboards: summary.clipboardsImported
+            clipboards: summary.clipboardsImported,
+            palettes: summary.customPalettesImported
           }
         }),
         'success'
@@ -217,6 +218,8 @@
           return $_('settings.importInvalidProject');
         case 'invalid-clipboard':
           return $_('settings.importInvalidClipboard');
+        case 'invalid-custom-palette':
+          return $_('settings.importInvalidCustomPalette');
         case 'unknown-table':
         case 'invalid-export':
           return $_('settings.importInvalidFile');

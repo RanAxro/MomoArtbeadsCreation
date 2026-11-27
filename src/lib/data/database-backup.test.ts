@@ -3,8 +3,8 @@ import { selectionClipboardSchema } from '$model/selection-clipboard.model';
 import { PROJECT_DATABASE_VERSION } from '$model/data.model';
 
 describe('database backup', () => {
-  it('uses database version 1 without compatibility versions', () => {
-    expect(PROJECT_DATABASE_VERSION).toBe(1);
+  it('uses database version 2 for custom palette schemes', () => {
+    expect(PROJECT_DATABASE_VERSION).toBe(2);
   });
 
   it('creates a stable timestamped export filename', async () => {

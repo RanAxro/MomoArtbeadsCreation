@@ -1,7 +1,9 @@
 export const PROJECT_DATABASE_NAME = 'momo-artbeads';
-export const PROJECT_DATABASE_VERSION = 1;
+export const PROJECT_DATABASE_VERSION = 2;
 export const PROJECT_TABLE_NAME = 'projects';
 export const PROJECT_TABLE_INDEXES =
   'id, name, gameVersion, updatedAt, createdAt';
 export const SELECTION_CLIPBOARD_TABLE_NAME = 'selectionClipboard';
 export const SELECTION_CLIPBOARD_TABLE_INDEXES = 'id';
+export const CUSTOM_PALETTE_TABLE_NAME = 'customPaletteSchemes';
+export const CUSTOM_PALETTE_TABLE_INDEXES = 'id, name, updatedAt, createdAt';
