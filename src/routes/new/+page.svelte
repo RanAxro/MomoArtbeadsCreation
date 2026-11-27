@@ -210,8 +210,8 @@
 
   .preset-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    max-width: 360px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 540px;
     border: 1px solid var(--border-strong);
   }
 
@@ -325,6 +325,11 @@
 
     .preset-grid {
       grid-template-columns: 1fr;
+    }
+
+    .preset + .preset {
+      border-top: 1px solid var(--border-strong);
+      border-left: 0;
     }
   }
 </style>

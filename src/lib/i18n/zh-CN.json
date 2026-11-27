@@ -220,7 +220,9 @@
     "invalidName": "请填写方案名称。",
     "invalidSize": "宽度和高度需要在 1 到 {max} 之间。",
     "preset": {
-      "default": "默认"
+      "small": "小格板",
+      "medium": "中格板",
+      "large": "大格板"
     }
   },
   "import": {

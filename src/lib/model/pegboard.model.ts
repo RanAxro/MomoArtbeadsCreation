@@ -1,11 +1,15 @@
 import { BLACK_HEX, WHITE_HEX } from './color.model';
 
 export enum PegboardPresetId {
-  Default24x18 = 'default-24x18'
+  Small24x18 = 'small-24x18',
+  Medium48x36 = 'medium-48x36',
+  Large84x63 = 'large-84x63'
 }
 
 export enum PegboardPresetLabelKey {
-  Default = 'new.preset.default'
+  Small = 'new.preset.small',
+  Medium = 'new.preset.medium',
+  Large = 'new.preset.large'
 }
 
 export interface PegboardPreset {
@@ -16,13 +20,27 @@ export interface PegboardPreset {
 }
 
 export const DEFAULT_PEGBOARD: PegboardPreset = {
-  id: PegboardPresetId.Default24x18,
-  labelKey: PegboardPresetLabelKey.Default,
+  id: PegboardPresetId.Small24x18,
+  labelKey: PegboardPresetLabelKey.Small,
   width: 24,
   height: 18
 };
 
-export const PEGBOARD_PRESETS: readonly PegboardPreset[] = [DEFAULT_PEGBOARD];
+export const PEGBOARD_PRESETS: readonly PegboardPreset[] = [
+  DEFAULT_PEGBOARD,
+  {
+    id: PegboardPresetId.Medium48x36,
+    labelKey: PegboardPresetLabelKey.Medium,
+    width: 48,
+    height: 36
+  },
+  {
+    id: PegboardPresetId.Large84x63,
+    labelKey: PegboardPresetLabelKey.Large,
+    width: 84,
+    height: 63
+  }
+];
 
 export const ARTBEAD_COLORS = [
   BLACK_HEX,
