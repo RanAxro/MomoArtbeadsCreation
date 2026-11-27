@@ -1,4 +1,5 @@
 import {
+  artbeadDisplayCode,
   DRAWING_EXPORT_MAX_DIMENSION,
   DRAWING_EXPORT_MAX_PIXELS,
   type DrawingExportSettings
@@ -9,13 +10,14 @@ import { BoardBackground } from '$model/view.model';
 import { requiredArtbeadUsage } from '$domain/project';
 
 export interface DrawingSheetLabels {
-  eyebrow: string;
+  basicInfoTitle: string;
+  schemeNameLabel: string;
+  boardSizeLabel: string;
+  beadShapeLabel: string;
+  boardSizeValue: string;
+  beadShapeValue: string;
   legendTitle: string;
-  patternTitle: string;
-  colorCount: string;
-  totalBeads: string;
   emptyLegend: string;
-  footer: string;
 }
 
 export interface RenderDrawingSheetOptions {
@@ -36,6 +38,9 @@ export interface DrawingSheetLayout {
   legendColumns: number;
   legendRows: number;
   legendPanelHeight: number;
+  legendItemHeight: number;
+  legendPanelY: number;
+  basicInfoHeight: number;
   boardWidth: number;
   boardHeight: number;
   boardViewportX: number;
@@ -46,23 +51,22 @@ export interface DrawingSheetLayout {
   boardY: number;
   logicalWidth: number;
   logicalHeight: number;
-  contentTop: number;
 }
 
-const SHEET_MARGIN = 56;
-const HEADER_HEIGHT = 112;
-const COLUMN_GAP = 54;
-const LEGEND_WIDTH = 432;
-const LEGEND_PADDING = 18;
-const LEGEND_HEADING_HEIGHT = 58;
-const LEGEND_ITEM_HEIGHT = 78;
-const LEGEND_EMPTY_HEIGHT = 92;
-const BOARD_TITLE_HEIGHT = 44;
-const BOARD_MAX_SIDE = 1440;
-const BOARD_CELL_MIN = 4;
-const BOARD_CELL_MAX = 26;
+const SHEET_WIDTH = 1600;
+const SHEET_HEIGHT = 1200;
+const SHEET_MARGIN = 24;
+const SIDE_PANEL_WIDTH = 300;
+const SIDE_PANEL_GAP = 24;
+const PANEL_GAP = 16;
+const BASIC_INFO_HEIGHT = 190;
+const LEGEND_PADDING = 14;
+const LEGEND_HEADING_HEIGHT = 50;
+const LEGEND_ITEM_HEIGHT_MIN = 18;
+const LEGEND_ITEM_HEIGHT_MAX = 30;
+const BOARD_CELL_MIN = 1;
+const BOARD_CELL_MAX = 64;
 const RULER_SIZE = 36;
-const FOOTER_HEIGHT = 104;
 
 const INK = '#111111';
 const MUTED = '#6b6b68';
@@ -76,19 +80,22 @@ const GRID_LINE = 'rgba(0, 0, 0, 0.17)';
 const COARSE_GRID_LINE = 'rgba(0, 0, 0, 0.52)';
 
 function legendColumnCount(itemCount: number): number {
-  if (itemCount >= 97) {
+  if (itemCount >= 241) {
     return 6;
   }
-  if (itemCount >= 49) {
+  if (itemCount >= 169) {
     return 5;
   }
-  if (itemCount >= 25) {
+  if (itemCount >= 17) {
     return 4;
   }
-  if (itemCount >= 10) {
+  if (itemCount >= 9) {
     return 3;
   }
-  return 2;
+  if (itemCount >= 5) {
+    return 2;
+  }
+  return 1;
 }
 
 export function calculateDrawingSheetLayout(
@@ -99,35 +106,53 @@ export function calculateDrawingSheetLayout(
   const legendColumns = legendColumnCount(usedColorCount);
   const legendRows = Math.ceil(usedColorCount / legendColumns);
   const legendPanelHeight =
-    LEGEND_PADDING * 2 +
-    LEGEND_HEADING_HEIGHT +
-    (usedColorCount > 0
-      ? legendRows * LEGEND_ITEM_HEIGHT
-      : LEGEND_EMPTY_HEIGHT);
+    SHEET_HEIGHT -
+    SHEET_MARGIN * 2 -
+    BASIC_INFO_HEIGHT -
+    PANEL_GAP;
+  const legendBodyHeight =
+    legendPanelHeight - LEGEND_HEADING_HEIGHT - LEGEND_PADDING;
+  const legendItemHeight =
+    usedColorCount > 0
+      ? Math.min(
+          LEGEND_ITEM_HEIGHT_MAX,
+          Math.max(
+            LEGEND_ITEM_HEIGHT_MIN,
+            Math.floor(legendBodyHeight / legendRows)
+          )
+        )
+      : LEGEND_ITEM_HEIGHT_MAX;
+  const rulerSize = settings.showRulers ? RULER_SIZE : 0;
+  const rightAreaX =
+    SHEET_MARGIN + SIDE_PANEL_WIDTH + SIDE_PANEL_GAP;
+  const rightAreaWidth = SHEET_WIDTH - SHEET_MARGIN - rightAreaX;
+  const contentHeight = SHEET_HEIGHT - SHEET_MARGIN * 2;
   const cellSize = Math.max(
     BOARD_CELL_MIN,
     Math.min(
       BOARD_CELL_MAX,
-      Math.floor(BOARD_MAX_SIDE / Math.max(project.width, project.height))
+      Math.floor(
+        (rightAreaWidth - rulerSize * 2) / project.width
+      ),
+      Math.floor(
+        (contentHeight - rulerSize * 2) / project.height
+      )
     )
   );
   const boardWidth = project.width * cellSize;
   const boardHeight = project.height * cellSize;
-  const rulerSize = settings.showRulers ? RULER_SIZE : 0;
   const boardViewportWidth = boardWidth + rulerSize * 2;
   const boardViewportHeight = boardHeight + rulerSize * 2;
-  const contentTop = SHEET_MARGIN + HEADER_HEIGHT;
+  const legendPanelY =
+    SHEET_MARGIN + BASIC_INFO_HEIGHT + PANEL_GAP;
   const boardViewportX =
-    SHEET_MARGIN + LEGEND_WIDTH + COLUMN_GAP;
-  const boardViewportY = contentTop + BOARD_TITLE_HEIGHT;
+    rightAreaX +
+    Math.max(0, (rightAreaWidth - boardViewportWidth) / 2);
+  const boardViewportY =
+    SHEET_MARGIN +
+    Math.max(0, (contentHeight - boardViewportHeight) / 2);
   const boardX = boardViewportX + rulerSize;
   const boardY = boardViewportY + rulerSize;
-  const logicalWidth =
-    SHEET_MARGIN * 2 + LEGEND_WIDTH + COLUMN_GAP + boardViewportWidth;
-  const contentBottom = Math.max(
-    contentTop + legendPanelHeight,
-    boardViewportY + boardViewportHeight
-  );
 
   return {
     cellSize,
@@ -135,6 +160,9 @@ export function calculateDrawingSheetLayout(
     legendColumns,
     legendRows,
     legendPanelHeight,
+    legendItemHeight,
+    legendPanelY,
+    basicInfoHeight: BASIC_INFO_HEIGHT,
     boardWidth,
     boardHeight,
     boardViewportX,
@@ -143,9 +171,8 @@ export function calculateDrawingSheetLayout(
     boardViewportHeight,
     boardX,
     boardY,
-    logicalWidth,
-    logicalHeight: contentBottom + FOOTER_HEIGHT,
-    contentTop
+    logicalWidth: SHEET_WIDTH,
+    logicalHeight: SHEET_HEIGHT
   };
 }
 
@@ -460,6 +487,81 @@ function drawRulers(
   context.restore();
 }
 
+function drawBasicInfo(
+  context: CanvasRenderingContext2D,
+  project: BeadProject,
+  layout: DrawingSheetLayout,
+  labels: DrawingSheetLabels
+): void {
+  const x = SHEET_MARGIN;
+  const y = SHEET_MARGIN;
+
+  context.fillStyle = SOFT_PAPER;
+  context.fillRect(x, y, SIDE_PANEL_WIDTH, layout.basicInfoHeight);
+  context.strokeStyle = BORDER;
+  context.lineWidth = 1;
+  context.strokeRect(
+    x + 0.5,
+    y + 0.5,
+    SIDE_PANEL_WIDTH - 1,
+    layout.basicInfoHeight - 1
+  );
+
+  const contentX = x + 14;
+  context.textAlign = 'left';
+  context.textBaseline = 'alphabetic';
+  context.fillStyle = INK;
+  setFont(context, 17, 700);
+  context.fillText(labels.basicInfoTitle, contentX, y + 31);
+  context.strokeStyle = HAIRLINE;
+  context.beginPath();
+  context.moveTo(contentX, y + 43);
+  context.lineTo(x + SIDE_PANEL_WIDTH - 14, y + 43);
+  context.stroke();
+
+  const labelX = x + 14;
+  const valueX = x + 94;
+  const valueWidth = SIDE_PANEL_WIDTH - 108;
+  const rows = [
+    {
+      label: labels.schemeNameLabel,
+      value: project.name
+    },
+    {
+      label: labels.boardSizeLabel,
+      value: labels.boardSizeValue
+    },
+    {
+      label: labels.beadShapeLabel,
+      value: labels.beadShapeValue
+    }
+  ];
+
+  rows.forEach((row, index) => {
+    const rowTop = y + 53 + index * 37;
+    if (index > 0) {
+      context.strokeStyle = HAIRLINE;
+      context.lineWidth = 0.7;
+      context.beginPath();
+      context.moveTo(contentX, rowTop);
+      context.lineTo(x + SIDE_PANEL_WIDTH - 14, rowTop);
+      context.stroke();
+    }
+    context.textAlign = 'left';
+    context.textBaseline = 'middle';
+    context.fillStyle = MUTED;
+    setFont(context, 11, 600);
+    context.fillText(row.label, labelX, rowTop + 18.5);
+    context.fillStyle = INK;
+    setFont(context, 14, 600);
+    context.fillText(
+      fitText(context, row.value, valueWidth),
+      valueX,
+      rowTop + 18.5
+    );
+  });
+}
+
 function drawLegend(
   context: CanvasRenderingContext2D,
   project: BeadProject,
@@ -468,68 +570,69 @@ function drawLegend(
 ): void {
   const usedColors = requiredArtbeadUsage(project);
   const x = SHEET_MARGIN;
-  const y = layout.contentTop;
-  const totalBeads = usedColors.reduce((total, color) => total + color.count, 0);
+  const y = layout.legendPanelY;
 
   context.fillStyle = SOFT_PAPER;
-  context.fillRect(x, y, LEGEND_WIDTH, layout.legendPanelHeight);
+  context.fillRect(x, y, SIDE_PANEL_WIDTH, layout.legendPanelHeight);
   context.strokeStyle = BORDER;
   context.lineWidth = 1;
   context.strokeRect(
     x + 0.5,
     y + 0.5,
-    LEGEND_WIDTH - 1,
+    SIDE_PANEL_WIDTH - 1,
     layout.legendPanelHeight - 1
   );
 
   const contentX = x + LEGEND_PADDING;
-  const contentWidth = LEGEND_WIDTH - LEGEND_PADDING * 2;
+  const contentWidth = SIDE_PANEL_WIDTH - LEGEND_PADDING * 2;
   context.textAlign = 'left';
   context.textBaseline = 'alphabetic';
   context.fillStyle = INK;
-  setFont(context, 16, 700);
+  setFont(context, 17, 700);
   context.fillText(labels.legendTitle, contentX, y + 31);
-  context.textAlign = 'right';
-  context.fillStyle = MUTED;
-  setFont(context, 10, 500);
-  context.fillText(labels.colorCount, x + LEGEND_WIDTH - LEGEND_PADDING, y + 30);
-  context.textAlign = 'left';
-  context.fillStyle = MUTED;
-  context.fillText(labels.totalBeads, contentX, y + 49);
   context.strokeStyle = HAIRLINE;
   context.beginPath();
-  context.moveTo(contentX, y + LEGEND_HEADING_HEIGHT + 6);
-  context.lineTo(contentX + contentWidth, y + LEGEND_HEADING_HEIGHT + 6);
+  context.moveTo(contentX, y + 45);
+  context.lineTo(contentX + contentWidth, y + 45);
   context.stroke();
 
   if (usedColors.length === 0) {
+    context.textBaseline = 'middle';
     context.fillStyle = MUTED;
     setFont(context, 12, 400);
     context.fillText(
       fitText(context, labels.emptyLegend, contentWidth),
       contentX,
-      y + LEGEND_HEADING_HEIGHT + 47
+      y + LEGEND_HEADING_HEIGHT + 28
     );
     return;
   }
 
   const itemWidth = contentWidth / layout.legendColumns;
-  const swatchSize = 30;
-  const gridTop = y + LEGEND_PADDING + LEGEND_HEADING_HEIGHT;
+  const swatchSize = Math.max(
+    10,
+    Math.min(22, layout.legendItemHeight - 7)
+  );
+  const maximumCodeFontSize = Math.max(
+    9,
+    Math.min(13, layout.legendItemHeight * 0.5)
+  );
+  const gridTop = y + LEGEND_HEADING_HEIGHT;
 
   usedColors.forEach((color, index) => {
     const column = index % layout.legendColumns;
     const row = Math.floor(index / layout.legendColumns);
     const itemX = contentX + column * itemWidth;
-    const itemY = gridTop + row * LEGEND_ITEM_HEIGHT;
-    const swatchX = itemX + (itemWidth - swatchSize) / 2;
+    const itemY = gridTop + row * layout.legendItemHeight;
+    const centerY = itemY + layout.legendItemHeight / 2;
+    const swatchX = itemX + 2;
 
     context.fillStyle = color.hex;
     fillTracedBeadShape(
       context,
       project.beadShape,
       swatchX,
-      itemY + 8,
+      centerY - swatchSize / 2,
       swatchSize
     );
     context.strokeStyle = 'rgba(0, 0, 0, 0.28)';
@@ -538,50 +641,31 @@ function drawLegend(
       context,
       project.beadShape,
       swatchX,
-      itemY + 8,
+      centerY - swatchSize / 2,
       swatchSize
     );
     context.stroke();
 
-    context.textAlign = 'center';
+    context.textAlign = 'left';
+    context.textBaseline = 'middle';
     context.fillStyle = INK;
-    setFont(context, 11, 700);
+    const code = artbeadDisplayCode(color.code, color.hex);
+    const codeWidth = itemWidth - swatchSize - 9;
+    let codeFontSize = maximumCodeFontSize;
+    setFont(context, codeFontSize, 700);
+    while (
+      codeFontSize > 7 &&
+      context.measureText(code).width > codeWidth
+    ) {
+      codeFontSize = Math.max(7, codeFontSize - 0.5);
+      setFont(context, codeFontSize, 700);
+    }
     context.fillText(
-      fitText(context, color.code || String(color.colorIndex), itemWidth - 8),
-      itemX + itemWidth / 2,
-      itemY + 55
-    );
-    context.fillStyle = MUTED;
-    setFont(context, 9, 500);
-    context.fillText(
-      `× ${color.count}`,
-      itemX + itemWidth / 2,
-      itemY + 70
+      fitText(context, code, codeWidth),
+      itemX + swatchSize + 7,
+      centerY
     );
   });
-}
-
-function drawPatternTitle(
-  context: CanvasRenderingContext2D,
-  layout: DrawingSheetLayout,
-  labels: DrawingSheetLabels
-): void {
-  context.textAlign = 'left';
-  context.textBaseline = 'alphabetic';
-  context.fillStyle = INK;
-  setFont(context, 16, 700);
-  context.fillText(
-    labels.patternTitle,
-    layout.boardViewportX,
-    layout.contentTop + 24
-  );
-  context.fillStyle = MUTED;
-  setFont(context, 10, 500);
-  context.fillText(
-    labels.colorCount,
-    layout.boardViewportX,
-    layout.contentTop + 40
-  );
 }
 
 /**
@@ -619,39 +703,8 @@ export function renderDrawingSheet(
   context.fillStyle = PAPER;
   context.fillRect(0, 0, layout.logicalWidth, layout.logicalHeight);
 
-  const titleMaxWidth = Math.max(
-    160,
-    layout.logicalWidth - SHEET_MARGIN * 2 - 380
-  );
-  context.textAlign = 'left';
-  context.textBaseline = 'alphabetic';
-  context.fillStyle = MUTED;
-  setFont(context, 10, 700);
-  context.fillText(labelsOrEmpty(options.labels.eyebrow), SHEET_MARGIN, 75);
-  context.fillStyle = INK;
-  setFont(context, 30, 700);
-  context.fillText(
-    fitText(context, project.name, titleMaxWidth),
-    SHEET_MARGIN,
-    112
-  );
-  context.textAlign = 'right';
-  context.fillStyle = MUTED;
-  setFont(context, 11, 500);
-  context.fillText(
-    `${project.width} × ${project.height}  ·  ${options.labels.totalBeads}`,
-    layout.logicalWidth - SHEET_MARGIN,
-    112
-  );
-  context.strokeStyle = HAIRLINE;
-  context.lineWidth = 1;
-  context.beginPath();
-  context.moveTo(SHEET_MARGIN, layout.contentTop - 16);
-  context.lineTo(layout.logicalWidth - SHEET_MARGIN, layout.contentTop - 16);
-  context.stroke();
-
+  drawBasicInfo(context, project, layout, options.labels);
   drawLegend(context, project, layout, options.labels);
-  drawPatternTitle(context, layout, options.labels);
   drawBoardBackground(
     context,
     project,
@@ -677,26 +730,5 @@ export function renderDrawingSheet(
   );
   drawRulers(context, project, layout);
 
-  const contentBottom = layout.logicalHeight - FOOTER_HEIGHT;
-  context.strokeStyle = HAIRLINE;
-  context.beginPath();
-  context.moveTo(SHEET_MARGIN, contentBottom + 28);
-  context.lineTo(layout.logicalWidth - SHEET_MARGIN, contentBottom + 28);
-  context.stroke();
-  context.textAlign = 'left';
-  context.fillStyle = MUTED;
-  setFont(context, 10, 500);
-  context.fillText(options.labels.footer, SHEET_MARGIN, contentBottom + 56);
-  context.textAlign = 'right';
-  context.fillText(
-    `${options.labels.colorCount}  ·  ${options.labels.totalBeads}`,
-    layout.logicalWidth - SHEET_MARGIN,
-    contentBottom + 56
-  );
-
   return { width, height, scale };
-}
-
-function labelsOrEmpty(value: string): string {
-  return value.trim() || ' ';
 }

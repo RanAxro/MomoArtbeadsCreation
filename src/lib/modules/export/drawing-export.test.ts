@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createProject } from '$domain/project';
 import {
+  artbeadDisplayCode,
   createDrawingExportFilename
 } from '$model/drawing-export.model';
 import { DEFAULT_VIEW_PREFERENCES } from '$model/view.model';
@@ -18,11 +19,10 @@ describe('drawing export', () => {
       DEFAULT_VIEW_PREFERENCES
     );
 
-    expect(layout.cellSize).toBe(4);
-    expect(layout.boardWidth).toBe(1200);
-    expect(layout.boardHeight).toBe(1200);
-    expect(layout.logicalWidth).toBeGreaterThan(layout.boardWidth);
-    expect(layout.logicalHeight).toBeGreaterThan(layout.boardHeight);
+    expect(layout.cellSize).toBe(3);
+    expect(layout.boardWidth).toBe(900);
+    expect(layout.boardHeight).toBe(900);
+    expect(layout.logicalWidth * 3).toBe(layout.logicalHeight * 4);
   });
 
   it('removes ruler gutters when the export ruler is disabled', () => {
@@ -40,12 +40,10 @@ describe('drawing export', () => {
       showRulers: false
     });
 
-    expect(withoutRulers.logicalWidth).toBe(
-      withRulers.logicalWidth - withRulers.rulerSize * 2
-    );
-    expect(withoutRulers.logicalHeight).toBe(
-      withRulers.logicalHeight - withRulers.rulerSize * 2
-    );
+    expect(withoutRulers.logicalWidth).toBe(withRulers.logicalWidth);
+    expect(withoutRulers.logicalHeight).toBe(withRulers.logicalHeight);
+    expect(withoutRulers.cellSize).toBeGreaterThan(withRulers.cellSize);
+    expect(withoutRulers.boardWidth).toBeGreaterThan(withRulers.boardWidth);
   });
 
   it('allocates legend rows for every used color', () => {
@@ -69,6 +67,7 @@ describe('drawing export', () => {
 
     expect(layout.legendColumns).toBe(4);
     expect(layout.legendRows).toBe(8);
+    expect(layout.logicalWidth * 3).toBe(layout.logicalHeight * 4);
   });
 
   it('creates a safe PNG filename from the scheme name', () => {
@@ -81,5 +80,10 @@ describe('drawing export', () => {
     expect(createDrawingExportFilename('???', 'drawing')).toBe(
       'drawing-drawing.png'
     );
+  });
+
+  it('uses the hex value when an Artbead has no code', () => {
+    expect(artbeadDisplayCode('A13', '#aabbcc')).toBe('A13');
+    expect(artbeadDisplayCode('   ', '#aabbcc')).toBe('#AABBCC');
   });
 });

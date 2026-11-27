@@ -9,7 +9,9 @@
     createDrawingExportFilename,
     type DrawingExportSettings
   } from '$model/drawing-export.model';
+  import { beadShapeLabelKey } from '$model/bead-shape.model';
   import { IconName } from '$model/icon.model';
+  import { findPegboardPreset } from '$model/pegboard.model';
   import {
     BoardBackground,
     MAX_COARSE_GRID_SPACING,
@@ -61,18 +63,29 @@
   }
 
   function drawingLabels(): DrawingSheetLabels {
+    const project = editor.project;
+    if (!project) {
+      throw new Error('No active scheme.');
+    }
+    const boardSize = `${project.width}x${project.height}`;
+    const preset = findPegboardPreset(project.width, project.height);
+
     return {
-      eyebrow: $_('drawingExport.eyebrow'),
+      basicInfoTitle: $_('drawingExport.basicInfoTitle'),
+      schemeNameLabel: $_('drawingExport.schemeNameLabel'),
+      boardSizeLabel: $_('drawingExport.boardSizeLabel'),
+      beadShapeLabel: $_('drawingExport.beadShapeLabel'),
+      boardSizeValue: preset
+        ? $_('drawingExport.boardSizeWithPreset', {
+            values: {
+              preset: $_(preset.labelKey),
+              size: boardSize
+            }
+          })
+        : boardSize,
+      beadShapeValue: $_(beadShapeLabelKey(project.beadShape)),
       legendTitle: $_('drawingExport.legendTitle'),
-      patternTitle: $_('drawingExport.patternTitle'),
-      colorCount: $_('drawingExport.colorCount', {
-        values: { count: colors.length }
-      }),
-      totalBeads: $_('drawingExport.totalBeads', {
-        values: { count: totalBeads }
-      }),
-      emptyLegend: $_('drawingExport.emptyLegend'),
-      footer: $_('drawingExport.footer')
+      emptyLegend: $_('drawingExport.emptyLegend')
     };
   }
 
@@ -573,19 +586,23 @@
   .preview-stage {
     position: relative;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     min-width: 0;
     min-height: 0;
-    padding: 26px;
-    overflow: auto;
+    padding: 18px;
+    overflow: hidden;
     background: var(--stage);
   }
 
   .preview-stage canvas {
     display: block;
-    width: min(100%, 1180px);
+    width: auto;
     height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    min-width: 0;
+    min-height: 0;
     flex: 0 0 auto;
     background: #ffffff;
     box-shadow: var(--shadow);
@@ -827,7 +844,7 @@
 
     .preview-stage {
       min-height: 500px;
-      padding: 12px;
+      padding: 10px;
     }
 
     .settings-panel {

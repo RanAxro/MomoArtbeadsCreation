@@ -40,3 +40,12 @@ export const PEGBOARD_PRESETS: readonly PegboardPreset[] = [
   }
 ];
 
+export function findPegboardPreset(
+  width: number,
+  height: number
+): PegboardPreset | undefined {
+  return PEGBOARD_PRESETS.find(
+    (preset) => preset.width === width && preset.height === height
+  );
+}
+

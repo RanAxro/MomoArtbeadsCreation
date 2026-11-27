@@ -7,6 +7,11 @@ export const DRAWING_EXPORT_MAX_DIMENSION = 4096;
 export const DRAWING_EXPORT_MAX_PIXELS = 16_000_000;
 export const DRAWING_EXPORT_FALLBACK_NAME = 'drawing';
 
+export function artbeadDisplayCode(code: string, hex: string): string {
+  const normalizedCode = code.trim();
+  return normalizedCode || hex.trim().toUpperCase();
+}
+
 export function createDrawingExportFilename(
   projectName: string,
   suffix: string

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PEGBOARD,
+  findPegboardPreset,
   PEGBOARD_PRESETS
 } from './pegboard.model';
 
@@ -19,5 +20,12 @@ describe('Pegboard model', () => {
       [48, 36],
       [84, 63]
     ]);
+  });
+
+  it('matches presets only when both dimensions are exact', () => {
+    expect(findPegboardPreset(24, 18)?.labelKey).toBe('new.preset.small');
+    expect(findPegboardPreset(48, 36)?.labelKey).toBe('new.preset.medium');
+    expect(findPegboardPreset(84, 63)?.labelKey).toBe('new.preset.large');
+    expect(findPegboardPreset(24, 36)).toBeUndefined();
   });
 });
