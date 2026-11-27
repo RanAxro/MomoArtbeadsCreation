@@ -1,23 +1,83 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
   import Icon from '$lib/components/Icon.svelte';
+  import { createArtbeadCode } from '$domain/palette';
+  import { hexToRgb } from '$domain/color';
+  import {
+    ARTBEAD_COLOR_FAMILIES,
+    DEFAULT_ARTBEAD_FAMILY_CODE,
+    GLOBAL_ARTBEAD_CATEGORY_ID,
+    GLOBAL_ARTBEAD_COLORS,
+    type ArtbeadColorFamily
+  } from '$model/artbead-palette.model';
   import { IconName } from '$model/icon.model';
-
-  interface CatalogColor {
-    code: string;
-    hex: string;
-  }
 
   interface Props {
     open: boolean;
-    colors: readonly CatalogColor[];
     selectedCodes: readonly string[];
     ontoggle: (code: string) => void;
     onclose: () => void;
   }
 
-  let { open, colors, selectedCodes, ontoggle, onclose }: Props = $props();
+  let { open, selectedCodes, ontoggle, onclose }: Props = $props();
+  let activeCategoryId = $state(DEFAULT_ARTBEAD_FAMILY_CODE);
   let selected = $derived(new Set(selectedCodes));
+  let activeFamily = $derived(
+    ARTBEAD_COLOR_FAMILIES.find(
+      (family) => family.code === activeCategoryId
+    ) ?? ARTBEAD_COLOR_FAMILIES[0]
+  );
+  let globalActive = $derived(
+    activeCategoryId === GLOBAL_ARTBEAD_CATEGORY_ID
+  );
+  let activePalettes = $derived.by(() => {
+    if (globalActive) {
+      return [
+        GLOBAL_ARTBEAD_COLORS.map((color) => ({
+          code: String(color.number),
+          hex: color.hex
+        }))
+      ];
+    }
+
+    return activeFamily.palettes.map((colors, paletteIndex) =>
+      colors.map((hex, cellIndex) => ({
+        code: createArtbeadCode(
+          activeFamily.code,
+          paletteIndex + 1,
+          cellIndex + 1
+        ),
+        hex
+      }))
+    );
+  });
+
+  function relativeLuminance(hex: string): number {
+    const { r, g, b } = hexToRgb(hex);
+    const channels = [r, g, b].map((channel) => {
+      const value = channel / 255;
+      return value <= 0.04045
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  }
+
+  function familyLabelColor(family: ArtbeadColorFamily): string {
+    const background = family.palettes[0][0];
+    const backgroundLuminance = relativeLuminance(background);
+    return family.palettes.flat().reduce((best, candidate) => {
+      const luminance = relativeLuminance(candidate);
+      const bestLuminance = relativeLuminance(best);
+      const contrast =
+        (Math.max(luminance, backgroundLuminance) + 0.05) /
+        (Math.min(luminance, backgroundLuminance) + 0.05);
+      const bestContrast =
+        (Math.max(bestLuminance, backgroundLuminance) + 0.05) /
+        (Math.min(bestLuminance, backgroundLuminance) + 0.05);
+      return contrast > bestContrast ? candidate : best;
+    }, family.palettes[0][0]);
+  }
 </script>
 
 <svelte:window
@@ -58,28 +118,73 @@
       </button>
     </header>
 
-    <div class="catalog-grid">
-      {#each colors as color (color.code)}
+    <div class="palette-browser">
+      <nav class="family-list" aria-label={$_('tray.familiesLabel')}>
         <button
-          class="catalog-color"
-          class:selected={selected.has(color.code)}
+          class="family-button"
+          class:active={globalActive}
           type="button"
-          aria-label={`${color.code} ${color.hex}`}
-          aria-pressed={selected.has(color.code)}
-          title={`${color.code} · ${color.hex}`}
-          onclick={() => ontoggle(color.code)}
+          aria-label={$_('tray.globalColors')}
+          aria-pressed={globalActive}
+          title={$_('tray.globalColors')}
+          onclick={() => (activeCategoryId = GLOBAL_ARTBEAD_CATEGORY_ID)}
         >
           <span
-            class="catalog-swatch"
-            style:--color={color.hex}
-          >
-            {#if selected.has(color.code)}
-              <span class="selected-mark" aria-hidden="true">✓</span>
-            {/if}
-          </span>
-          <small>{color.code}</small>
+            class="family-swatch global-family-swatch"
+            aria-hidden="true"
+          ></span>
         </button>
-      {/each}
+        {#each ARTBEAD_COLOR_FAMILIES as family (family.code)}
+          <button
+            class="family-button"
+            class:active={family.code === activeCategoryId}
+            type="button"
+            aria-label={`${family.code} ${$_(family.labelKey)}`}
+            aria-pressed={family.code === activeCategoryId}
+            title={family.code}
+            onclick={() => (activeCategoryId = family.code)}
+          >
+            <span
+              class="family-swatch"
+              style:--color={family.palettes[0][0]}
+              style:--label-color={familyLabelColor(family)}
+              aria-hidden="true"
+            >
+              {family.code}
+            </span>
+          </button>
+        {/each}
+      </nav>
+
+      <div class="palette-list">
+        {#each activePalettes as palette, paletteIndex (paletteIndex)}
+          <section class="palette-group">
+            <div class="palette-grid">
+              {#each palette as color (color.code)}
+                <button
+                  class="palette-color"
+                  class:selected={selected.has(color.code)}
+                  type="button"
+                  aria-label={`${color.code} ${color.hex}`}
+                  aria-pressed={selected.has(color.code)}
+                  title={`${color.code} · ${color.hex}`}
+                  onclick={() => ontoggle(color.code)}
+                >
+                  <span
+                    class="palette-swatch"
+                    style:--color={color.hex}
+                  >
+                    {#if selected.has(color.code)}
+                      <span class="selected-mark" aria-hidden="true">✓</span>
+                    {/if}
+                  </span>
+                  <small>{color.code}</small>
+                </button>
+              {/each}
+            </div>
+          </section>
+        {/each}
+      </div>
     </div>
 
     <footer class="dialog-footer">
@@ -169,19 +274,89 @@
     background: var(--hover);
   }
 
-  .catalog-grid {
+  .palette-browser {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .family-list {
+    display: grid;
     align-content: start;
-    gap: 8px;
+    gap: 5px;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .family-button {
+    display: grid;
+    place-items: center;
+    min-height: 42px;
+    padding: 4px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .family-button:hover {
+    border-color: var(--border);
+  }
+
+  .family-button.active {
+    border-color: var(--border-strong);
+    background: var(--hover);
+  }
+
+  .family-swatch {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    border-radius: 50%;
+    background: var(--color);
+    color: var(--label-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .global-family-swatch {
+    border-color: var(--border-strong);
+    background: var(--text);
+  }
+
+  .palette-list {
+    display: grid;
+    align-content: start;
+    gap: 10px;
     min-height: 0;
     overflow-y: auto;
     padding: 2px 4px 2px 2px;
   }
 
-  .catalog-color {
+  .palette-group {
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 50px));
+    justify-content: start;
+    gap: 7px;
+  }
+
+  .palette-color {
     display: grid;
     gap: 4px;
+    width: 100%;
+    max-width: 50px;
     min-width: 0;
     padding: 4px;
     border: 1px solid transparent;
@@ -191,18 +366,18 @@
     cursor: pointer;
   }
 
-  .catalog-color:hover {
+  .palette-color:hover {
     border-color: var(--border-strong);
     color: var(--text);
   }
 
-  .catalog-color.selected {
+  .palette-color.selected {
     border-color: var(--text);
     background: var(--hover);
     color: var(--text);
   }
 
-  .catalog-swatch {
+  .palette-swatch {
     position: relative;
     display: grid;
     place-items: center;
@@ -224,9 +399,9 @@
     font-weight: 700;
   }
 
-  .catalog-color small {
+  .palette-color small {
     overflow: hidden;
-    font-size: 0.58rem;
+    font-size: 0.56rem;
     line-height: 1;
     text-align: center;
     text-overflow: ellipsis;
@@ -254,9 +429,22 @@
       max-height: calc(100vh - 20px);
     }
 
-    .catalog-grid {
-      grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
-      gap: 6px;
+    .palette-browser {
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .family-button {
+      min-height: 36px;
+    }
+
+    .family-swatch {
+      width: 28px;
+      height: 28px;
+    }
+
+    .palette-grid {
+      gap: 5px;
     }
   }
 </style>

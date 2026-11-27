@@ -426,7 +426,6 @@
 
 <CustomPaletteColorDialog
   open={customPaletteDialogOpen}
-  colors={ARTBEAD_CATALOG}
   selectedCodes={activeCustomPalette?.colorCodes ?? []}
   ontoggle={toggleCustomPaletteColor}
   onclose={() => (customPaletteDialogOpen = false)}
