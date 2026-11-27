@@ -6,6 +6,9 @@ export const DRAWING_EXPORT_PREVIEW_MAX_DIMENSION = 2200;
 export const DRAWING_EXPORT_MAX_DIMENSION = 4096;
 export const DRAWING_EXPORT_MAX_PIXELS = 16_000_000;
 export const DRAWING_EXPORT_FALLBACK_NAME = 'drawing';
+export const DRAWING_EXPORT_AUTHOR_STORAGE_KEY =
+  'momo-artbeads.drawing-export-author';
+export const MAX_DRAWING_EXPORT_AUTHOR_LENGTH = 80;
 
 export function artbeadDisplayCode(code: string, hex: string): string {
   const normalizedCode = code.trim();

@@ -5,11 +5,12 @@
   import Icon from '$lib/components/Icon.svelte';
   import { requiredArtbeadUsage } from '$domain/project';
   import {
+    DRAWING_EXPORT_AUTHOR_STORAGE_KEY,
     DRAWING_EXPORT_PREVIEW_MAX_DIMENSION,
+    MAX_DRAWING_EXPORT_AUTHOR_LENGTH,
     createDrawingExportFilename,
     type DrawingExportSettings
   } from '$model/drawing-export.model';
-  import { beadShapeLabelKey } from '$model/bead-shape.model';
   import { IconName } from '$model/icon.model';
   import { findPegboardPreset } from '$model/pegboard.model';
   import {
@@ -27,6 +28,17 @@
   const PREVIEW_RENDER_DELAY_MS = 90;
   const DOWNLOAD_NOTICE_DURATION_MS = 2600;
 
+  function readStoredAuthor(): string {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+    return (
+      window.localStorage
+        .getItem(DRAWING_EXPORT_AUTHOR_STORAGE_KEY)
+        ?.slice(0, MAX_DRAWING_EXPORT_AUTHOR_LENGTH) ?? ''
+    );
+  }
+
   const editor = workspace.editor;
   let ready = $state(false);
   let previewCanvas: HTMLCanvasElement | undefined = $state();
@@ -35,6 +47,7 @@
   let showCoarseGrid = $state(viewStore.showCoarseGrid);
   let coarseGridSpacing = $state(viewStore.coarseGridSpacing);
   let background = $state<BoardBackground>(viewStore.background);
+  let author = $state(readStoredAuthor());
   let previewSize = $state('');
   let previewError = $state('');
   let exporting = $state(false);
@@ -71,10 +84,7 @@
     const preset = findPegboardPreset(project.width, project.height);
 
     return {
-      basicInfoTitle: $_('drawingExport.basicInfoTitle'),
-      schemeNameLabel: $_('drawingExport.schemeNameLabel'),
-      boardSizeLabel: $_('drawingExport.boardSizeLabel'),
-      beadShapeLabel: $_('drawingExport.beadShapeLabel'),
+      authorPrefix: $_('drawingExport.authorPrefix'),
       boardSizeValue: preset
         ? $_('drawingExport.boardSizeWithPreset', {
             values: {
@@ -83,10 +93,21 @@
             }
           })
         : boardSize,
-      beadShapeValue: $_(beadShapeLabelKey(project.beadShape)),
       legendTitle: $_('drawingExport.legendTitle'),
       emptyLegend: $_('drawingExport.emptyLegend')
     };
+  }
+
+  function updateAuthor(value: string): void {
+    author = value.slice(0, MAX_DRAWING_EXPORT_AUTHOR_LENGTH);
+    try {
+      window.localStorage.setItem(
+        DRAWING_EXPORT_AUTHOR_STORAGE_KEY,
+        author
+      );
+    } catch {
+      // The input remains usable when storage is unavailable.
+    }
   }
 
   function schedulePreviewRender(): void {
@@ -111,6 +132,7 @@
     try {
       const info = renderDrawingSheet(canvas, project, currentSettings(), {
         labels: drawingLabels(),
+        author,
         maxDimension: DRAWING_EXPORT_PREVIEW_MAX_DIMENSION
       });
       if (request !== previewRenderRequest) {
@@ -185,7 +207,8 @@
       await document.fonts.ready;
       const canvas = document.createElement('canvas');
       renderDrawingSheet(canvas, project, currentSettings(), {
-        labels: drawingLabels()
+        labels: drawingLabels(),
+        author
       });
       const blob = await canvasToBlob(canvas);
       const url = URL.createObjectURL(blob);
@@ -214,6 +237,7 @@
     showCoarseGrid;
     coarseGridSpacing;
     background;
+    author;
     $locale;
     if (ready && previewCanvas && editor.project) {
       schedulePreviewRender();
@@ -332,6 +356,21 @@
             void downloadDrawing();
           }}
         >
+          <label class="field-label author-field" for="drawing-export-author">
+            <span>{$_('drawingExport.author')}</span>
+            <input
+              id="drawing-export-author"
+              class="field"
+              type="text"
+              maxlength={MAX_DRAWING_EXPORT_AUTHOR_LENGTH}
+              autocomplete="name"
+              value={author}
+              placeholder={$_('drawingExport.author')}
+              oninput={(event) => updateAuthor(event.currentTarget.value)}
+            />
+            <small>{$_('drawingExport.authorHint')}</small>
+          </label>
+
           <div class="setting-stack">
             <label class="view-switch">
               <span>
@@ -751,8 +790,16 @@
     cursor: pointer;
   }
 
-  .drawing-settings input[type="number"].field {
+  .drawing-settings input[type="number"].field,
+  .drawing-settings input[type="text"].field {
     cursor: text;
+  }
+
+  .author-field small {
+    color: var(--muted);
+    font-size: 0.66rem;
+    font-weight: 400;
+    line-height: 1.5;
   }
 
   .local-note {

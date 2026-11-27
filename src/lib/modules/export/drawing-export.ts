@@ -10,18 +10,15 @@ import { BoardBackground } from '$model/view.model';
 import { requiredArtbeadUsage } from '$domain/project';
 
 export interface DrawingSheetLabels {
-  basicInfoTitle: string;
-  schemeNameLabel: string;
-  boardSizeLabel: string;
-  beadShapeLabel: string;
+  authorPrefix: string;
   boardSizeValue: string;
-  beadShapeValue: string;
   legendTitle: string;
   emptyLegend: string;
 }
 
 export interface RenderDrawingSheetOptions {
   labels: DrawingSheetLabels;
+  author?: string;
   maxDimension?: number;
   maxPixels?: number;
 }
@@ -59,7 +56,7 @@ const SHEET_MARGIN = 24;
 const SIDE_PANEL_WIDTH = 300;
 const SIDE_PANEL_GAP = 24;
 const PANEL_GAP = 16;
-const BASIC_INFO_HEIGHT = 240;
+const BASIC_INFO_HEIGHT = 190;
 const LEGEND_PADDING = 21;
 const LEGEND_HEADING_HEIGHT = 70;
 const LEGEND_ITEM_HEIGHT_MIN = 18;
@@ -494,7 +491,8 @@ function drawBasicInfo(
   context: CanvasRenderingContext2D,
   project: BeadProject,
   layout: DrawingSheetLayout,
-  labels: DrawingSheetLabels
+  labels: DrawingSheetLabels,
+  author: string
 ): void {
   const x = SHEET_MARGIN;
   const y = SHEET_MARGIN;
@@ -515,52 +513,39 @@ function drawBasicInfo(
   context.textBaseline = 'alphabetic';
   context.fillStyle = INK;
   setFont(context, 25.5, 700);
-  context.fillText(labels.basicInfoTitle, contentX, y + 40);
+  context.fillText(
+    fitText(context, project.name, SIDE_PANEL_WIDTH - 28),
+    contentX,
+    y + 40
+  );
   context.strokeStyle = HAIRLINE;
   context.beginPath();
   context.moveTo(contentX, y + 56);
   context.lineTo(x + SIDE_PANEL_WIDTH - 14, y + 56);
   context.stroke();
 
-  const valueWidth = SIDE_PANEL_WIDTH - 28;
-  const rows = [
-    {
-      label: labels.schemeNameLabel,
-      value: project.name
-    },
-    {
-      label: labels.boardSizeLabel,
-      value: labels.boardSizeValue
-    },
-    {
-      label: labels.beadShapeLabel,
-      value: labels.beadShapeValue
-    }
-  ];
-
-  rows.forEach((row, index) => {
-    const rowTop = y + 62 + index * 50;
-    if (index > 0) {
-      context.strokeStyle = HAIRLINE;
-      context.lineWidth = 0.8;
-      context.beginPath();
-      context.moveTo(contentX, rowTop);
-      context.lineTo(x + SIDE_PANEL_WIDTH - 14, rowTop);
-      context.stroke();
-    }
-    context.textAlign = 'left';
-    context.textBaseline = 'alphabetic';
+  const normalizedAuthor = author.trim();
+  if (normalizedAuthor) {
     context.fillStyle = MUTED;
-    setFont(context, 16.5, 600);
-    context.fillText(row.label, contentX, rowTop + 20);
-    context.fillStyle = INK;
-    setFont(context, 21, 600);
+    setFont(context, 19.5, 500);
     context.fillText(
-      fitText(context, row.value, valueWidth),
+      fitText(
+        context,
+        `${labels.authorPrefix}${normalizedAuthor}`,
+        SIDE_PANEL_WIDTH - 28
+      ),
       contentX,
-      rowTop + 46
+      y + 92
     );
-  });
+  }
+
+  context.fillStyle = INK;
+  setFont(context, 21, 600);
+  context.fillText(
+    fitText(context, labels.boardSizeValue, SIDE_PANEL_WIDTH - 28),
+    contentX,
+    normalizedAuthor ? y + 132 : y + 100
+  );
 }
 
 function drawLegend(
@@ -704,7 +689,13 @@ export function renderDrawingSheet(
   context.fillStyle = PAPER;
   context.fillRect(0, 0, layout.logicalWidth, layout.logicalHeight);
 
-  drawBasicInfo(context, project, layout, options.labels);
+  drawBasicInfo(
+    context,
+    project,
+    layout,
+    options.labels,
+    options.author ?? ''
+  );
   drawLegend(context, project, layout, options.labels);
   drawBoardBackground(
     context,
