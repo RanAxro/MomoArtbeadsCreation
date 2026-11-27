@@ -22,7 +22,7 @@ export function fillBeadShape(
     context.arc(centerX, centerY, radius, 0, Math.PI * 2);
   } else {
     for (let index = 0; index < 6; index += 1) {
-      const angle = (Math.PI / 3) * index;
+      const angle = Math.PI / 6 + (Math.PI / 3) * index;
       const pointX = centerX + Math.cos(angle) * radius;
       const pointY = centerY + Math.sin(angle) * radius;
       if (index === 0) {

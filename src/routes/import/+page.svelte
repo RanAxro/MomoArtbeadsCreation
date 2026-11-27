@@ -2,14 +2,11 @@
   import { onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { _ } from 'svelte-i18n';
+  import BeadShapeSelect from '$lib/components/BeadShapeSelect.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ImageCropFrame from '$lib/components/ImageCropFrame.svelte';
   import ProjectPreview from '$lib/components/ProjectPreview.svelte';
-  import {
-    BEAD_SHAPE_OPTIONS,
-    DEFAULT_BEAD_SHAPE,
-    type BeadShape
-  } from '$model/bead-shape.model';
+  import { DEFAULT_BEAD_SHAPE } from '$model/bead-shape.model';
   import {
     DEFAULT_PEGBOARD,
     PEGBOARD_PRESETS,
@@ -402,22 +399,16 @@
               </select>
             </label>
 
-            <label class="field-label">
-              {$_('beadShape.label')}
-              <select
-                class="field"
+            <div class="field-label">
+              <span>{$_('beadShape.label')}</span>
+              <BeadShapeSelect
                 value={selectedBeadShape}
-                onchange={(event) => {
-                  selectedBeadShape =
-                    event.currentTarget.value as BeadShape;
+                onchange={(shape) => {
+                  selectedBeadShape = shape;
                   scheduleAutoPreview(0);
                 }}
-              >
-                {#each BEAD_SHAPE_OPTIONS as option}
-                  <option value={option.value}>{$_(option.labelKey)}</option>
-                {/each}
-              </select>
-            </label>
+              />
+            </div>
 
           </div>
         </div>

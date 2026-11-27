@@ -5,7 +5,6 @@
   import { page } from '$app/state';
   import { MAX_PROJECT_NAME_LENGTH } from '$model/project.model';
   import {
-    BEAD_SHAPE_OPTIONS,
     DEFAULT_BEAD_SHAPE,
     type BeadShape
   } from '$model/bead-shape.model';
@@ -28,6 +27,7 @@
   import { _, locale } from 'svelte-i18n';
   import { countFilledCells } from '$domain/project';
   import ClipboardPreview from '$lib/components/ClipboardPreview.svelte';
+  import BeadShapeSelect from '$lib/components/BeadShapeSelect.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ShareCodeImportDialog from '$lib/components/ShareCodeImportDialog.svelte';
   import { clipboardStore } from '$modules/clipboard/clipboard-store.svelte';
@@ -286,13 +286,8 @@
     artbeadConfigLoading = false;
   }
 
-  async function changeArtbeadShape(event: Event): Promise<void> {
+  async function changeArtbeadShape(shape: BeadShape): Promise<void> {
     const target = artbeadConfigTarget;
-    const select = event.currentTarget;
-    if (!(select instanceof HTMLSelectElement)) {
-      return;
-    }
-    const shape = select.value as BeadShape;
     if (
       !target ||
       artbeadConfigLoading ||
@@ -966,20 +961,13 @@
       {#if workspace.editor.project}
         <div class="setting-group">
           <h3>{$_('beadShape.label')}</h3>
-          <select
-            class="field"
+          <BeadShapeSelect
             value={workspace.editor.project.beadShape}
-            onchange={(event) => {
-              workspace.editor.setBeadShape(
-                event.currentTarget.value as BeadShape
-              );
+            onchange={(shape) => {
+              workspace.editor.setBeadShape(shape);
               void workspace.saveActiveScheme();
             }}
-          >
-            {#each BEAD_SHAPE_OPTIONS as option}
-              <option value={option.value}>{$_(option.labelKey)}</option>
-            {/each}
-          </select>
+          />
         </div>
       {/if}
     </form>
@@ -1023,16 +1011,11 @@
     >
       <label class="field-label">
         <span>{$_('beadShape.label')}</span>
-        <select
-          class="field"
+        <BeadShapeSelect
           value={artbeadConfigShape}
           disabled={artbeadConfigLoading || artbeadConfigSaving}
-          onchange={(event) => void changeArtbeadShape(event)}
-        >
-          {#each BEAD_SHAPE_OPTIONS as option}
-            <option value={option.value}>{$_(option.labelKey)}</option>
-          {/each}
-        </select>
+          onchange={(shape) => void changeArtbeadShape(shape)}
+        />
       </label>
       {#if artbeadConfigError}
         <p class="dialog-error" role="alert">{artbeadConfigError}</p>
