@@ -181,6 +181,7 @@
     "error": "Save failed",
     "save": "Save",
     "more": "More",
+    "exportDrawing": "Export drawing",
     "exportShareCode": "Export share code",
     "exportShareCodeSuccess": "Share code copied to the clipboard.",
     "exportShareCodeError": "The share code could not be generated or copied.",
@@ -211,6 +212,33 @@
     "back": "Back to workspace",
     "hint": "Wheel to pan · Shift + wheel to pan sideways · Ctrl + wheel to zoom · Drag the Pegboard to pan",
     "readOnly": "Assembly view"
+  },
+  "drawingExport": {
+    "title": "Export drawing",
+    "eyebrow": "Drawing Export",
+    "description": "Preview and create a high-resolution drawing with the required Artbeads and pattern.",
+    "preview": "Drawing preview",
+    "settings": "Export settings",
+    "settingsHint": "These settings apply only to this export page and do not change workspace view preferences.",
+    "showRulers": "Show rulers",
+    "showGrid": "Show grid",
+    "showCoarseGrid": "Show coarse grid",
+    "background": "Pegboard background",
+    "previewLoading": "Generating drawing preview…",
+    "previewError": "The drawing preview could not be generated. Try again.",
+    "reset": "Restore current view settings",
+    "exportPng": "Download PNG",
+    "exporting": "Generating image…",
+    "exportSuccess": "Drawing downloaded.",
+    "exportError": "The drawing could not be generated or downloaded.",
+    "emptyLegend": "This drawing does not use any Artbeads yet",
+    "legendTitle": "Required Artbeads",
+    "patternTitle": "Pattern",
+    "colorCount": "{count} colors",
+    "totalBeads": "{count} Artbeads in total",
+    "footer": "This drawing includes only the Artbeads in use · Momo Artbeads Creation",
+    "filenameSuffix": "drawing",
+    "back": "Back to workspace"
   },
   "beadShape": {
     "label": "Artbead shape",
@@ -333,7 +361,7 @@
       },
       "assemble": {
         "title": "Review and assemble",
-        "body": "Use View to toggle rulers, the grid, the coarse grid, and the Pegboard background. When finished, choose Start assembling from More for a read-only pickup list."
+        "body": "Use View to toggle rulers, the grid, the coarse grid, and the Pegboard background. When finished, choose Start assembling from More for a read-only pickup list, or choose Export drawing to preview and download a PNG."
       }
     },
     "boardNoteTitle": "Orientation and navigation",
@@ -359,7 +387,7 @@
       "undo": "Undo the most recent Pegboard or reference-image edit.",
       "redo": "Restore the most recently undone edit.",
       "save": "Save the current scheme immediately. Normal edits also save automatically.",
-      "more": "Start assembling saves the scheme first and opens the read-only assembly view. Export share code copies the current Pegboard data to the system clipboard."
+      "more": "Start assembling saves the scheme first and opens the read-only assembly view. Export drawing opens a dedicated export page for downloading a PNG. Export share code copies the current Pegboard data to the system clipboard."
     },
     "selectionTitle": "Selection modes",
     "selectionDescription": "Color Select, Magic Wand, and Rectangle Select share the same selection modes. The first click only switches tools; click the active tool again to open its mode menu. You can also right-click any selection tool to open its menu directly. A right-click does not switch the current tool; the tool switches only after you choose a specific mode.",

@@ -181,6 +181,7 @@
     "error": "保存失败",
     "save": "保存",
     "more": "其他功能",
+    "exportDrawing": "导出图纸",
     "exportShareCode": "导出分享码",
     "exportShareCodeSuccess": "分享码已复制到剪贴板。",
     "exportShareCodeError": "无法生成或复制分享码。",
@@ -211,6 +212,33 @@
     "back": "返回工作区",
     "hint": "滚轮上下移动 · Shift + 滚轮左右移动 · Ctrl + 滚轮缩放 · 拖动格板平移",
     "readOnly": "拼绘视图"
+  },
+  "drawingExport": {
+    "title": "导出图纸",
+    "eyebrow": "Drawing Export",
+    "description": "预览并生成包含所需艺点点与拼绘图的高清图纸。",
+    "preview": "图纸预览",
+    "settings": "导出设置",
+    "settingsHint": "以下设置仅在当前导出页面生效，不会修改工作区视图配置。",
+    "showRulers": "显示标尺",
+    "showGrid": "显示网格",
+    "showCoarseGrid": "显示粗网格",
+    "background": "格板背景",
+    "previewLoading": "正在生成图纸预览…",
+    "previewError": "无法生成图纸预览，请重试。",
+    "reset": "恢复当前视图设置",
+    "exportPng": "下载 PNG",
+    "exporting": "正在生成图片…",
+    "exportSuccess": "图纸已下载。",
+    "exportError": "无法生成或下载图纸。",
+    "emptyLegend": "当前图纸还没有使用艺点点",
+    "legendTitle": "所需艺点点",
+    "patternTitle": "拼绘图",
+    "colorCount": "{count} 种颜色",
+    "totalBeads": "共 {count} 个艺点点",
+    "footer": "图纸只包含实际使用的艺点点 · Momo Artbeads Creation",
+    "filenameSuffix": "图纸",
+    "back": "返回工作区"
   },
   "beadShape": {
     "label": "艺点点形状",
@@ -333,7 +361,7 @@
       },
       "assemble": {
         "title": "检查并拼绘",
-        "body": "用“视图”切换标尺、网格、粗网格和格板背景。完成后从“其他功能”选择“开始拼绘”，进入只读拼绘清单。"
+        "body": "用“视图”切换标尺、网格、粗网格和格板背景。完成后从“其他功能”选择“开始拼绘”进入只读拼绘清单，或选择“导出图纸”预览并下载 PNG。"
       }
     },
     "boardNoteTitle": "定位与查看",
@@ -359,7 +387,7 @@
       "undo": "撤销最近一次格板或参考图编辑。",
       "redo": "恢复最近一次被撤销的编辑。",
       "save": "立即保存当前方案。正常编辑也会自动保存。",
-      "more": "“开始拼绘”会先保存方案并进入只读拼绘视图；“导出分享码”会把当前格板数据复制到系统剪贴板。"
+      "more": "“开始拼绘”会先保存方案并进入只读拼绘视图；“导出图纸”打开独立导出页并下载 PNG；“导出分享码”会把当前格板数据复制到系统剪贴板。"
     },
     "selectionTitle": "选区模式",
     "selectionDescription": "同色框选、魔法棒和矩形框选共享同一组选区模式。首次点击工具只切换工具；在选中状态再次点击才打开模式菜单。也可以右键任一框选工具直接打开菜单，此时不会切换当前工具，选择具体模式后才切换到菜单对应的工具。",

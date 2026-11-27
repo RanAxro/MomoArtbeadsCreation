@@ -12,6 +12,7 @@ export enum IconName {
   Undo = 'undo',
   Redo = 'redo',
   Save = 'save',
+  Download = 'download',
   Check = 'check',
   Reset = 'reset',
   Plus = 'plus',

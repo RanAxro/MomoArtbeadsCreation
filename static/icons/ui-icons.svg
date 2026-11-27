@@ -179,6 +179,19 @@
     </symbol>
 
     <symbol
+      id="download"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5" />
+      <path d="M4 17v3h16v-3" />
+    </symbol>
+
+    <symbol
       id="check"
       viewBox="0 0 24 24"
       fill="none"

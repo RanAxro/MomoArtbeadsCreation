@@ -395,6 +395,23 @@
     await goto('/assemble');
   }
 
+  async function startDrawingExport(): Promise<void> {
+    if (!editor.project) {
+      return;
+    }
+
+    moreOpen = false;
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+    }
+    try {
+      await workspace.saveActiveScheme();
+    } catch {
+      // The in-memory scheme can still be exported if storage is unavailable.
+    }
+    await goto('/export');
+  }
+
   function showShareCodeNotice(message: string, isError = false): void {
     if (shareCodeNoticeTimer) {
       clearTimeout(shareCodeNoticeTimer);
@@ -1283,6 +1300,19 @@
                     </span>
                     <span>
                       <strong>{$_('board.startAssembly')}</strong>
+                    </span>
+                  </button>
+                  <button
+                    class="more-menu-item"
+                    type="button"
+                    role="menuitem"
+                    onclick={() => void startDrawingExport()}
+                  >
+                    <span class="more-menu-icon">
+                      <Icon name={IconName.Download} size={18} />
+                    </span>
+                    <span>
+                      <strong>{$_('board.exportDrawing')}</strong>
                     </span>
                   </button>
                   <button

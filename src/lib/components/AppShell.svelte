@@ -516,6 +516,9 @@
       case '/assemble':
         title = `${workspace.editor.project?.name ?? $_('assembly.title')} · ${appName}`;
         break;
+      case '/export':
+        title = `${$_('drawingExport.title')} · ${appName}`;
+        break;
     }
 
     document.title = title;
