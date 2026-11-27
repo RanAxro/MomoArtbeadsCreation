@@ -80,7 +80,7 @@
     "schemeTab": "方案",
     "completeTab": "完整",
     "familiesLabel": "艺点点颜色分类",
-    "paletteCount": "{count} 个色盘",
+    "globalColors": "全局颜色",
     "families": {
       "orange": "橙",
       "yellow": "黄",

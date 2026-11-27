@@ -9,9 +9,27 @@ export interface ArtbeadColorFamily {
   readonly palettes: readonly (readonly string[])[];
 }
 
+export interface GlobalArtbeadColor {
+  readonly number: number;
+  readonly hex: string;
+}
+
 export const ARTBEAD_MAX_COLORS_PER_PALETTE = 8;
 export const DEFAULT_ARTBEAD_TRAY_TAB = ArtbeadTrayTab.Complete;
 export const DEFAULT_ARTBEAD_FAMILY_CODE = 'A';
+export const GLOBAL_ARTBEAD_CATEGORY_ID = 'global';
+
+export const GLOBAL_ARTBEAD_COLORS: readonly GlobalArtbeadColor[] = [
+  { number: 1, hex: '#332E2A' },
+  { number: 2, hex: '#506E8A' },
+  { number: 3, hex: '#E75A4C' },
+  { number: 4, hex: '#BA822F' },
+  { number: 5, hex: '#65904F' },
+  { number: 6, hex: '#A8335B' },
+  { number: 7, hex: '#C8C3C0' }
+];
+
+export const GLOBAL_ARTBEAD_COLOR_COUNT = GLOBAL_ARTBEAD_COLORS.length;
 
 export const ARTBEAD_COLOR_FAMILIES: readonly ArtbeadColorFamily[] = [
   {
@@ -203,8 +221,11 @@ export const ARTBEAD_COLOR_FAMILIES: readonly ArtbeadColorFamily[] = [
   }
 ];
 
-export const ARTBEAD_COLOR_COUNT = ARTBEAD_COLOR_FAMILIES.reduce(
+export const ARTBEAD_FAMILY_COLOR_COUNT = ARTBEAD_COLOR_FAMILIES.reduce(
   (count, family) =>
     count + family.palettes.reduce((familyCount, palette) => familyCount + palette.length, 0),
   0
 );
+
+export const ARTBEAD_COLOR_COUNT =
+  GLOBAL_ARTBEAD_COLOR_COUNT + ARTBEAD_FAMILY_COLOR_COUNT;

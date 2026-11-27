@@ -1,5 +1,9 @@
 import { rgbToOklab, hexToRgb, oklabDistance } from './color';
-import { ARTBEAD_COLOR_FAMILIES } from '$model/artbead-palette.model';
+import {
+  ARTBEAD_COLOR_FAMILIES,
+  GLOBAL_ARTBEAD_CATEGORY_ID,
+  GLOBAL_ARTBEAD_COLORS
+} from '$model/artbead-palette.model';
 import {
   DEFAULT_CUSTOM_COLOR_HEX,
   DEFAULT_CUSTOM_COLOR_NAME_PREFIX,
@@ -27,8 +31,18 @@ export function createArtbeadCode(
   return `${familyCode}${paletteNumber}${cellNumber}`;
 }
 
-export const ARTBEAD_CATALOG: readonly ArtbeadCatalogColor[] =
-  ARTBEAD_COLOR_FAMILIES.flatMap((family) =>
+export const ARTBEAD_CATALOG: readonly ArtbeadCatalogColor[] = [
+  ...GLOBAL_ARTBEAD_COLORS.map(({ number, hex }) => ({
+    id: String(number),
+    name: String(number),
+    hex,
+    code: String(number),
+    familyCode: GLOBAL_ARTBEAD_CATEGORY_ID,
+    familyLabelKey: 'tray.globalColors',
+    paletteNumber: 1,
+    cellNumber: number
+  })),
+  ...ARTBEAD_COLOR_FAMILIES.flatMap((family) =>
     family.palettes.flatMap((palette, paletteIndex) =>
       palette.map((hex, cellIndex) => {
         const paletteNumber = paletteIndex + 1;
@@ -46,7 +60,8 @@ export const ARTBEAD_CATALOG: readonly ArtbeadCatalogColor[] =
         };
       })
     )
-  );
+  )
+];
 
 export function createStarterPalette(id = crypto.randomUUID()): BeadPalette {
   return {

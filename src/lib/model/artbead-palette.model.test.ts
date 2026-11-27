@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   ARTBEAD_COLOR_COUNT,
   ARTBEAD_COLOR_FAMILIES,
+  ARTBEAD_FAMILY_COLOR_COUNT,
+  GLOBAL_ARTBEAD_COLORS,
   ARTBEAD_MAX_COLORS_PER_PALETTE
 } from './artbead-palette.model';
 
 describe('Artbead palette model', () => {
-  it('contains the complete extracted A-G catalog', () => {
+  it('contains seven global colors followed by the complete A-G catalog', () => {
+    expect(GLOBAL_ARTBEAD_COLORS.map((color) => color.number)).toEqual([
+      1, 2, 3, 4, 5, 6, 7
+    ]);
     expect(ARTBEAD_COLOR_FAMILIES.map((family) => family.code)).toEqual([
       'A',
       'B',
@@ -16,7 +21,8 @@ describe('Artbead palette model', () => {
       'F',
       'G'
     ]);
-    expect(ARTBEAD_COLOR_COUNT).toBe(142);
+    expect(ARTBEAD_FAMILY_COLOR_COUNT).toBe(142);
+    expect(ARTBEAD_COLOR_COUNT).toBe(149);
   });
 
   it('keeps every palette within the eight-cell limit', () => {

@@ -19,12 +19,23 @@ describe('palette domain', () => {
     const palette = createStarterPalette();
     const index = createColorIndex(palette);
 
-    expect(nearestPaletteIndex(index, { r: 202, g: 150, b: 107 })).toBe(1);
+    expect(nearestPaletteIndex(index, { r: 202, g: 150, b: 107 })).toBe(
+      ARTBEAD_CATALOG.findIndex((color) => color.code === 'A11') + 1
+    );
   });
 
   it('names catalog cells by family, palette, and cell number', () => {
     expect(createArtbeadCode('A', 2, 8)).toBe('A28');
     expect(ARTBEAD_CATALOG).toHaveLength(ARTBEAD_COLOR_COUNT);
+    expect(ARTBEAD_CATALOG.slice(0, 7).map((color) => color.code)).toEqual([
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7'
+    ]);
     expect(createStarterPalette().colors.map((color) => color.code)).toEqual(
       ARTBEAD_CATALOG.map((color) => color.code)
     );

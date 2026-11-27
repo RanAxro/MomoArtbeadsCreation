@@ -80,7 +80,7 @@
     "schemeTab": "Scheme",
     "completeTab": "Complete",
     "familiesLabel": "Artbead color families",
-    "paletteCount": "{count} palettes",
+    "globalColors": "Global colors",
     "families": {
       "orange": "Orange",
       "yellow": "Yellow",

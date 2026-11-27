@@ -1,12 +1,16 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
   import { ARTBEAD_CATALOG, createArtbeadCode } from '$domain/palette';
+  import { hexToRgb } from '$domain/color';
   import {
     ARTBEAD_COLOR_COUNT,
     ARTBEAD_COLOR_FAMILIES,
     DEFAULT_ARTBEAD_FAMILY_CODE,
     DEFAULT_ARTBEAD_TRAY_TAB,
-    ArtbeadTrayTab
+    GLOBAL_ARTBEAD_CATEGORY_ID,
+    GLOBAL_ARTBEAD_COLORS,
+    ArtbeadTrayTab,
+    type ArtbeadColorFamily
   } from '$model/artbead-palette.model';
   import type { BeadPalette } from '$model/palette.model';
 
@@ -24,7 +28,7 @@
     onselect
   }: Props = $props();
   let activeTab = $state<ArtbeadTrayTab>(DEFAULT_ARTBEAD_TRAY_TAB);
-  let activeFamilyCode = $state(DEFAULT_ARTBEAD_FAMILY_CODE);
+  let activeCategoryId = $state(DEFAULT_ARTBEAD_FAMILY_CODE);
 
   let selectedColor = $derived(palette.colors[selectedColorIndex - 1]);
   let selectedCode = $derived(
@@ -36,11 +40,26 @@
   );
   let activeFamily = $derived(
     ARTBEAD_COLOR_FAMILIES.find(
-      (family) => family.code === activeFamilyCode
+      (family) => family.code === activeCategoryId
     ) ?? ARTBEAD_COLOR_FAMILIES[0]
   );
-  let activePalettes = $derived(
-    activeFamily.palettes.map((colors, paletteIndex) => ({
+  let globalActive = $derived(
+    activeCategoryId === GLOBAL_ARTBEAD_CATEGORY_ID
+  );
+  let activePalettes = $derived.by(() => {
+    if (globalActive) {
+      return [
+        {
+          number: 1,
+          colors: GLOBAL_ARTBEAD_COLORS.map((color) => ({
+            code: String(color.number),
+            hex: color.hex
+          }))
+        }
+      ];
+    }
+
+    return activeFamily.palettes.map((colors, paletteIndex) => ({
       number: paletteIndex + 1,
       colors: colors.map((hex, cellIndex) => ({
         code: createArtbeadCode(
@@ -50,8 +69,36 @@
         ),
         hex
       }))
-    }))
-  );
+    }));
+  });
+
+  function relativeLuminance(hex: string): number {
+    const { r, g, b } = hexToRgb(hex);
+    const channels = [r, g, b].map((channel) => {
+      const value = channel / 255;
+      return value <= 0.04045
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  }
+
+  function familyLabelColor(family: ArtbeadColorFamily): string {
+    const background = family.palettes[0][0];
+    const backgroundLuminance = relativeLuminance(background);
+    const colors = family.palettes.flat();
+    return colors.reduce((best, candidate) => {
+      const luminance = relativeLuminance(candidate);
+      const bestLuminance = relativeLuminance(best);
+      const contrast =
+        (Math.max(luminance, backgroundLuminance) + 0.05) /
+        (Math.min(luminance, backgroundLuminance) + 0.05);
+      const bestContrast =
+        (Math.max(bestLuminance, backgroundLuminance) + 0.05) /
+        (Math.min(bestLuminance, backgroundLuminance) + 0.05);
+      return contrast > bestContrast ? candidate : best;
+    }, colors[0]);
+  }
 </script>
 
 <aside class="artbead-tray" aria-label={$_('tray.title')}>
@@ -105,35 +152,43 @@
       aria-labelledby="artbead-tray-tab-complete"
     >
       <nav class="family-list" aria-label={$_('tray.familiesLabel')}>
+        <button
+          class="family-button global-family-button"
+          class:active={globalActive}
+          type="button"
+          aria-label={$_('tray.globalColors')}
+          aria-pressed={globalActive}
+          title={$_('tray.globalColors')}
+          onclick={() => (activeCategoryId = GLOBAL_ARTBEAD_CATEGORY_ID)}
+        >
+          <span
+            class="family-swatch global-family-swatch"
+            aria-hidden="true"
+          ></span>
+        </button>
         {#each ARTBEAD_COLOR_FAMILIES as family (family.code)}
           <button
             class="family-button"
-            class:active={family.code === activeFamily.code}
+            class:active={family.code === activeCategoryId}
             type="button"
             aria-label={`${family.code} ${$_(family.labelKey)}`}
-            aria-pressed={family.code === activeFamily.code}
+            aria-pressed={family.code === activeCategoryId}
             title={family.code}
-            onclick={() => (activeFamilyCode = family.code)}
+            onclick={() => (activeCategoryId = family.code)}
           >
             <span
               class="family-swatch"
               style:--color={family.palettes[0][0]}
+              style:--label-color={familyLabelColor(family)}
               aria-hidden="true"
-            ></span>
+            >
+              {family.code}
+            </span>
           </button>
         {/each}
       </nav>
 
       <div class="family-palettes">
-        <div class="family-heading">
-          <strong>{activeFamily.code} · {$_ (activeFamily.labelKey)}</strong>
-          <small>
-            {$_('tray.paletteCount', {
-              values: { count: activeFamily.palettes.length }
-            })}
-          </small>
-        </div>
-
         {#each activePalettes as paletteGroup (paletteGroup.number)}
           <section class="palette-group">
             <div class="palette-grid">
@@ -295,12 +350,22 @@
   }
 
   .family-swatch {
-    display: block;
+    display: grid;
+    place-items: center;
     width: 28px;
     height: 28px;
     border: 1px solid rgba(0, 0, 0, 0.18);
     border-radius: 50%;
     background: var(--color);
+    color: var(--label-color);
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .global-family-swatch {
+    border-color: var(--border-strong);
+    background: var(--text);
   }
 
   .family-palettes {
@@ -310,26 +375,6 @@
     min-height: 0;
     overflow-y: auto;
     padding: 0 2px 4px 0;
-  }
-
-  .family-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    min-height: 24px;
-    padding-bottom: 7px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .family-heading strong {
-    font-size: 0.73rem;
-  }
-
-  .family-heading small {
-    color: var(--muted);
-    font-size: 0.58rem;
-    white-space: nowrap;
   }
 
   .palette-group {
