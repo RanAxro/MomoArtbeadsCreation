@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { _ } from 'svelte-i18n';
   import CustomPaletteColorDialog from '$lib/components/CustomPaletteColorDialog.svelte';
   import CustomPaletteSchemeSelect from '$lib/components/CustomPaletteSchemeSelect.svelte';
@@ -11,7 +11,6 @@
     ARTBEAD_COLOR_COUNT,
     ARTBEAD_COLOR_FAMILIES,
     DEFAULT_ARTBEAD_FAMILY_CODE,
-    DEFAULT_ARTBEAD_TRAY_TAB,
     GLOBAL_ARTBEAD_CATEGORY_ID,
     GLOBAL_ARTBEAD_COLORS,
     ArtbeadTrayTab,
@@ -19,30 +18,53 @@
   } from '$model/artbead-palette.model';
   import type { CustomPaletteScheme } from '$model/custom-palette.model';
   import { IconName } from '$model/icon.model';
+  import {
+    isCustomPaletteSource,
+    PaletteSourceType,
+    type ProjectPaletteSource
+  } from '$model/palette-source.model';
   import type { BeadPalette } from '$model/palette.model';
 
   interface Props {
+    projectId: string;
     palette: BeadPalette;
+    paletteSource: ProjectPaletteSource;
     selectedColorIndex: number;
     usage: readonly number[];
     onselect: (code: string, hex: string) => void;
+    onpalettesourcechange: (source: ProjectPaletteSource) => void;
   }
 
   let {
+    projectId,
     palette,
+    paletteSource,
     selectedColorIndex,
     usage,
-    onselect
+    onselect,
+    onpalettesourcechange
   }: Props = $props();
   const catalogByCode = new Map(
     ARTBEAD_CATALOG.map((color) => [color.code, color])
   );
   const CUSTOM_PALETTE_REORDER_HOLD_MS = 320;
   const CUSTOM_PALETTE_REORDER_CANCEL_DISTANCE = 8;
-  let activeTab = $state<ArtbeadTrayTab>(DEFAULT_ARTBEAD_TRAY_TAB);
+  let activeTab = $state<ArtbeadTrayTab>(
+    untrack(() =>
+      isCustomPaletteSource(paletteSource)
+        ? ArtbeadTrayTab.Scheme
+        : ArtbeadTrayTab.Complete
+    )
+  );
   let activeCategoryId = $state(DEFAULT_ARTBEAD_FAMILY_CODE);
   let customPalettes = $state<CustomPaletteScheme[]>([]);
-  let activeCustomPaletteId = $state<string | null>(null);
+  let activeCustomPaletteId = $state<string | null>(
+    untrack(() =>
+      isCustomPaletteSource(paletteSource)
+        ? paletteSource.paletteId
+        : null
+    )
+  );
   let customPalettesLoading = $state(true);
   let creatingCustomPalette = $state(false);
   let customPaletteDialogOpen = $state(false);
@@ -60,6 +82,9 @@
     | ReturnType<typeof setTimeout>
     | undefined;
   let suppressCustomPaletteClick = false;
+  let lastPaletteSourceKey = $state(
+    untrack(() => paletteSourceKey(projectId, paletteSource))
+  );
 
   let selectedColor = $derived(palette.colors[selectedColorIndex - 1]);
   let selectedCode = $derived(
@@ -112,6 +137,30 @@
     })
   );
 
+  function paletteSourceKey(
+    id: string,
+    source: ProjectPaletteSource
+  ): string {
+    return source.type === 'custom'
+      ? `${id}:custom:${source.paletteId}`
+      : `${id}:complete`;
+  }
+
+  $effect(() => {
+    const key = paletteSourceKey(projectId, paletteSource);
+    if (key === lastPaletteSourceKey) {
+      return;
+    }
+    lastPaletteSourceKey = key;
+    if (isCustomPaletteSource(paletteSource)) {
+      activeTab = ArtbeadTrayTab.Scheme;
+      activeCustomPaletteId = paletteSource.paletteId;
+    } else {
+      activeTab = ArtbeadTrayTab.Complete;
+      activeCustomPaletteId = null;
+    }
+  });
+
   function relativeLuminance(hex: string): number {
     const { r, g, b } = hexToRgb(hex);
     const channels = [r, g, b].map((channel) => {
@@ -151,6 +200,22 @@
         );
         customPalettes = [defaultPalette];
       }
+
+      if (isCustomPaletteSource(paletteSource)) {
+        const requestedPalette = customPalettes.find(
+          (scheme) => scheme.id === paletteSource.paletteId
+        );
+        if (!requestedPalette) {
+          activeCustomPaletteId = customPalettes[0]?.id ?? null;
+          activeTab = ArtbeadTrayTab.Complete;
+          onpalettesourcechange({ type: PaletteSourceType.Complete });
+          return;
+        }
+        activeCustomPaletteId = requestedPalette.id;
+        activeTab = ArtbeadTrayTab.Scheme;
+        return;
+      }
+
       if (
         !activeCustomPaletteId ||
         !customPalettes.some(
@@ -158,6 +223,12 @@
         )
       ) {
         activeCustomPaletteId = customPalettes[0]?.id ?? null;
+      }
+      if (activeTab === ArtbeadTrayTab.Scheme && activeCustomPaletteId) {
+        onpalettesourcechange({
+          type: PaletteSourceType.Custom,
+          paletteId: activeCustomPaletteId
+        });
       }
     } catch {
       customPaletteError = $_('tray.paletteSchemeLoadError');
@@ -180,6 +251,11 @@
       const scheme = await customPaletteRepository.create(name);
       customPalettes = [scheme, ...customPalettes];
       activeCustomPaletteId = scheme.id;
+      activeTab = ArtbeadTrayTab.Scheme;
+      onpalettesourcechange({
+        type: PaletteSourceType.Custom,
+        paletteId: scheme.id
+      });
     } catch {
       customPaletteError = $_('tray.paletteSchemeCreateError');
     } finally {
@@ -217,6 +293,40 @@
       activeCustomPaletteId = remaining[0]?.id ?? null;
       customPaletteDialogOpen = false;
     }
+    if (
+      isCustomPaletteSource(paletteSource) &&
+      paletteSource.paletteId === id
+    ) {
+      activeTab = ArtbeadTrayTab.Complete;
+      onpalettesourcechange({ type: PaletteSourceType.Complete });
+    }
+  }
+
+  function showSchemeTab(): void {
+    activeTab = ArtbeadTrayTab.Scheme;
+    const paletteId = activeCustomPaletteId ?? customPalettes[0]?.id;
+    if (!paletteId) {
+      return;
+    }
+    activeCustomPaletteId = paletteId;
+    onpalettesourcechange({
+      type: PaletteSourceType.Custom,
+      paletteId
+    });
+  }
+
+  function showCompleteTab(): void {
+    activeTab = ArtbeadTrayTab.Complete;
+    onpalettesourcechange({ type: PaletteSourceType.Complete });
+  }
+
+  function selectCustomPalette(id: string): void {
+    activeCustomPaletteId = id;
+    activeTab = ArtbeadTrayTab.Scheme;
+    onpalettesourcechange({
+      type: PaletteSourceType.Custom,
+      paletteId: id
+    });
   }
 
   function queueCustomPaletteSave(scheme: CustomPaletteScheme): void {
@@ -410,7 +520,7 @@
         id="artbead-tray-tab-scheme"
         aria-controls="artbead-tray-panel-scheme"
         aria-selected={activeTab === ArtbeadTrayTab.Scheme}
-        onclick={() => (activeTab = ArtbeadTrayTab.Scheme)}
+        onclick={showSchemeTab}
       >
         {$_('tray.schemeTab')}
       </button>
@@ -421,7 +531,7 @@
         id="artbead-tray-tab-complete"
         aria-controls="artbead-tray-panel-complete"
         aria-selected={activeTab === ArtbeadTrayTab.Complete}
-        onclick={() => (activeTab = ArtbeadTrayTab.Complete)}
+        onclick={showCompleteTab}
       >
         {$_('tray.completeTab')}
       </button>
@@ -433,7 +543,7 @@
         selectedId={activeCustomPaletteId}
         disabled={customPalettesLoading || creatingCustomPalette}
         onadd={createBlankCustomPalette}
-        onselect={(id) => (activeCustomPaletteId = id)}
+        onselect={selectCustomPalette}
         onrename={renameCustomPalette}
         ondelete={deleteCustomPalette}
       />

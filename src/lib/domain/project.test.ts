@@ -17,6 +17,7 @@ import {
   BeadShape,
   DEFAULT_BEAD_SHAPE
 } from '$model/bead-shape.model';
+import { PaletteSourceType } from '$model/palette-source.model';
 
 describe('project domain', () => {
   it('creates an empty project with the requested dimensions', () => {
@@ -31,6 +32,9 @@ describe('project domain', () => {
     expect(project.cells.every((cell) => cell === 0)).toBe(true);
     expect(project.gameVersion).toBe(GameVersion.V3);
     expect(project.beadShape).toBe(DEFAULT_BEAD_SHAPE);
+    expect(project.paletteSource).toEqual({
+      type: PaletteSourceType.Complete
+    });
     expect(project.schemaVersion).toBe(1);
     expect(project.editorState.referenceImages).toEqual([]);
   });
@@ -86,6 +90,46 @@ describe('project domain', () => {
     expect(beadProjectSchema.safeParse(projectWithoutShape).success).toBe(
       false
     );
+  });
+
+  it('records the complete or a custom palette source per project', () => {
+    const completeProject = createProject({
+      name: '完整调色盘',
+      width: 2,
+      height: 2
+    });
+    const customProject = createProject({
+      name: '自定义调色盘',
+      width: 2,
+      height: 2,
+      paletteSource: {
+        type: PaletteSourceType.Custom,
+        paletteId: 'custom-palette-1'
+      }
+    });
+    const { paletteSource: _paletteSource, ...legacyProject } =
+      completeProject;
+    const parsedLegacyProject = beadProjectSchema.safeParse(legacyProject);
+
+    expect(completeProject.paletteSource.type).toBe(
+      PaletteSourceType.Complete
+    );
+    expect(customProject.paletteSource).toEqual({
+      type: PaletteSourceType.Custom,
+      paletteId: 'custom-palette-1'
+    });
+    expect(parsedLegacyProject.success).toBe(true);
+    if (parsedLegacyProject.success) {
+      expect(parsedLegacyProject.data.paletteSource).toEqual({
+        type: PaletteSourceType.Complete
+      });
+    }
+    expect(
+      beadProjectSchema.safeParse({
+        ...completeProject,
+        paletteSource: { type: 'invalid' }
+      }).success
+    ).toBe(false);
   });
 
   it('fills the whole board when there is no selection', () => {

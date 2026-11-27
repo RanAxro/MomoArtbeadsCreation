@@ -17,6 +17,11 @@ import {
   type BeadProject
 } from '$model/project.model';
 import {
+  DEFAULT_PROJECT_PALETTE_SOURCE,
+  PaletteSourceType,
+  type ProjectPaletteSource
+} from '$model/palette-source.model';
+import {
   MAX_REFERENCE_IMAGE_SIZE,
   MIN_REFERENCE_IMAGE_SIZE,
   reorderReferenceImages,
@@ -97,6 +102,9 @@ export class EditorStore {
 
     this.project = {
       ...project,
+      paletteSource: project.paletteSource ?? {
+        ...DEFAULT_PROJECT_PALETTE_SOURCE
+      },
       editorState: {
         tool: restoredLayer
           ? EditorTool.Move
@@ -214,6 +222,31 @@ export class EditorStore {
     this.project.beadShape = beadShape;
     this.markChanged();
     this.previewRevision += 1;
+  }
+
+  setPaletteSource(source: ProjectPaletteSource): void {
+    if (!this.project) {
+      return;
+    }
+
+    const current = this.project.paletteSource;
+    if (
+      current.type === source.type &&
+      (source.type === 'complete' ||
+        (current.type === 'custom' &&
+          current.paletteId === source.paletteId))
+    ) {
+      return;
+    }
+
+    this.project.paletteSource =
+      source.type === PaletteSourceType.Complete
+        ? { type: PaletteSourceType.Complete }
+        : {
+            type: PaletteSourceType.Custom,
+            paletteId: source.paletteId
+          };
+    this.markChanged();
   }
 
   setColorPickerMode(mode: ColorPickerMode): void {

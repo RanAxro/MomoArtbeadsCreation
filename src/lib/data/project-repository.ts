@@ -1,5 +1,9 @@
 import type { BeadProject } from '$model/project.model';
 import { DEFAULT_DUPLICATE_SUFFIX } from '$model/project.model';
+import {
+  DEFAULT_PROJECT_PALETTE_SOURCE,
+  paletteSourceSchema
+} from '$model/palette-source.model';
 import type { ProjectSummary } from '$model/workspace.model';
 import { getArtbeadsDatabase } from './database';
 
@@ -24,7 +28,19 @@ export const projectRepository = {
   },
 
   async get(id: string): Promise<BeadProject | undefined> {
-    return getArtbeadsDatabase().projects.get(id);
+    const project = await getArtbeadsDatabase().projects.get(id);
+    if (!project) {
+      return undefined;
+    }
+    const paletteSource = paletteSourceSchema.safeParse(
+      project.paletteSource
+    );
+    return {
+      ...project,
+      paletteSource: paletteSource.success
+        ? paletteSource.data
+        : { ...DEFAULT_PROJECT_PALETTE_SOURCE }
+    };
   },
 
   async save(project: BeadProject): Promise<void> {

@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { BeadShape } from './bead-shape.model';
 import { EditorTool } from './editor.model';
 import { paletteSchema, type BeadPalette } from './palette.model';
+import {
+  DEFAULT_PROJECT_PALETTE_SOURCE,
+  paletteSourceSchema,
+  type ProjectPaletteSource
+} from './palette-source.model';
 import { referenceImageSchema } from './reference-image.model';
 import { selectionLayerSchema } from './selection-layer.model';
 
@@ -42,6 +47,9 @@ export const beadProjectSchema = z.object({
   beadShape: z.nativeEnum(BeadShape),
   cells: z.array(z.number().int().nonnegative()),
   palette: paletteSchema,
+  paletteSource: paletteSourceSchema.default(
+    DEFAULT_PROJECT_PALETTE_SOURCE
+  ),
   editorState: projectEditorStateSchema,
   schemaVersion: z.literal(PROJECT_SCHEMA_VERSION),
   createdAt: z.string().datetime(),
@@ -56,5 +64,6 @@ export interface NewProjectOptions {
   height: number;
   beadShape?: BeadShape;
   palette?: BeadPalette;
+  paletteSource?: ProjectPaletteSource;
   gameVersion?: string;
 }

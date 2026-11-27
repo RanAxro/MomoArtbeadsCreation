@@ -779,10 +779,13 @@
 <div class="workspace" class:home-only={!editor.project}>
   {#if editor.project}
     <ArtbeadPaletteTray
+      projectId={editor.project.id}
       palette={editor.project.palette}
+      paletteSource={editor.project.paletteSource}
       selectedColorIndex={editor.selectedColorIndex}
       {usage}
       onselect={(code, hex) => editor.selectCatalogColor(code, hex)}
+      onpalettesourcechange={(source) => editor.setPaletteSource(source)}
     />
   {/if}
 
