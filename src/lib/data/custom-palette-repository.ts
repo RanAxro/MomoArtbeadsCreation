@@ -38,6 +38,17 @@ export const customPaletteRepository = {
     });
   },
 
+  async rename(id: string, name: string): Promise<void> {
+    await getArtbeadsDatabase().customPaletteSchemes.update(id, {
+      name,
+      updatedAt: new Date().toISOString()
+    });
+  },
+
+  async remove(id: string): Promise<void> {
+    await getArtbeadsDatabase().customPaletteSchemes.delete(id);
+  },
+
   async clear(): Promise<void> {
     await getArtbeadsDatabase().customPaletteSchemes.clear();
   }

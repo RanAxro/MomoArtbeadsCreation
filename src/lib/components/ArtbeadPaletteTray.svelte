@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { _ } from 'svelte-i18n';
   import CustomPaletteColorDialog from '$lib/components/CustomPaletteColorDialog.svelte';
+  import CustomPaletteSchemeSelect from '$lib/components/CustomPaletteSchemeSelect.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { ARTBEAD_CATALOG, createArtbeadCode } from '$domain/palette';
   import { hexToRgb } from '$domain/color';
@@ -33,7 +34,6 @@
     usage,
     onselect
   }: Props = $props();
-  const ADD_PALETTE_SCHEME_VALUE = '__add-palette-scheme__';
   const catalogByCode = new Map(
     ARTBEAD_CATALOG.map((color) => [color.code, color])
   );
@@ -131,6 +131,12 @@
     customPaletteError = '';
     try {
       customPalettes = await customPaletteRepository.list();
+      if (customPalettes.length === 0) {
+        const defaultPalette = await customPaletteRepository.create(
+          $_('tray.defaultPaletteName')
+        );
+        customPalettes = [defaultPalette];
+      }
       if (
         !activeCustomPaletteId ||
         !customPalettes.some(
@@ -167,13 +173,36 @@
     }
   }
 
-  async function changeCustomPalette(event: Event): Promise<void> {
-    const select = event.currentTarget as HTMLSelectElement;
-    if (select.value === ADD_PALETTE_SCHEME_VALUE) {
-      await createBlankCustomPalette();
-      return;
+  async function renameCustomPalette(id: string, name: string): Promise<void> {
+    await customPaletteSaveQueue.catch(() => undefined);
+    await customPaletteRepository.rename(id, name);
+    const renamedAt = new Date().toISOString();
+    customPalettes = customPalettes
+      .map((scheme) =>
+        scheme.id === id
+          ? { ...scheme, name, updatedAt: renamedAt }
+          : scheme
+      )
+      .sort((first, second) =>
+        second.updatedAt.localeCompare(first.updatedAt)
+      );
+  }
+
+  async function deleteCustomPalette(id: string): Promise<void> {
+    await customPaletteSaveQueue.catch(() => undefined);
+    await customPaletteRepository.remove(id);
+    let remaining = await customPaletteRepository.list();
+    if (remaining.length === 0) {
+      remaining = [
+        await customPaletteRepository.create($_('tray.defaultPaletteName'))
+      ];
     }
-    activeCustomPaletteId = select.value || null;
+
+    customPalettes = remaining;
+    if (activeCustomPaletteId === id) {
+      activeCustomPaletteId = remaining[0]?.id ?? null;
+      customPaletteDialogOpen = false;
+    }
   }
 
   function queueCustomPaletteSave(scheme: CustomPaletteScheme): void {
@@ -255,24 +284,15 @@
     </div>
 
     {#if activeTab === ArtbeadTrayTab.Scheme}
-      <label class="palette-scheme-selector">
-        <span class="visually-hidden">
-          {$_('tray.paletteSchemeSelectLabel')}
-        </span>
-        <select
-          value={activeCustomPalette?.id ?? ''}
-          aria-label={$_('tray.paletteSchemeSelectLabel')}
-          disabled={customPalettesLoading || creatingCustomPalette}
-          onchange={(event) => void changeCustomPalette(event)}
-        >
-          <option value={ADD_PALETTE_SCHEME_VALUE}>
-            + {$_('tray.addPaletteScheme')}
-          </option>
-          {#each customPalettes as scheme (scheme.id)}
-            <option value={scheme.id}>{scheme.name}</option>
-          {/each}
-        </select>
-      </label>
+      <CustomPaletteSchemeSelect
+        schemes={customPalettes}
+        selectedId={activeCustomPaletteId}
+        disabled={customPalettesLoading || creatingCustomPalette}
+        onadd={createBlankCustomPalette}
+        onselect={(id) => (activeCustomPaletteId = id)}
+        onrename={renameCustomPalette}
+        ondelete={deleteCustomPalette}
+      />
     {/if}
   </div>
 
@@ -459,34 +479,6 @@
   .tray-navigation {
     display: grid;
     gap: 9px;
-  }
-
-  .palette-scheme-selector select {
-    width: 100%;
-    height: 34px;
-    padding: 0 30px 0 10px;
-    border: 1px solid var(--border-strong);
-    border-radius: 2px;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-    font-size: 0.74rem;
-  }
-
-  .palette-scheme-selector select:disabled {
-    cursor: wait;
-    opacity: 0.55;
-  }
-
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    overflow: hidden;
-    border: 0;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
   }
 
   .tray-tabs button {
