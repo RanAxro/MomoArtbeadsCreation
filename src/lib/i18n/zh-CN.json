@@ -83,6 +83,7 @@
     "globalColors": "全局颜色",
     "addPaletteScheme": "添加调色板方案",
     "paletteSchemeSelectLabel": "调色板方案",
+    "paletteColors": "调色板颜色",
     "defaultPaletteName": "默认调色盒",
     "unnamedPalette": "未命名调色板 {number}",
     "paletteSchemeActions": "调色板方案操作",
@@ -105,6 +106,7 @@
     "selectedColorCount": "已选 {count} 种颜色",
     "closeColorPicker": "关闭完整调色板",
     "done": "完成",
+    "longPressReorder": "长按拖动排序",
     "families": {
       "orange": "橙",
       "yellow": "黄",

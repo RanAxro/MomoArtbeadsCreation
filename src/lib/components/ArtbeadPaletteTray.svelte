@@ -37,6 +37,8 @@
   const catalogByCode = new Map(
     ARTBEAD_CATALOG.map((color) => [color.code, color])
   );
+  const CUSTOM_PALETTE_REORDER_HOLD_MS = 320;
+  const CUSTOM_PALETTE_REORDER_CANCEL_DISTANCE = 8;
   let activeTab = $state<ArtbeadTrayTab>(DEFAULT_ARTBEAD_TRAY_TAB);
   let activeCategoryId = $state(DEFAULT_ARTBEAD_FAMILY_CODE);
   let customPalettes = $state<CustomPaletteScheme[]>([]);
@@ -46,6 +48,18 @@
   let customPaletteDialogOpen = $state(false);
   let customPaletteError = $state('');
   let customPaletteSaveQueue = Promise.resolve();
+  let customPaletteGrid: HTMLDivElement | undefined = $state();
+  let customPaletteReorder = $state<{
+    pointerId: number;
+    code: string;
+    startX: number;
+    startY: number;
+    active: boolean;
+  } | null>(null);
+  let customPaletteReorderTimer:
+    | ReturnType<typeof setTimeout>
+    | undefined;
+  let suppressCustomPaletteClick = false;
 
   let selectedColor = $derived(palette.colors[selectedColorIndex - 1]);
   let selectedCode = $derived(
@@ -217,6 +231,30 @@
       });
   }
 
+  function updateCustomPaletteColorCodes(
+    colorCodes: string[],
+    persist: boolean
+  ): void {
+    const scheme = activeCustomPalette;
+    if (!scheme) {
+      return;
+    }
+
+    const updated: CustomPaletteScheme = {
+      ...scheme,
+      colorCodes,
+      updatedAt: new Date().toISOString()
+    };
+    customPalettes = [
+      updated,
+      ...customPalettes.filter((candidate) => candidate.id !== updated.id)
+    ].sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
+    customPaletteError = '';
+    if (persist) {
+      queueCustomPaletteSave(updated);
+    }
+  }
+
   function toggleCustomPaletteColor(code: string): void {
     const scheme = activeCustomPalette;
     if (!scheme) {
@@ -227,18 +265,124 @@
     const colorCodes = selected
       ? scheme.colorCodes.filter((candidate) => candidate !== code)
       : [...scheme.colorCodes, code];
-    const updated: CustomPaletteScheme = {
-      ...scheme,
-      colorCodes,
-      updatedAt: new Date().toISOString()
-    };
+    updateCustomPaletteColorCodes(colorCodes, true);
+  }
 
-    customPalettes = [
-      updated,
-      ...customPalettes.filter((candidate) => candidate.id !== updated.id)
-    ].sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
-    customPaletteError = '';
-    queueCustomPaletteSave(updated);
+  function endCustomPaletteReorder(persist: boolean): void {
+    if (customPaletteReorderTimer) {
+      clearTimeout(customPaletteReorderTimer);
+      customPaletteReorderTimer = undefined;
+    }
+    const reorder = customPaletteReorder;
+    const grid = customPaletteGrid;
+    customPaletteReorder = null;
+    if (reorder && grid?.hasPointerCapture(reorder.pointerId)) {
+      grid.releasePointerCapture(reorder.pointerId);
+    }
+    if (persist && reorder?.active && activeCustomPalette) {
+      queueCustomPaletteSave(activeCustomPalette);
+    }
+  }
+
+  function beginCustomPaletteReorder(
+    event: PointerEvent,
+    code: string
+  ): void {
+    if (
+      event.button !== 0 ||
+      !event.isPrimary ||
+      !customPaletteGrid ||
+      (activeCustomPalette?.colorCodes.length ?? 0) < 2
+    ) {
+      return;
+    }
+
+    endCustomPaletteReorder(false);
+    customPaletteGrid.setPointerCapture(event.pointerId);
+    customPaletteReorder = {
+      pointerId: event.pointerId,
+      code,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false
+    };
+    customPaletteReorderTimer = setTimeout(() => {
+      customPaletteReorderTimer = undefined;
+      if (
+        customPaletteReorder?.pointerId !== event.pointerId ||
+        customPaletteReorder.code !== code
+      ) {
+        return;
+      }
+      customPaletteReorder = {
+        ...customPaletteReorder,
+        active: true
+      };
+    }, CUSTOM_PALETTE_REORDER_HOLD_MS);
+  }
+
+  function updateCustomPaletteReorder(event: PointerEvent): void {
+    const reorder = customPaletteReorder;
+    if (!reorder || reorder.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (!reorder.active) {
+      if (
+        Math.hypot(
+          event.clientX - reorder.startX,
+          event.clientY - reorder.startY
+        ) > CUSTOM_PALETTE_REORDER_CANCEL_DISTANCE
+      ) {
+        endCustomPaletteReorder(false);
+      }
+      return;
+    }
+
+    event.preventDefault();
+    const target = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>('[data-palette-color-code]');
+    if (!target || !customPaletteGrid?.contains(target)) {
+      return;
+    }
+
+    const targetCode = target.dataset.paletteColorCode;
+    const scheme = activeCustomPalette;
+    if (!targetCode || !scheme || targetCode === reorder.code) {
+      return;
+    }
+    const currentIndex = scheme.colorCodes.indexOf(reorder.code);
+    const targetIndex = scheme.colorCodes.indexOf(targetCode);
+    if (currentIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    const colorCodes = [...scheme.colorCodes];
+    const [moved] = colorCodes.splice(currentIndex, 1);
+    colorCodes.splice(targetIndex, 0, moved);
+    updateCustomPaletteColorCodes(colorCodes, false);
+  }
+
+  function finishCustomPaletteReorder(event: PointerEvent): void {
+    const reorder = customPaletteReorder;
+    if (!reorder || reorder.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (reorder.active) {
+      event.preventDefault();
+      updateCustomPaletteReorder(event);
+      suppressCustomPaletteClick = true;
+      setTimeout(() => {
+        suppressCustomPaletteClick = false;
+      }, 0);
+    }
+    endCustomPaletteReorder(true);
+  }
+
+  function cancelCustomPaletteReorder(): void {
+    endCustomPaletteReorder(true);
   }
 
   onMount(() => {
@@ -310,14 +454,37 @@
       {/if}
 
       {#if activeCustomPalette}
-        <div class="custom-palette-grid">
+        <div
+          class="custom-palette-grid"
+          bind:this={customPaletteGrid}
+          role="group"
+          aria-label={$_('tray.paletteColors')}
+          onpointermove={updateCustomPaletteReorder}
+          onpointerup={finishCustomPaletteReorder}
+          onpointercancel={cancelCustomPaletteReorder}
+          onlostpointercapture={cancelCustomPaletteReorder}
+        >
           {#each activeCustomPaletteColors as color (color.code)}
             <button
               class="custom-palette-color"
+              class:reordering={
+                customPaletteReorder?.code === color.code &&
+                customPaletteReorder.active
+              }
               type="button"
+              data-palette-color-code={color.code}
               aria-label={`${color.code} ${color.hex}`}
-              title={`${color.code} · ${color.hex}`}
-              onclick={() => onselect(color.code, color.hex)}
+              title={`${color.code} · ${color.hex} · ${$_('tray.longPressReorder')}`}
+              onpointerdown={(event) =>
+                beginCustomPaletteReorder(event, color.code)}
+              oncontextmenu={(event) => event.preventDefault()}
+              onclick={() => {
+                if (suppressCustomPaletteClick) {
+                  suppressCustomPaletteClick = false;
+                  return;
+                }
+                onselect(color.code, color.hex);
+              }}
             >
               <span style:--color={color.hex}></span>
             </button>
@@ -554,11 +721,21 @@
 
   .custom-palette-color {
     border-color: var(--border);
+    touch-action: none;
+    user-select: none;
   }
 
   .custom-palette-color:hover,
   .custom-palette-add:hover {
     border-color: var(--border-strong);
+  }
+
+  .custom-palette-color.reordering {
+    z-index: 1;
+    border-color: var(--text);
+    background: var(--hover);
+    cursor: grabbing;
+    transform: scale(0.96);
   }
 
   .custom-palette-color > span {

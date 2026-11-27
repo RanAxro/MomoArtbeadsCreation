@@ -83,6 +83,7 @@
     "globalColors": "Global colors",
     "addPaletteScheme": "Add palette scheme",
     "paletteSchemeSelectLabel": "Palette scheme",
+    "paletteColors": "Palette colors",
     "defaultPaletteName": "Default palette",
     "unnamedPalette": "Untitled palette {number}",
     "paletteSchemeActions": "Palette scheme actions",
@@ -105,6 +106,7 @@
     "selectedColorCount": "{count} colors selected",
     "closeColorPicker": "Close complete palette",
     "done": "Done",
+    "longPressReorder": "Press and hold to reorder",
     "families": {
       "orange": "Orange",
       "yellow": "Yellow",
