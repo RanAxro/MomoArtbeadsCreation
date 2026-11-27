@@ -785,6 +785,10 @@
       selectedColorIndex={editor.selectedColorIndex}
       {usage}
       onselect={(code, hex) => editor.selectCatalogColor(code, hex)}
+      ontogglecurrentcolor={(code, hex) =>
+        editor.toggleProjectPaletteColor(code, hex)}
+      onreordercurrentcolor={(fromIndex, toIndex) =>
+        editor.movePaletteColor(fromIndex, toIndex)}
       onpalettesourcechange={(source) => editor.setPaletteSource(source)}
     />
   {/if}

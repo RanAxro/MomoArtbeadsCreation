@@ -3,6 +3,7 @@ import { clonePalette } from '$domain/palette';
 import type { BoardTransferData } from '$modules/board/board-codec';
 import { decodeShareCode } from '$modules/board/board-codec';
 import type { BeadProject } from '$model/project.model';
+import { PaletteSourceType } from '$model/palette-source.model';
 import { workspace } from '$modules/workspace/workspace.svelte';
 
 export async function createProjectFromShareCodeData(
@@ -15,7 +16,8 @@ export async function createProjectFromShareCodeData(
     width: data.width,
     height: data.height,
     beadShape: data.beadShape,
-    palette: clonePalette(data.palette)
+    palette: clonePalette(data.palette),
+    paletteSource: { type: PaletteSourceType.Current }
   });
   project.cells = [...data.cells];
   await workspace.create(project);

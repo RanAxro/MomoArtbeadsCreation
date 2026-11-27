@@ -44,7 +44,6 @@
         width: selectedPegboard.width,
         height: selectedPegboard.height,
         beadShape: selectedBeadShape,
-        palette,
         gameVersion: DEFAULT_GAME_VERSION
       });
       await workspace.create(project);

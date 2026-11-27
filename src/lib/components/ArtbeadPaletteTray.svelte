@@ -19,6 +19,7 @@
   import type { CustomPaletteScheme } from '$model/custom-palette.model';
   import { IconName } from '$model/icon.model';
   import {
+    isCurrentPaletteSource,
     isCustomPaletteSource,
     PaletteSourceType,
     type ProjectPaletteSource
@@ -32,6 +33,8 @@
     selectedColorIndex: number;
     usage: readonly number[];
     onselect: (code: string, hex: string) => void;
+    ontogglecurrentcolor: (code: string, hex: string) => void;
+    onreordercurrentcolor: (fromIndex: number, toIndex: number) => void;
     onpalettesourcechange: (source: ProjectPaletteSource) => void;
   }
 
@@ -42,6 +45,8 @@
     selectedColorIndex,
     usage,
     onselect,
+    ontogglecurrentcolor,
+    onreordercurrentcolor,
     onpalettesourcechange
   }: Props = $props();
   const catalogByCode = new Map(
@@ -53,7 +58,9 @@
     untrack(() =>
       isCustomPaletteSource(paletteSource)
         ? ArtbeadTrayTab.Scheme
-        : ArtbeadTrayTab.Complete
+        : isCurrentPaletteSource(paletteSource)
+          ? ArtbeadTrayTab.Current
+          : ArtbeadTrayTab.Complete
     )
   );
   let activeCategoryId = $state(DEFAULT_ARTBEAD_FAMILY_CODE);
@@ -68,6 +75,7 @@
   let customPalettesLoading = $state(true);
   let creatingCustomPalette = $state(false);
   let customPaletteDialogOpen = $state(false);
+  let currentPaletteDialogOpen = $state(false);
   let customPaletteError = $state('');
   let customPaletteSaveQueue = Promise.resolve();
   let customPaletteGrid: HTMLDivElement | undefined = $state();
@@ -136,6 +144,16 @@
       return color ? [color] : [];
     })
   );
+  let currentPaletteCatalogCodes = $derived.by(() =>
+    palette.colors.flatMap((color) => {
+      const catalogColor =
+        ARTBEAD_CATALOG.find((candidate) => candidate.code === color.code) ??
+        ARTBEAD_CATALOG.find(
+          (candidate) => candidate.hex === color.hex.toUpperCase()
+        );
+      return catalogColor ? [catalogColor.code] : [];
+    })
+  );
 
   function paletteSourceKey(
     id: string,
@@ -155,6 +173,9 @@
     if (isCustomPaletteSource(paletteSource)) {
       activeTab = ArtbeadTrayTab.Scheme;
       activeCustomPaletteId = paletteSource.paletteId;
+    } else if (isCurrentPaletteSource(paletteSource)) {
+      activeTab = ArtbeadTrayTab.Current;
+      activeCustomPaletteId = null;
     } else {
       activeTab = ArtbeadTrayTab.Complete;
       activeCustomPaletteId = null;
@@ -315,6 +336,11 @@
     });
   }
 
+  function showCurrentTab(): void {
+    activeTab = ArtbeadTrayTab.Current;
+    onpalettesourcechange({ type: PaletteSourceType.Current });
+  }
+
   function showCompleteTab(): void {
     activeTab = ArtbeadTrayTab.Complete;
     onpalettesourcechange({ type: PaletteSourceType.Complete });
@@ -402,7 +428,9 @@
       event.button !== 0 ||
       !event.isPrimary ||
       !customPaletteGrid ||
-      (activeCustomPalette?.colorCodes.length ?? 0) < 2
+      (activeTab === ArtbeadTrayTab.Current
+        ? palette.colors.length
+        : (activeCustomPalette?.colorCodes.length ?? 0)) < 2
     ) {
       return;
     }
@@ -458,6 +486,22 @@
     }
 
     const targetCode = target.dataset.paletteColorCode;
+    if (activeTab === ArtbeadTrayTab.Current) {
+      if (!targetCode || targetCode === reorder.code) {
+        return;
+      }
+      const fromIndex = palette.colors.findIndex(
+        (color) => color.code === reorder.code
+      );
+      const toIndex = palette.colors.findIndex(
+        (color) => color.code === targetCode
+      );
+      if (fromIndex >= 0 && toIndex >= 0) {
+        onreordercurrentcolor(fromIndex + 1, toIndex + 1);
+      }
+      return;
+    }
+
     const scheme = activeCustomPalette;
     if (!targetCode || !scheme || targetCode === reorder.code) {
       return;
@@ -523,6 +567,17 @@
         onclick={showSchemeTab}
       >
         {$_('tray.schemeTab')}
+      </button>
+      <button
+        class:active={activeTab === ArtbeadTrayTab.Current}
+        type="button"
+        role="tab"
+        id="artbead-tray-tab-current"
+        aria-controls="artbead-tray-panel-current"
+        aria-selected={activeTab === ArtbeadTrayTab.Current}
+        onclick={showCurrentTab}
+      >
+        {$_('tray.currentTab')}
       </button>
       <button
         class:active={activeTab === ArtbeadTrayTab.Complete}
@@ -613,6 +668,61 @@
           </button>
         </div>
       {/if}
+    </div>
+  {:else if activeTab === ArtbeadTrayTab.Current}
+    <div
+      class="tray-panel custom-palette-panel"
+      id="artbead-tray-panel-current"
+      role="tabpanel"
+      aria-labelledby="artbead-tray-tab-current"
+    >
+      <div
+        class="custom-palette-grid"
+        bind:this={customPaletteGrid}
+        role="group"
+        aria-label={$_('tray.currentPaletteColors')}
+        onpointermove={updateCustomPaletteReorder}
+        onpointerup={finishCustomPaletteReorder}
+        onpointercancel={cancelCustomPaletteReorder}
+        onlostpointercapture={cancelCustomPaletteReorder}
+      >
+        {#each palette.colors as color (color.id)}
+          <button
+            class="custom-palette-color"
+            class:reordering={
+              customPaletteReorder?.code === color.code &&
+              customPaletteReorder.active
+            }
+            type="button"
+            data-palette-color-code={color.code}
+            aria-label={`${color.code} ${color.hex}`}
+            title={`${color.code} · ${color.hex} · ${$_('tray.longPressReorder')}`}
+            onpointerdown={(event) =>
+              beginCustomPaletteReorder(event, color.code)}
+            oncontextmenu={(event) => event.preventDefault()}
+            onclick={() => {
+              if (suppressCustomPaletteClick) {
+                suppressCustomPaletteClick = false;
+                return;
+              }
+              onselect(color.code, color.hex);
+            }}
+          >
+            <span style:--color={color.hex}></span>
+          </button>
+        {/each}
+        <button
+          class="custom-palette-add"
+          type="button"
+          aria-label={$_('tray.addColor')}
+          title={$_('tray.addColor')}
+          onclick={() => {
+            currentPaletteDialogOpen = true;
+          }}
+        >
+          <Icon name={IconName.Plus} size={18} />
+        </button>
+      </div>
     </div>
   {:else}
     <div
@@ -708,6 +818,18 @@
   onclose={() => (customPaletteDialogOpen = false)}
 />
 
+<CustomPaletteColorDialog
+  open={currentPaletteDialogOpen}
+  selectedCodes={currentPaletteCatalogCodes}
+  ontoggle={(code) => {
+    const color = catalogByCode.get(code);
+    if (color) {
+      ontogglecurrentcolor(color.code, color.hex);
+    }
+  }}
+  onclose={() => (currentPaletteDialogOpen = false)}
+/>
+
 <style>
   .artbead-tray {
     display: grid;
@@ -748,7 +870,7 @@
 
   .tray-tabs {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     border-bottom: 1px solid var(--border);
   }
 

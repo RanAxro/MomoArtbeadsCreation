@@ -18,6 +18,7 @@ import {
   DEFAULT_BEAD_SHAPE
 } from '$model/bead-shape.model';
 import { PaletteSourceType } from '$model/palette-source.model';
+import { createStarterPalette } from './palette';
 
 describe('project domain', () => {
   it('creates an empty project with the requested dimensions', () => {
@@ -32,6 +33,7 @@ describe('project domain', () => {
     expect(project.cells.every((cell) => cell === 0)).toBe(true);
     expect(project.gameVersion).toBe(GameVersion.V3);
     expect(project.beadShape).toBe(DEFAULT_BEAD_SHAPE);
+    expect(project.palette.colors).toHaveLength(0);
     expect(project.paletteSource).toEqual({
       type: PaletteSourceType.Complete
     });
@@ -107,6 +109,14 @@ describe('project domain', () => {
         paletteId: 'custom-palette-1'
       }
     });
+    const currentProject = createProject({
+      name: '当前调色盘',
+      width: 2,
+      height: 2,
+      paletteSource: {
+        type: PaletteSourceType.Current
+      }
+    });
     const { paletteSource: _paletteSource, ...legacyProject } =
       completeProject;
     const parsedLegacyProject = beadProjectSchema.safeParse(legacyProject);
@@ -117,6 +127,9 @@ describe('project domain', () => {
     expect(customProject.paletteSource).toEqual({
       type: PaletteSourceType.Custom,
       paletteId: 'custom-palette-1'
+    });
+    expect(currentProject.paletteSource).toEqual({
+      type: PaletteSourceType.Current
     });
     expect(parsedLegacyProject.success).toBe(true);
     if (parsedLegacyProject.success) {
@@ -213,6 +226,7 @@ describe('project domain', () => {
       name: '用量统计测试',
       width: 4,
       height: 3,
+      palette: createStarterPalette(),
       gameVersion: GameVersion.V3
     });
     project.cells = [

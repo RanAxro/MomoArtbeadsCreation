@@ -154,7 +154,7 @@ describe('board binary codec', () => {
 
     expect(encoded[4]).toBe(BoardCodec.Constant);
     expect(decoded.cells.every((cell) => cell === 0)).toBe(true);
-    expect(decoded.palette.colors.length).toBeGreaterThan(0);
+    expect(decoded.palette.colors).toHaveLength(0);
   });
 
   it('selects the Huffman stream for a small frequency-skewed board', async () => {

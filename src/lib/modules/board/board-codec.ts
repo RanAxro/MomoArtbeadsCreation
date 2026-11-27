@@ -19,7 +19,7 @@ import {
   PALETTE_MAX_COLORS,
   type BeadPalette
 } from '$model/palette.model';
-import { createStarterPalette } from '$domain/palette';
+import { createEmptyPalette } from '$domain/palette';
 
 const MAGIC = Uint8Array.of(0x4d, 0x41, 0x43);
 const FORMAT_VERSION = 1;
@@ -742,10 +742,7 @@ function validateTransferData(data: BoardTransferData): void {
   if (data.cells.length !== data.width * data.height) {
     throw new BoardCodecError('invalid-data', 'Cell count does not match size.');
   }
-  if (
-    data.palette.colors.length < 1 ||
-    data.palette.colors.length > PALETTE_MAX_COLORS
-  ) {
+  if (data.palette.colors.length > PALETTE_MAX_COLORS) {
     throw new BoardCodecError('invalid-data', 'Invalid palette size.');
   }
 
@@ -990,7 +987,7 @@ export async function decodeBoardData(
 
   let palette: BeadPalette;
   if (records.length === 0) {
-    palette = createStarterPalette();
+    palette = createEmptyPalette();
   } else {
     const paletteId = crypto.randomUUID();
     palette = {

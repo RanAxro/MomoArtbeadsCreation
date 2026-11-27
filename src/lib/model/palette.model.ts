@@ -18,7 +18,7 @@ const beadColorSchema = z.object({
 export const paletteSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  colors: z.array(beadColorSchema).min(1).max(PALETTE_MAX_COLORS)
+  colors: z.array(beadColorSchema).max(PALETTE_MAX_COLORS)
 });
 
 export type BeadColor = z.infer<typeof beadColorSchema>;

@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 export enum PaletteSourceType {
   Complete = 'complete',
-  Custom = 'custom'
+  Custom = 'custom',
+  Current = 'current'
 }
 
 export const completePaletteSourceSchema = z.object({
@@ -14,9 +15,14 @@ export const customPaletteSourceSchema = z.object({
   paletteId: z.string().min(1)
 });
 
+export const currentPaletteSourceSchema = z.object({
+  type: z.literal(PaletteSourceType.Current)
+});
+
 export const paletteSourceSchema = z.discriminatedUnion('type', [
   completePaletteSourceSchema,
-  customPaletteSourceSchema
+  customPaletteSourceSchema,
+  currentPaletteSourceSchema
 ]);
 
 export type ProjectPaletteSource = z.infer<typeof paletteSourceSchema>;
@@ -35,4 +41,10 @@ export function isCustomPaletteSource(
   source: ProjectPaletteSource
 ): source is z.infer<typeof customPaletteSourceSchema> {
   return source.type === PaletteSourceType.Custom;
+}
+
+export function isCurrentPaletteSource(
+  source: ProjectPaletteSource
+): source is z.infer<typeof currentPaletteSourceSchema> {
+  return source.type === PaletteSourceType.Current;
 }

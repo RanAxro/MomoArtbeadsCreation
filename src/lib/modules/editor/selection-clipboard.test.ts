@@ -43,6 +43,7 @@ describe('selection clipboard', () => {
       name: '源方案',
       width: 4,
       height: 3,
+      palette: createStarterPalette(),
       gameVersion: GameVersion.V3
     });
     source.cells[5] = 1;
@@ -52,6 +53,7 @@ describe('selection clipboard', () => {
       name: '目标方案',
       width: 8,
       height: 6,
+      palette: createStarterPalette(),
       gameVersion: GameVersion.V3
     });
 
@@ -113,6 +115,7 @@ describe('selection clipboard', () => {
       name: '大选区',
       width: 6,
       height: 2,
+      palette: createStarterPalette(),
       gameVersion: GameVersion.V3
     });
     for (let index = 0; index < 12; index += 1) {
@@ -126,6 +129,7 @@ describe('selection clipboard', () => {
       name: '小格板',
       width: 8,
       height: 4,
+      palette: createStarterPalette(),
       gameVersion: GameVersion.V3
     });
 
@@ -146,6 +150,7 @@ describe('selection clipboard', () => {
       name: '移动图层',
       width: 5,
       height: 4,
+      palette: createStarterPalette(),
       gameVersion: GameVersion.V3
     });
     project.cells[6] = 1;
@@ -203,6 +208,7 @@ describe('selection clipboard', () => {
       name: '引用检查',
       width: 2,
       height: 2,
+      palette: createStarterPalette(),
       gameVersion: GameVersion.V3
     });
     source.cells[0] = 1;

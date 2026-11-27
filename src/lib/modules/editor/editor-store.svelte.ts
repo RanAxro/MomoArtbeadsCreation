@@ -232,8 +232,9 @@ export class EditorStore {
     const current = this.project.paletteSource;
     if (
       current.type === source.type &&
-      (source.type === 'complete' ||
-        (current.type === 'custom' &&
+      (source.type === PaletteSourceType.Complete ||
+        source.type === PaletteSourceType.Current ||
+        (current.type === PaletteSourceType.Custom &&
           current.paletteId === source.paletteId))
     ) {
       return;
@@ -242,10 +243,12 @@ export class EditorStore {
     this.project.paletteSource =
       source.type === PaletteSourceType.Complete
         ? { type: PaletteSourceType.Complete }
-        : {
-            type: PaletteSourceType.Custom,
-            paletteId: source.paletteId
-          };
+        : source.type === PaletteSourceType.Current
+          ? { type: PaletteSourceType.Current }
+          : {
+              type: PaletteSourceType.Custom,
+              paletteId: source.paletteId
+            };
     this.markChanged();
   }
 
@@ -447,6 +450,102 @@ export class EditorStore {
     }
 
     this.selectedColorIndex = colorIndex + 1;
+  }
+
+  toggleProjectPaletteColor(code: string, hex: string): void {
+    if (!this.project) {
+      return;
+    }
+
+    let colorIndex = this.project.palette.colors.findIndex(
+      (color) => color.code === code
+    );
+    if (colorIndex < 0) {
+      colorIndex = this.project.palette.colors.findIndex(
+        (color) => color.hex.toUpperCase() === hex.toUpperCase()
+      );
+    }
+    if (colorIndex >= 0) {
+      this.removePaletteColor(colorIndex + 1);
+      return;
+    }
+    this.selectCatalogColor(code, hex);
+  }
+
+  removePaletteColor(index: number): void {
+    if (!this.project) {
+      return;
+    }
+    const colors = this.project.palette.colors;
+    const removed = colors[index - 1];
+    if (!removed) {
+      return;
+    }
+
+    const snapshot = createEditorSnapshot(this.project);
+    const nextColors = colors.filter((_, colorIndex) => colorIndex !== index - 1);
+    const nextIndexByColorId = new Map(
+      nextColors.map((color, colorIndex) => [color.id, colorIndex + 1])
+    );
+    const selectedColorId = colors[this.selectedColorIndex - 1]?.id;
+
+    this.project.cells = this.project.cells.map((cell) => {
+      if (cell === EMPTY_CELL_COLOR_INDEX) {
+        return EMPTY_CELL_COLOR_INDEX;
+      }
+      const color = colors[cell - 1];
+      return color ? (nextIndexByColorId.get(color.id) ?? EMPTY_CELL_COLOR_INDEX) : EMPTY_CELL_COLOR_INDEX;
+    });
+    this.project.palette.colors = nextColors;
+    this.selectedColorIndex =
+      selectedColorId === removed.id
+        ? Math.min(index, nextColors.length)
+        : selectedColorId
+          ? (nextIndexByColorId.get(selectedColorId) ?? EMPTY_CELL_COLOR_INDEX)
+          : EMPTY_CELL_COLOR_INDEX;
+
+    this.pushUndoSnapshot(snapshot);
+    this.redoStack = [];
+    this.refreshHistoryState();
+    this.markChanged();
+    this.previewRevision += 1;
+  }
+
+  movePaletteColor(fromIndex: number, toIndex: number): void {
+    if (!this.project || fromIndex === toIndex) {
+      return;
+    }
+    const colors = this.project.palette.colors;
+    if (
+      fromIndex < 1 ||
+      fromIndex > colors.length ||
+      toIndex < 1 ||
+      toIndex > colors.length
+    ) {
+      return;
+    }
+
+    const nextColors = [...colors];
+    const [moved] = nextColors.splice(fromIndex - 1, 1);
+    nextColors.splice(toIndex - 1, 0, moved);
+    const nextIndexByColorId = new Map(
+      nextColors.map((color, colorIndex) => [color.id, colorIndex + 1])
+    );
+    const selectedColorId = colors[this.selectedColorIndex - 1]?.id;
+
+    this.project.cells = this.project.cells.map((cell) => {
+      if (cell === EMPTY_CELL_COLOR_INDEX) {
+        return EMPTY_CELL_COLOR_INDEX;
+      }
+      const color = colors[cell - 1];
+      return color ? (nextIndexByColorId.get(color.id) ?? EMPTY_CELL_COLOR_INDEX) : EMPTY_CELL_COLOR_INDEX;
+    });
+    this.project.palette.colors = nextColors;
+    this.selectedColorIndex = selectedColorId
+      ? (nextIndexByColorId.get(selectedColorId) ?? EMPTY_CELL_COLOR_INDEX)
+      : EMPTY_CELL_COLOR_INDEX;
+    this.markChanged();
+    this.previewRevision += 1;
   }
 
   setMagicWandThreshold(threshold: number): void {

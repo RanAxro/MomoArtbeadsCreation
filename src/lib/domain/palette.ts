@@ -78,6 +78,14 @@ export function createStarterPalette(id = crypto.randomUUID()): BeadPalette {
   };
 }
 
+export function createEmptyPalette(id = crypto.randomUUID()): BeadPalette {
+  return {
+    id,
+    name: DEFAULT_PALETTE_NAME,
+    colors: []
+  };
+}
+
 export function clonePalette(palette: BeadPalette): BeadPalette {
   return {
     ...palette,

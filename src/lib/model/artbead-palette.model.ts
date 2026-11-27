@@ -1,5 +1,6 @@
 export enum ArtbeadTrayTab {
   Scheme = 'scheme',
+  Current = 'current',
   Complete = 'complete'
 }
 
