@@ -50,8 +50,6 @@ export interface DrawingSheetLayout {
   logicalHeight: number;
 }
 
-const SHEET_WIDTH = 1600;
-const SHEET_HEIGHT = 1200;
 const SHEET_MARGIN = 24;
 const SIDE_PANEL_WIDTH = 300;
 const SIDE_PANEL_GAP = 24;
@@ -59,10 +57,10 @@ const PANEL_GAP = 16;
 const BASIC_INFO_HEIGHT = 190;
 const LEGEND_PADDING = 21;
 const LEGEND_HEADING_HEIGHT = 70;
-const LEGEND_ITEM_HEIGHT_MIN = 18;
 const LEGEND_ITEM_HEIGHT_MAX = 45;
 const BOARD_CELL_MIN = 1;
-const BOARD_CELL_MAX = 64;
+const BOARD_CELL_MAX = 32;
+const BOARD_LAYOUT_TARGET = 1200;
 const RULER_SIZE = 36;
 
 const INK = '#111111';
@@ -102,37 +100,14 @@ export function calculateDrawingSheetLayout(
   const usedColorCount = requiredArtbeadUsage(project).length;
   const legendColumns = legendColumnCount(usedColorCount);
   const legendRows = Math.ceil(usedColorCount / legendColumns);
-  const legendPanelHeight =
-    SHEET_HEIGHT -
-    SHEET_MARGIN * 2 -
-    BASIC_INFO_HEIGHT -
-    PANEL_GAP;
-  const legendBodyHeight =
-    legendPanelHeight - LEGEND_HEADING_HEIGHT - LEGEND_PADDING;
-  const legendItemHeight =
-    usedColorCount > 0
-      ? Math.min(
-          LEGEND_ITEM_HEIGHT_MAX,
-          Math.max(
-            LEGEND_ITEM_HEIGHT_MIN,
-            Math.floor(legendBodyHeight / legendRows)
-          )
-        )
-      : LEGEND_ITEM_HEIGHT_MAX;
   const rulerSize = settings.showRulers ? RULER_SIZE : 0;
-  const rightAreaX =
-    SHEET_MARGIN + SIDE_PANEL_WIDTH + SIDE_PANEL_GAP;
-  const rightAreaWidth = SHEET_WIDTH - SHEET_MARGIN - rightAreaX;
-  const contentHeight = SHEET_HEIGHT - SHEET_MARGIN * 2;
   const cellSize = Math.max(
     BOARD_CELL_MIN,
     Math.min(
       BOARD_CELL_MAX,
       Math.floor(
-        (rightAreaWidth - rulerSize * 2) / project.width
-      ),
-      Math.floor(
-        (contentHeight - rulerSize * 2) / project.height
+        (BOARD_LAYOUT_TARGET - rulerSize * 2) /
+          Math.max(project.width, project.height)
       )
     )
   );
@@ -140,6 +115,36 @@ export function calculateDrawingSheetLayout(
   const boardHeight = project.height * cellSize;
   const boardViewportWidth = boardWidth + rulerSize * 2;
   const boardViewportHeight = boardHeight + rulerSize * 2;
+  const rightAreaX =
+    SHEET_MARGIN + SIDE_PANEL_WIDTH + SIDE_PANEL_GAP;
+  const contentWidth =
+    rightAreaX + boardViewportWidth + SHEET_MARGIN;
+  const minimumHeight = Math.max(
+    boardViewportHeight + SHEET_MARGIN * 2,
+    BASIC_INFO_HEIGHT +
+      PANEL_GAP +
+      LEGEND_HEADING_HEIGHT +
+      LEGEND_PADDING +
+      1 +
+      SHEET_MARGIN * 2
+  );
+  const logicalWidth = Math.ceil(
+    Math.max(contentWidth, (minimumHeight * 4) / 3) / 4
+  ) * 4;
+  const logicalHeight = (logicalWidth * 3) / 4;
+  const rightAreaWidth = logicalWidth - SHEET_MARGIN - rightAreaX;
+  const contentHeight = logicalHeight - SHEET_MARGIN * 2;
+  const legendPanelHeight =
+    contentHeight - BASIC_INFO_HEIGHT - PANEL_GAP;
+  const legendBodyHeight =
+    legendPanelHeight - LEGEND_HEADING_HEIGHT - LEGEND_PADDING;
+  const legendItemHeight =
+    usedColorCount > 0
+      ? Math.min(
+          LEGEND_ITEM_HEIGHT_MAX,
+          Math.max(1, Math.floor(legendBodyHeight / legendRows))
+        )
+      : LEGEND_ITEM_HEIGHT_MAX;
   const legendPanelY =
     SHEET_MARGIN + BASIC_INFO_HEIGHT + PANEL_GAP;
   const boardViewportX =
@@ -168,8 +173,8 @@ export function calculateDrawingSheetLayout(
     boardViewportHeight,
     boardX,
     boardY,
-    logicalWidth: SHEET_WIDTH,
-    logicalHeight: SHEET_HEIGHT
+    logicalWidth,
+    logicalHeight
   };
 }
 
@@ -403,6 +408,69 @@ function drawGrid(
   context.strokeStyle = INK;
   context.lineWidth = 1.5;
   context.strokeRect(boardX, boardY, boardWidth, boardHeight);
+}
+
+function textColorForBackground(hex: string): string {
+  const value = Number.parseInt(hex.replace('#', ''), 16);
+  const red = (value >> 16) & 0xff;
+  const green = (value >> 8) & 0xff;
+  const blue = value & 0xff;
+  const luminance = red * 0.299 + green * 0.587 + blue * 0.114;
+  return luminance > 150 ? INK : '#ffffff';
+}
+
+function drawArtbeadCodes(
+  context: CanvasRenderingContext2D,
+  project: BeadProject,
+  cellSize: number,
+  boardX: number,
+  boardY: number
+): void {
+  const maximumWidth = Math.max(1, cellSize * 0.88);
+  const maximumFontSize = Math.max(2, Math.min(12, cellSize * 0.42));
+  const labels = project.palette.colors.map((color) => {
+    const code = artbeadDisplayCode(color.code, color.hex);
+    let fontSize = maximumFontSize;
+    setFont(context, fontSize, 700);
+    while (fontSize > 0.8 && context.measureText(code).width > maximumWidth) {
+      fontSize = Math.max(0.8, fontSize - 0.25);
+      setFont(context, fontSize, 700);
+    }
+    return {
+      code,
+      fontSize,
+      textColor: textColorForBackground(color.hex),
+      positions: [] as number[]
+    };
+  });
+
+  for (let y = 0; y < project.height; y += 1) {
+    for (let x = 0; x < project.width; x += 1) {
+      const colorIndex = project.cells[y * project.width + x];
+      if (colorIndex > 0 && colorIndex <= labels.length) {
+        labels[colorIndex - 1].positions.push(x, y);
+      }
+    }
+  }
+
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  for (const label of labels) {
+    if (label.positions.length === 0) {
+      continue;
+    }
+    context.fillStyle = label.textColor;
+    setFont(context, label.fontSize, 700);
+    for (let index = 0; index < label.positions.length; index += 2) {
+      const x = label.positions[index];
+      const y = label.positions[index + 1];
+      context.fillText(
+        label.code,
+        boardX + x * cellSize + cellSize / 2,
+        boardY + y * cellSize + cellSize / 2
+      );
+    }
+  }
 }
 
 export function calculateRulerFontSize(
@@ -720,6 +788,15 @@ export function renderDrawingSheet(
     layout.boardX,
     layout.boardY
   );
+  if (settings.showArtbeadCodes) {
+    drawArtbeadCodes(
+      context,
+      project,
+      layout.cellSize,
+      layout.boardX,
+      layout.boardY
+    );
+  }
   drawRulers(context, project, layout);
 
   return { width, height, scale };

@@ -14,11 +14,9 @@
     DEFAULT_GAME_VERSION,
     MAX_PROJECT_NAME_LENGTH
   } from '$model/project.model';
-  import { createStarterPalette } from '$domain/palette';
   import { createProject } from '$domain/project';
   import { workspace } from '$modules/workspace/workspace.svelte';
 
-  const palette = createStarterPalette();
   let name = $state('');
   let selectedPegboard = $state(DEFAULT_PEGBOARD);
   let selectedBeadShape = $state(DEFAULT_BEAD_SHAPE);
@@ -112,27 +110,6 @@
             />
           </div>
 
-        </div>
-      </section>
-
-      <section class="form-section color-section">
-        <span class="section-number">02</span>
-        <div class="section-content">
-          <div class="color-heading">
-            <div>
-              <h2>{$_('new.colors')}</h2>
-              <p>{$_('tray.count', { values: { count: palette.colors.length } })}</p>
-            </div>
-            <span>{selectedPegboard.width} × {selectedPegboard.height}</span>
-          </div>
-          <div class="palette-grid">
-            {#each palette.colors as color (color.id)}
-              <div class="palette-item" title={color.code}>
-                <span style:--color={color.hex}></span>
-                <small>{color.code}</small>
-              </div>
-            {/each}
-          </div>
         </div>
       </section>
 
@@ -259,50 +236,6 @@
 
   .preset.active {
     box-shadow: inset 0 -2px var(--text);
-  }
-
-  .color-heading {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 20px;
-  }
-
-  .color-heading h2 {
-    margin-bottom: 5px;
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-
-  .color-heading p,
-  .color-heading > span {
-    margin: 0;
-    color: var(--muted);
-    font-size: 0.74rem;
-  }
-
-  .palette-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
-    gap: 8px;
-  }
-
-  .palette-item {
-    display: grid;
-    gap: 5px;
-  }
-
-  .palette-item > span {
-    display: block;
-    aspect-ratio: 1;
-    border: 1px solid var(--border-strong);
-    background: var(--color);
-  }
-
-  .palette-item small {
-    color: var(--muted);
-    font-size: 0.62rem;
-    text-align: center;
   }
 
   .form-actions {

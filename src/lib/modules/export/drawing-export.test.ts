@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createProject } from '$domain/project';
 import {
   artbeadDisplayCode,
-  createDrawingExportFilename
+  createDrawingExportFilename,
+  DEFAULT_DRAWING_EXPORT_SETTINGS
 } from '$model/drawing-export.model';
-import { DEFAULT_VIEW_PREFERENCES } from '$model/view.model';
 import {
   calculateDrawingSheetLayout,
   calculateRulerFontSize
@@ -19,7 +19,7 @@ describe('drawing export', () => {
     });
     const layout = calculateDrawingSheetLayout(
       project,
-      DEFAULT_VIEW_PREFERENCES
+      DEFAULT_DRAWING_EXPORT_SETTINGS
     );
 
     expect(layout.cellSize).toBe(3);
@@ -36,17 +36,24 @@ describe('drawing export', () => {
     });
     const withRulers = calculateDrawingSheetLayout(
       project,
-      DEFAULT_VIEW_PREFERENCES
+      DEFAULT_DRAWING_EXPORT_SETTINGS
     );
     const withoutRulers = calculateDrawingSheetLayout(project, {
-      ...DEFAULT_VIEW_PREFERENCES,
+      ...DEFAULT_DRAWING_EXPORT_SETTINGS,
       showRulers: false
     });
 
-    expect(withoutRulers.logicalWidth).toBe(withRulers.logicalWidth);
-    expect(withoutRulers.logicalHeight).toBe(withRulers.logicalHeight);
+    expect(withoutRulers.logicalWidth).toBeGreaterThan(
+      withRulers.logicalWidth
+    );
+    expect(withoutRulers.logicalHeight).toBeGreaterThan(
+      withRulers.logicalHeight
+    );
     expect(withoutRulers.cellSize).toBeGreaterThan(withRulers.cellSize);
     expect(withoutRulers.boardWidth).toBeGreaterThan(withRulers.boardWidth);
+    expect(withoutRulers.logicalWidth * 3).toBe(
+      withoutRulers.logicalHeight * 4
+    );
   });
 
   it('allocates legend rows for every used color', () => {
@@ -65,7 +72,7 @@ describe('drawing export', () => {
 
     const layout = calculateDrawingSheetLayout(
       project,
-      DEFAULT_VIEW_PREFERENCES
+      DEFAULT_DRAWING_EXPORT_SETTINGS
     );
 
     expect(layout.legendColumns).toBe(4);
@@ -94,5 +101,20 @@ describe('drawing export', () => {
     expect(calculateRulerFontSize(24, 18, 48)).toBe(13.5);
     expect(calculateRulerFontSize(84, 63, 13)).toBeLessThan(13.5);
     expect(calculateRulerFontSize(300, 300, 3)).toBeCloseTo(1.6129, 3);
+  });
+
+  it('derives the sheet width from the board width', () => {
+    const small = calculateDrawingSheetLayout(
+      createProject({ name: 'Small', width: 24, height: 18 }),
+      DEFAULT_DRAWING_EXPORT_SETTINGS
+    );
+    const large = calculateDrawingSheetLayout(
+      createProject({ name: 'Large', width: 84, height: 63 }),
+      DEFAULT_DRAWING_EXPORT_SETTINGS
+    );
+
+    expect(large.logicalWidth).toBeGreaterThan(small.logicalWidth);
+    expect(large.logicalWidth * 3).toBe(large.logicalHeight * 4);
+    expect(DEFAULT_DRAWING_EXPORT_SETTINGS.showArtbeadCodes).toBe(true);
   });
 });

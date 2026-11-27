@@ -46,6 +46,7 @@
   let showCoarseGrid = $state(viewStore.showCoarseGrid);
   let coarseGridSpacing = $state(viewStore.coarseGridSpacing);
   let background = $state<BoardBackground>(viewStore.background);
+  let showArtbeadCodes = $state(true);
   let author = $state(readStoredAuthor());
   let previewSize = $state('');
   let previewError = $state('');
@@ -62,7 +63,8 @@
       showGrid,
       showCoarseGrid,
       coarseGridSpacing,
-      background
+      background,
+      showArtbeadCodes
     };
   }
 
@@ -220,6 +222,7 @@
     showCoarseGrid;
     coarseGridSpacing;
     background;
+    showArtbeadCodes;
     author;
     $locale;
     if (ready && previewCanvas && editor.project) {
@@ -377,6 +380,23 @@
                   checked={showCoarseGrid}
                   onchange={(event) => {
                     showCoarseGrid = event.currentTarget.checked;
+                  }}
+                />
+                <span class="switch-track" aria-hidden="true"></span>
+              </span>
+            </label>
+
+            <label class="view-switch">
+              <span>
+                <strong>{$_('drawingExport.showArtbeadCodes')}</strong>
+                <small>{$_('drawingExport.showArtbeadCodesHint')}</small>
+              </span>
+              <span class="switch-control">
+                <input
+                  type="checkbox"
+                  checked={showArtbeadCodes}
+                  onchange={(event) => {
+                    showArtbeadCodes = event.currentTarget.checked;
                   }}
                 />
                 <span class="switch-track" aria-hidden="true"></span>

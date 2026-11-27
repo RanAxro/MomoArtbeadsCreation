@@ -1,6 +1,11 @@
-import type { ViewPreferences } from './view.model';
+import {
+  DEFAULT_VIEW_PREFERENCES,
+  type ViewPreferences
+} from './view.model';
 
-export type DrawingExportSettings = ViewPreferences;
+export interface DrawingExportSettings extends ViewPreferences {
+  showArtbeadCodes: boolean;
+}
 
 export const DRAWING_EXPORT_PREVIEW_MAX_DIMENSION = 2200;
 export const DRAWING_EXPORT_MAX_DIMENSION = 4096;
@@ -9,6 +14,10 @@ export const DRAWING_EXPORT_FALLBACK_NAME = 'drawing';
 export const DRAWING_EXPORT_AUTHOR_STORAGE_KEY =
   'momo-artbeads.drawing-export-author';
 export const MAX_DRAWING_EXPORT_AUTHOR_LENGTH = 80;
+export const DEFAULT_DRAWING_EXPORT_SETTINGS: DrawingExportSettings = {
+  ...DEFAULT_VIEW_PREFERENCES,
+  showArtbeadCodes: true
+};
 
 export function artbeadDisplayCode(code: string, hex: string): string {
   const normalizedCode = code.trim();
