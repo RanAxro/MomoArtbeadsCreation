@@ -7,9 +7,10 @@ export interface DrawingExportSettings extends ViewPreferences {
   showArtbeadCodes: boolean;
 }
 
-export const DRAWING_EXPORT_PREVIEW_MAX_DIMENSION = 2200;
+export const DRAWING_EXPORT_PREVIEW_MAX_DIMENSION = 4400;
 export const DRAWING_EXPORT_MAX_DIMENSION = 4096;
 export const DRAWING_EXPORT_MAX_PIXELS = 16_000_000;
+export const DRAWING_EXPORT_OUTPUT_SCALE = 2;
 export const DRAWING_EXPORT_FALLBACK_NAME = 'drawing';
 export const DRAWING_EXPORT_AUTHOR_STORAGE_KEY =
   'momo-artbeads.drawing-export-author';

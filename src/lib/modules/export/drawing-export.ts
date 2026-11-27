@@ -1,6 +1,7 @@
 import {
   DRAWING_EXPORT_MAX_DIMENSION,
   DRAWING_EXPORT_MAX_PIXELS,
+  DRAWING_EXPORT_OUTPUT_SCALE,
   type DrawingExportSettings
 } from '$model/drawing-export.model';
 import { BeadShape } from '$model/bead-shape.model';
@@ -21,6 +22,7 @@ export interface RenderDrawingSheetOptions {
   author?: string;
   maxDimension?: number;
   maxPixels?: number;
+  scaleMultiplier?: number;
 }
 
 export interface DrawingSheetRenderInfo {
@@ -28,6 +30,11 @@ export interface DrawingSheetRenderInfo {
   height: number;
   scale: number;
 }
+
+type DrawingSheetRenderSizeOptions = Pick<
+  RenderDrawingSheetOptions,
+  'maxDimension' | 'maxPixels' | 'scaleMultiplier'
+>;
 
 export interface DrawingSheetLayout {
   cellSize: number;
@@ -488,6 +495,30 @@ export function calculateRulerFontSize(
   );
 }
 
+export function calculateDrawingSheetRenderSize(
+  layout: Pick<DrawingSheetLayout, 'logicalWidth' | 'logicalHeight'>,
+  options: DrawingSheetRenderSizeOptions = {}
+): DrawingSheetRenderInfo {
+  const maxDimension = options.maxDimension ?? DRAWING_EXPORT_MAX_DIMENSION;
+  const maxPixels = options.maxPixels ?? DRAWING_EXPORT_MAX_PIXELS;
+  const scaleMultiplier =
+    options.scaleMultiplier ?? DRAWING_EXPORT_OUTPUT_SCALE;
+  const scale = Math.min(
+    scaleMultiplier,
+    maxDimension / layout.logicalWidth,
+    maxDimension / layout.logicalHeight,
+    Math.sqrt(
+      maxPixels / (layout.logicalWidth * layout.logicalHeight)
+    )
+  );
+
+  return {
+    width: Math.max(1, Math.ceil(layout.logicalWidth * scale)),
+    height: Math.max(1, Math.ceil(layout.logicalHeight * scale)),
+    scale
+  };
+}
+
 function drawRulers(
   context: CanvasRenderingContext2D,
   project: BeadProject,
@@ -733,18 +764,10 @@ export function renderDrawingSheet(
   options: RenderDrawingSheetOptions
 ): DrawingSheetRenderInfo {
   const layout = calculateDrawingSheetLayout(project, settings);
-  const maxDimension = options.maxDimension ?? DRAWING_EXPORT_MAX_DIMENSION;
-  const maxPixels = options.maxPixels ?? DRAWING_EXPORT_MAX_PIXELS;
-  const scale = Math.min(
-    1,
-    maxDimension / layout.logicalWidth,
-    maxDimension / layout.logicalHeight,
-    Math.sqrt(
-      maxPixels / (layout.logicalWidth * layout.logicalHeight)
-    )
+  const { width, height, scale } = calculateDrawingSheetRenderSize(
+    layout,
+    options
   );
-  const width = Math.max(1, Math.ceil(layout.logicalWidth * scale));
-  const height = Math.max(1, Math.ceil(layout.logicalHeight * scale));
 
   canvas.width = width;
   canvas.height = height;

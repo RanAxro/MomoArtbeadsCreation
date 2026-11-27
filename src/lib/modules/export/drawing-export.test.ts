@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { createProject } from '$domain/project';
 import {
   createDrawingExportFilename,
-  DEFAULT_DRAWING_EXPORT_SETTINGS
+  DEFAULT_DRAWING_EXPORT_SETTINGS,
+  DRAWING_EXPORT_PREVIEW_MAX_DIMENSION
 } from '$model/drawing-export.model';
 import { artbeadCodeForHex } from '$domain/palette';
 import {
   calculateDrawingSheetLayout,
+  calculateDrawingSheetRenderSize,
   calculateRulerFontSize
 } from './drawing-export';
 
@@ -115,5 +117,31 @@ describe('drawing export', () => {
     expect(large.logicalWidth).toBeGreaterThan(small.logicalWidth);
     expect(large.logicalWidth * 3).toBe(large.logicalHeight * 4);
     expect(DEFAULT_DRAWING_EXPORT_SETTINGS.showArtbeadCodes).toBe(true);
+  });
+
+  it('renders previews and downloads at twice the logical resolution', () => {
+    const project = createProject({
+      name: 'High resolution',
+      width: 24,
+      height: 18
+    });
+    const layout = calculateDrawingSheetLayout(
+      project,
+      DEFAULT_DRAWING_EXPORT_SETTINGS
+    );
+    const logical = calculateDrawingSheetRenderSize(layout, {
+      scaleMultiplier: 1
+    });
+    const preview = calculateDrawingSheetRenderSize(layout, {
+      maxDimension: DRAWING_EXPORT_PREVIEW_MAX_DIMENSION
+    });
+    const download = calculateDrawingSheetRenderSize(layout);
+
+    expect(preview.width).toBe(logical.width * 2);
+    expect(preview.height).toBe(logical.height * 2);
+    expect(download.width).toBe(logical.width * 2);
+    expect(download.height).toBe(logical.height * 2);
+    expect(preview.scale).toBe(2);
+    expect(download.scale).toBe(2);
   });
 });

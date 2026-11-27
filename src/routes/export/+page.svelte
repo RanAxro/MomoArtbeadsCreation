@@ -6,6 +6,7 @@
   import {
     DRAWING_EXPORT_AUTHOR_STORAGE_KEY,
     DRAWING_EXPORT_PREVIEW_MAX_DIMENSION,
+    DRAWING_EXPORT_OUTPUT_SCALE,
     MAX_DRAWING_EXPORT_AUTHOR_LENGTH,
     createDrawingExportFilename,
     type DrawingExportSettings
@@ -126,7 +127,8 @@
       const info = renderDrawingSheet(canvas, project, currentSettings(), {
         labels: drawingLabels(),
         author,
-        maxDimension: DRAWING_EXPORT_PREVIEW_MAX_DIMENSION
+        maxDimension: DRAWING_EXPORT_PREVIEW_MAX_DIMENSION,
+        scaleMultiplier: DRAWING_EXPORT_OUTPUT_SCALE
       });
       if (request !== previewRenderRequest) {
         return;
