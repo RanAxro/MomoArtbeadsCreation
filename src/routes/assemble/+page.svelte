@@ -102,7 +102,6 @@
               <span class="usage-swatch" style:--color={color.hex}></span>
               <span class="usage-details">
                 <strong>{color.code}</strong>
-                <small>{color.hex}</small>
               </span>
               <strong class="usage-count">
                 {$_('assembly.usage', {
@@ -307,12 +306,6 @@
     white-space: nowrap;
   }
 
-  .usage-details small {
-    color: var(--muted);
-    font-size: 0.64rem;
-    font-variant-numeric: tabular-nums;
-  }
-
   .usage-count {
     font-size: 0.8rem;
     font-variant-numeric: tabular-nums;
@@ -514,10 +507,6 @@
       grid-row: 1 / 3;
       width: 34px;
       height: 34px;
-    }
-
-    .usage-details small {
-      display: none;
     }
 
     .usage-count {

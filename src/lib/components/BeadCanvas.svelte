@@ -2570,8 +2570,8 @@
         style:--color={hoveredBead.color.hex}
       ></span>
       <span class="bead-info-copy">
-        <strong>{hoveredBead.color.name} · {hoveredBead.color.code}</strong>
-        <small>{hoveredBead.color.hex}</small>
+        <strong>{hoveredBead.color.name}</strong>
+        <small>{hoveredBead.color.code}</small>
         <small>
           {$_('assembly.cellPosition', {
             values: {

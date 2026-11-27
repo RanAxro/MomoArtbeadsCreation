@@ -418,7 +418,7 @@
           <div class="settings-content">
             <div class="color-strip">
               {#each palette.colors as color (color.id)}
-                <span style:--color={color.hex} title={`${color.code} · ${color.hex}`}></span>
+                <span style:--color={color.hex} title={color.code}></span>
               {/each}
             </div>
             <p class="dimension-note">

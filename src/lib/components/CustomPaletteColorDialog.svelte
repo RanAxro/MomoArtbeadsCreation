@@ -165,9 +165,9 @@
                   class="palette-color"
                   class:selected={selected.has(color.code)}
                   type="button"
-                  aria-label={`${color.code} ${color.hex}`}
+                  aria-label={color.code}
                   aria-pressed={selected.has(color.code)}
-                  title={`${color.code} · ${color.hex}`}
+                  title={color.code}
                   onclick={() => ontoggle(color.code)}
                 >
                   <span

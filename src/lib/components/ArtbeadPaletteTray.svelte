@@ -638,8 +638,8 @@
               }
               type="button"
               data-palette-color-code={color.code}
-              aria-label={`${color.code} ${color.hex}`}
-              title={`${color.code} · ${color.hex} · ${$_('tray.longPressReorder')}`}
+              aria-label={color.code}
+              title={`${color.code} · ${$_('tray.longPressReorder')}`}
               onpointerdown={(event) =>
                 beginCustomPaletteReorder(event, color.code)}
               oncontextmenu={(event) => event.preventDefault()}
@@ -695,8 +695,8 @@
             }
             type="button"
             data-palette-color-code={color.code}
-            aria-label={`${color.code} ${color.hex}`}
-            title={`${color.code} · ${color.hex} · ${$_('tray.longPressReorder')}`}
+            aria-label={color.code}
+            title={`${color.code} · ${$_('tray.longPressReorder')}`}
             onpointerdown={(event) =>
               beginCustomPaletteReorder(event, color.code)}
             oncontextmenu={(event) => event.preventDefault()}
@@ -777,9 +777,9 @@
                   class="palette-color"
                   class:active={selectedCode === color.code}
                   type="button"
-                  aria-label={`${color.code} ${color.hex}`}
+                  aria-label={color.code}
                   aria-pressed={selectedCode === color.code}
-                  title={`${color.code} · ${color.hex}`}
+                  title={color.code}
                   onclick={() => onselect(color.code, color.hex)}
                 >
                   <span
@@ -804,7 +804,7 @@
       ></span>
       <div class="selected-color-info">
         <small>{$_('tray.selected')}</small>
-        <strong>{selectedColor.code} · {selectedColor.hex}</strong>
+        <strong>{selectedColor.code}</strong>
       </div>
       <span class="selected-usage">{usage[selectedColorIndex] ?? 0}</span>
     </div>

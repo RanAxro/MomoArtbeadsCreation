@@ -127,7 +127,7 @@
           </div>
           <div class="palette-grid">
             {#each palette.colors as color (color.id)}
-              <div class="palette-item" title={`${color.code} · ${color.hex}`}>
+              <div class="palette-item" title={color.code}>
                 <span style:--color={color.hex}></span>
                 <small>{color.code}</small>
               </div>
